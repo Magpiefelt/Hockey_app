@@ -1,0 +1,136 @@
+<template>
+  <div class="space-y-4">
+    <div>
+      <UiInput
+        id="contactName"
+        v-model="localValue.name"
+        type="text"
+        label="Full Name"
+        :required="true"
+        :error="errors.name"
+        helpText="Your first and last name"
+        @blur="validateName"
+      />
+    </div>
+
+    <div>
+      <UiInput
+        id="contactEmail"
+        v-model="localValue.email"
+        type="email"
+        label="Email Address"
+        :required="true"
+        :error="errors.email"
+        helpText="We'll send order updates to this email"
+        @blur="validateEmail"
+      />
+    </div>
+
+    <div>
+      <UiInput
+        id="contactPhone"
+        v-model="localValue.phone"
+        type="tel"
+        label="Phone Number"
+        :required="true"
+        :error="errors.phone"
+        helpText="For urgent order updates"
+        @blur="validatePhone"
+      />
+    </div>
+
+    <!-- Privacy Notice -->
+    <div class="mt-4 p-3 rounded-lg bg-slate-900/30 border border-slate-700/50">
+      <p class="text-sm text-slate-400">
+        <Icon name="mdi:shield-check" class="w-4 h-4 inline-block mr-1 text-cyan-400" />
+        We'll use your information to respond to your request. 
+        <a href="/privacy" class="text-cyan-400 hover:text-cyan-300 underline" target="_blank">
+          View our Privacy Policy
+        </a>
+      </p>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, watch } from 'vue'
+
+interface ContactInfo {
+  name: string
+  email: string
+  phone: string
+}
+
+interface Props {
+  modelValue: ContactInfo
+}
+
+const props = defineProps<Props>()
+const emit = defineEmits<{
+  'update:modelValue': [value: ContactInfo]
+  'validation': [isValid: boolean]
+}>()
+
+const localValue = ref<ContactInfo>({ ...props.modelValue })
+
+const errors = ref({
+  name: '',
+  email: '',
+  phone: ''
+})
+
+// Watch for changes and emit to parent
+watch(localValue, (newValue) => {
+  emit('update:modelValue', newValue)
+  validateAll()
+}, { deep: true })
+
+// Watch for external changes
+watch(() => props.modelValue, (newValue) => {
+  localValue.value = { ...newValue }
+}, { deep: true })
+
+function validateName() {
+  if (!localValue.value.name || localValue.value.name.trim().length < 2) {
+    errors.value.name = 'Please enter your full name'
+    return false
+  }
+  errors.value.name = ''
+  return true
+}
+
+function validateEmail() {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!localValue.value.email || !emailRegex.test(localValue.value.email)) {
+    errors.value.email = 'Please enter a valid email address'
+    return false
+  }
+  errors.value.email = ''
+  return true
+}
+
+function validatePhone() {
+  // Remove all non-digit characters for validation
+  const digitsOnly = localValue.value.phone.replace(/\D/g, '')
+  if (!digitsOnly || digitsOnly.length < 10) {
+    errors.value.phone = 'Please enter a valid phone number (at least 10 digits)'
+    return false
+  }
+  errors.value.phone = ''
+  return true
+}
+
+function validateAll() {
+  const nameValid = validateName()
+  const emailValid = validateEmail()
+  const phoneValid = validatePhone()
+  const isValid = nameValid && emailValid && phoneValid
+  emit('validation', isValid)
+  return isValid
+}
+
+// Expose validation method to parent
+defineExpose({
+  validate: validateAll
+})
+</script>

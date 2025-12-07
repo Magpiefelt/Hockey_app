@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+pnpm-lock.yaml
+
+# Build output
+.output/
+.nuxt/
+dist/
+build/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+
+# Cache
+.cache/
+.eslintcache
+
+# Testing
+coverage/
+.nyc_output/
+
+# Temporary files
+*.tmp
+temp/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# User-specific
+.user_env

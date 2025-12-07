@@ -1,0 +1,329 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base Styles */
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #121212;
+  color: #e2e8f0;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Component Utilities */
+@layer components {
+  /* Card Styles - Modernized */
+  .card {
+    border-radius: 1rem;
+    background-color: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    box-shadow: 0 2px 8px 0 rgb(0 0 0 / 0.15);
+  }
+
+  .card-hover {
+    border-radius: 1rem;
+    background-color: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    box-shadow: 0 2px 8px 0 rgb(0 0 0 / 0.15);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .card-hover:hover {
+    transform: translateY(-2px);
+    border-color: #3a3a3a;
+    box-shadow: 0 8px 16px 0 rgb(0 0 0 / 0.25);
+  }
+
+  /* Gradient Text - Simplified */
+  .gradient-text {
+    background: linear-gradient(135deg, #60a5fa 0%, #22d3ee 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* Section Spacing - 8-point grid */
+  .section {
+    padding-top: 5rem;
+    padding-bottom: 5rem;
+  }
+
+  .section-sm {
+    padding-top: 3rem;
+    padding-bottom: 3rem;
+  }
+
+  .section-lg {
+    padding-top: 8rem;
+    padding-bottom: 8rem;
+  }
+
+  /* Button Base - Modernized */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+
+  .btn:focus-visible {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+  }
+
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .btn-primary {
+    background-color: #3b82f6;
+    color: white;
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background-color: #2563eb;
+  }
+
+  .btn-primary:active:not(:disabled) {
+    background-color: #1d4ed8;
+  }
+
+  .btn-secondary {
+    background-color: #0891b2;
+    color: white;
+  }
+
+  .btn-secondary:hover:not(:disabled) {
+    background-color: #0891b2;
+  }
+
+  .btn-secondary:active:not(:disabled) {
+    background-color: #0e7490;
+  }
+
+  .btn-outline {
+    border: 2px solid #3a3a3a;
+    color: #e2e8f0;
+    background-color: transparent;
+  }
+
+  .btn-outline:hover:not(:disabled) {
+    background-color: #1a1a1a;
+    border-color: #4a4a4a;
+  }
+
+  /* Badge Styles - Modernized */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 9999px;
+    padding: 0.25rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .badge-brand {
+    background-color: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+  }
+
+  .badge-success {
+    background-color: rgba(34, 197, 94, 0.15);
+    color: #4ade80;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+  }
+
+  .badge-warning {
+    background-color: rgba(234, 179, 8, 0.15);
+    color: #facc15;
+    border: 1px solid rgba(234, 179, 8, 0.3);
+  }
+
+  .badge-error {
+    background-color: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+  }
+
+  .badge-neutral {
+    background-color: #2a2a2a;
+    color: #cbd5e1;
+    border: 1px solid #3a3a3a;
+  }
+
+
+
+
+  .container {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+  }
+}
+
+/* Utility Classes */
+@layer utilities {
+  /* Refined dark backgrounds */
+  .bg-dark-primary {
+    background-color: #121212;
+  }
+
+  .bg-dark-secondary {
+    background-color: #1a1a1a;
+  }
+
+  .bg-dark-tertiary {
+    background-color: #2a2a2a;
+  }
+
+  /* Glass morphism effect - Subtle */
+  .glass {
+    background: rgba(26, 26, 26, 0.8);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  /* Gradient backgrounds - Strategic use only */
+  .bg-gradient-brand {
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  }
+
+  .bg-gradient-accent {
+    background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+  }
+
+  /* Text shadows - Subtle */
+  .text-shadow {
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  }
+
+  .text-shadow-lg {
+    text-shadow: 0 4px 8px rgba(0, 0, 0, 0.6);
+  }
+
+  /* Accent borders - Simplified */
+  .accent-border-top {
+    border-top: 3px solid #3b82f6;
+  }
+
+  .accent-border-left {
+    border-left: 4px solid #3b82f6;
+  }
+
+  /* Scrollbar Styling */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background-color: #1a1a1a;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: #3a3a3a;
+    border-radius: 9999px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: #4a4a4a;
+  }
+
+  /* Text Utilities */
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Animation Utilities */
+  .animate-delay-100 {
+    animation-delay: 100ms;
+  }
+
+  .animate-delay-200 {
+    animation-delay: 200ms;
+  }
+
+  .animate-delay-300 {
+    animation-delay: 300ms;
+  }
+}
+
+/* Animation Keyframes */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-fade-in { animation: fadeIn 0.3s ease-out; }
+.animate-fade-in-up { animation: fadeInUp 0.4s ease-out; }
+.animate-slide-in { animation: slideIn 0.3s ease-out; }
+.animate-scale-in { animation: scaleIn 0.2s ease-out; }
+
+.delay-100 { animation-delay: 100ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-400 { animation-delay: 400ms; }
+.delay-500 { animation-delay: 500ms; }
+
+.transition-smooth { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
