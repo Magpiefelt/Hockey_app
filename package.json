@@ -2,6 +2,7 @@
   "name": "web-vue",
   "type": "module",
   "private": true,
+  "packageManager": "pnpm@10.24.0",
   "scripts": {
     "build": "rm -rf .nuxt .output && nuxt build",
     "dev": "nuxt dev",
