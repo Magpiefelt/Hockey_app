@@ -89,7 +89,7 @@
             <!-- Packages Loaded -->
             <PackageSelectionModal
               v-else
-              :packages="packagesData"
+              :packages="packages"
               @select="handlePackageSelect"
             />
           </div>
@@ -323,16 +323,10 @@ onMounted(() => {
   }
 })
 
-// Package data - loaded from database via tRPC
-const { $client } = useNuxtApp()
-const { data: packagesData, error: packagesError } = await useAsyncData('packages', async () => {
-  try {
-    return await $client.packages.getAll.query()
-  } catch (error) {
-    console.error('Failed to load packages:', error)
-    return []
-  }
-})
+// Package data - loaded from Nuxt Content
+const { data: packagesData } = await useAsyncData('packages', () => 
+  queryContent('packages').find()
+)
 
 // Computed property with safe fallback
 const packages = computed(() => packagesData.value || [])
