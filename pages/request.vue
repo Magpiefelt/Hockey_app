@@ -72,13 +72,13 @@
           <!-- Package Selection -->
           <div v-if="currentStep === 'selection'">
             <!-- Loading State -->
-            <div v-if="!packagesData" class="flex flex-col items-center justify-center py-20">
+            <div v-if="!packagesData || !packagesData.length" class="flex flex-col items-center justify-center py-20">
               <Icon name="mdi:loading" class="w-12 h-12 text-cyan-400 animate-spin mb-4" />
               <p class="text-slate-300">Loading packages...</p>
             </div>
             
             <!-- Error State -->
-            <div v-else-if="packages.length === 0" class="flex flex-col items-center justify-center py-20 text-center">
+            <div v-else-if="packagesData && packagesData.length === 0" class="flex flex-col items-center justify-center py-20 text-center">
               <Icon name="mdi:alert-circle" class="w-16 h-16 text-red-400 mb-4" />
               <h3 class="text-2xl font-bold text-white mb-2">Unable to Load Packages</h3>
               <p class="text-slate-300 mb-6">We're having trouble loading our service packages. Please try again.</p>
@@ -90,7 +90,7 @@
             <!-- Packages Loaded -->
             <PackageSelectionModal
               v-else
-              :packages="packages"
+              :packages="packagesData"
               @select="handlePackageSelect"
             />
           </div>
@@ -322,12 +322,15 @@ onMounted(() => {
 })
 
 // Package data - dynamically loaded from content files
-const { data: packages } = await useAsyncData('packages', () => 
+const { data: packagesData } = await useAsyncData('packages', () => 
   queryContent('/packages').find()
 )
 
+const packages = computed(() => packagesData.value || [])
+
 const selectedPackage = computed(() => {
-  return packages.value.find(pkg => pkg.id === selectedPackageId.value)
+  if (!packagesData.value) return null
+  return packagesData.value.find(pkg => pkg.id === selectedPackageId.value)
 })
 
 const selectedPackageName = computed(() => {
