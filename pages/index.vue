@@ -72,19 +72,13 @@
                   </div>
                 </div>
                 
-                <!-- Logo with Glow Effect -->
+                <!-- Logo -->
                 <div class="mb-12 flex justify-center lg:justify-start">
-                  <div class="logo-container relative">
-                    <!-- Logo with simple shadow glow -->
-                    <div class="relative">
-                      <img 
-                        src="/logo.png" 
-                        alt="Elite Sports DJ" 
-                        class="relative h-72 w-auto object-contain sm:h-80 md:h-96 lg:h-[28rem] xl:h-[32rem]" 
-                        style="filter: drop-shadow(0 0 40px rgba(59, 130, 246, 0.6)) drop-shadow(0 0 80px rgba(34, 211, 238, 0.4));" 
-                      />
-                    </div>
-                  </div>
+                  <img 
+                    src="/logo.png" 
+                    alt="Elite Sports DJ" 
+                    class="h-64 w-auto object-contain sm:h-72 md:h-80 lg:h-96" 
+                  />
                 </div>
                 
                 <!-- Dynamic Badge with Sports Icons -->
@@ -147,7 +141,7 @@
           <!-- RIGHT COLUMN: Video Carousel (45%) -->
           <div class="flex items-start justify-center lg:col-span-6 lg:pt-0">
             <RevealOnScroll animation="fade-left">
-              <div class="w-full max-w-lg xl:max-w-xl">
+              <div class="w-full max-w-sm">
                 <HeroVideoCarousel 
                   :videos="heroVideos"
                   :scroll-speed="25"
