@@ -23,6 +23,9 @@ importers:
       '@oxc-parser/binding-linux-x64-gnu':
         specifier: ^0.99.0
         version: 0.99.0
+      '@oxc-transform/binding-linux-x64-gnu':
+        specifier: ^0.99.0
+        version: 0.99.0
       '@pinia/nuxt':
         specifier: ^0.11.3
         version: 0.11.3(magicast@0.5.1)(pinia@3.0.4(typescript@5.9.3)(vue@3.5.25(typescript@5.9.3)))
@@ -1427,6 +1430,12 @@ packages:
 
   '@oxc-transform/binding-linux-x64-gnu@0.96.0':
     resolution: {integrity: sha512-f6pcWVz57Y8jXa2OS7cz3aRNuks34Q3j61+3nQ4xTE8H1KbalcEvHNmM92OEddaJ8QLs9YcE0kUC6eDTbY34+A==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [x64]
+    os: [linux]
+
+  '@oxc-transform/binding-linux-x64-gnu@0.99.0':
+    resolution: {integrity: sha512-oF6MxCAmQBkgrgRJGlUtpYwUwAq9cOmTJ7hh9Ol27fyGM4NUGOPH2sjrUenlCJ3p3huYwkzUtg+WRqXoiyrc6Q==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [linux]
@@ -8515,6 +8524,8 @@ snapshots:
 
   '@oxc-transform/binding-linux-x64-gnu@0.96.0':
     optional: true
+
+  '@oxc-transform/binding-linux-x64-gnu@0.99.0': {}
 
   '@oxc-transform/binding-linux-x64-musl@0.96.0':
     optional: true
