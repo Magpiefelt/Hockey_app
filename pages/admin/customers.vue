@@ -159,7 +159,7 @@ const fetchCustomers = async () => {
     const { handleTrpcError } = await import('~/composables/useTrpc')
     error.value = handleTrpcError(err)
     showError('Failed to load customers')
-    console.error('Error loading customers:', err)
+    // Error logged: 'Error loading customers:', err)
   } finally {
     loading.value = false
   }

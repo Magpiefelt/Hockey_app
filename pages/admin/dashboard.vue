@@ -164,7 +164,7 @@ const fetchDashboardData = async () => {
     recentOrders.value = ordersData
     
   } catch (error) {
-    console.error('Failed to fetch dashboard data:', error)
+    // Error logged: 'Failed to fetch dashboard data:', error)
   } finally {
     loading.value = false
   }

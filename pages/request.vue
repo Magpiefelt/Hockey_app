@@ -438,7 +438,6 @@ const handleEditStep = (step: string) => {
 const submissionError = ref('')
 
 const handleFinalSubmit = async () => {
-  console.log('Final form submission:', formData)
   submissionError.value = ''
   isSubmitting.value = true
   
@@ -463,7 +462,6 @@ const handleFinalSubmit = async () => {
       requirementsJson: formData
     })
     
-    console.log('Order created:', result)
     showSuccess('Request submitted successfully!')
     
     // Clear form data from localStorage
@@ -472,7 +470,6 @@ const handleFinalSubmit = async () => {
     // Navigate to thank you page
     router.push('/thanks')
   } catch (error: any) {
-    console.error('Form submission error:', error)
     submissionError.value = error.message || 'There was an error submitting your request. Please try again or contact us directly.'
     isSubmitting.value = false
     // Scroll to top to show error

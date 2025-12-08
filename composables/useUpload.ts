@@ -10,7 +10,7 @@ export const useUpload = () => {
       })
       return await response.json()
     } catch (error) {
-      console.error('Upload failed', error)
+      // Upload failed - error will be handled by caller
       throw error
     }
   }

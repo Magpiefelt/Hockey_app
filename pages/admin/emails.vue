@@ -328,7 +328,7 @@ async function fetchEmails() {
     emails.value = result.emails
     totalEmails.value = result.total
   } catch (err: any) {
-    console.error('Failed to fetch emails:', err)
+    // Error logged: 'Failed to fetch emails:', err)
     error.value = err.message || 'Failed to load emails'
   } finally {
     loading.value = false
@@ -340,7 +340,7 @@ async function fetchStats() {
   try {
     stats.value = await trpc.admin.emails.stats.query()
   } catch (err: any) {
-    console.error('Failed to fetch email stats:', err)
+    // Error logged: 'Failed to fetch email stats:', err)
   }
 }
 
@@ -410,7 +410,7 @@ async function resendEmail(email: any) {
     
     alert('Email resent successfully!')
   } catch (err: any) {
-    console.error('Failed to resend email:', err)
+    // Error logged: 'Failed to resend email:', err)
     alert(`Failed to resend email: ${err.message}`)
   } finally {
     resending.value = null

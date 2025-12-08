@@ -51,7 +51,7 @@ onMounted(() => {
     // Ensure video plays on mobile devices
     videoRef.value.play().catch(() => {
       // Autoplay was prevented, video will show as poster
-      console.log('Video autoplay was prevented')
+      // Silent fail - this is expected behavior on some browsers
     })
   }
 })

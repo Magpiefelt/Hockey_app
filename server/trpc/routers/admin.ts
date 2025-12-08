@@ -436,6 +436,18 @@ export const adminRouter = router({
           
           const order = result.rows[0]
           
+          // Get package name
+          let packageName = 'Service Request'
+          const packageResult = await client.query(
+            `SELECT p.name FROM packages p 
+             JOIN quote_requests qr ON qr.package_id = p.id 
+             WHERE qr.id = $1`,
+            [input.orderId]
+          )
+          if (packageResult.rows.length > 0) {
+            packageName = packageResult.rows[0].name
+          }
+          
           // Log status change
           await client.query(
             `INSERT INTO order_status_history (quote_id, previous_status, new_status, changed_by, notes)
@@ -450,7 +462,7 @@ export const adminRouter = router({
               to: order.contact_email,
               name: order.contact_name,
               quoteAmount: input.quoteAmount,
-              packageName: 'Service Request', // TODO: Get actual package name
+              packageName,
               orderId: input.orderId
             })
             logger.info('Quote email sent', { orderId: input.orderId, email: order.contact_email })

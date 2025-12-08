@@ -339,7 +339,7 @@ const fetchOrder = async () => {
       quoteForm.notes = orderData.value.order.adminNotes
     }
   } catch (err: any) {
-    console.error('Failed to fetch order:', err)
+    // Error logged: 'Failed to fetch order:', err)
     const { handleTrpcError } = await import('~/composables/useTrpc')
     error.value = handleTrpcError(err)
   } finally {
@@ -368,7 +368,7 @@ const updateStatus = async () => {
     await fetchOrder()
     showSuccess('Status updated successfully')
   } catch (err: any) {
-    console.error('Update error:', err)
+    // Error logged: 'Update error:', err)
     const { handleTrpcError } = await import('~/composables/useTrpc')
     showError(`Failed to update status: ${handleTrpcError(err)}`)
   } finally {
@@ -392,7 +392,7 @@ const submitQuote = async () => {
     await fetchOrder()
     showSuccess('Quote submitted and customer notified via email')
   } catch (err: any) {
-    console.error('Quote error:', err)
+    // Error logged: 'Quote error:', err)
     const { handleTrpcError } = await import('~/composables/useTrpc')
     showError(`Failed to submit quote: ${handleTrpcError(err)}`)
   } finally {
@@ -444,7 +444,7 @@ const uploadDeliverables = async () => {
       deliverableQueue.value[i].uploading = false
       deliverableQueue.value[i].uploaded = true
     } catch (error: any) {
-      console.error('Upload error:', error)
+      // Error logged: 'Upload error:', error)
       deliverableQueue.value[i].uploading = false
       showError(`Failed to upload ${fileUpload.file.name}: ${handleTrpcError(error)}`)
       return

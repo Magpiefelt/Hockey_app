@@ -374,7 +374,7 @@ const handlePayment = async () => {
     // Redirect to Stripe checkout
     window.location.href = url
   } catch (err: any) {
-    console.error('Payment error:', err)
+    // Error logged: 'Payment error:', err)
     const { handleTrpcError } = await import('~/composables/useTrpc')
     showError(`Failed to initiate payment: ${handleTrpcError(err)}`)
   } finally {
@@ -407,7 +407,7 @@ const downloadFile = async (fileId: number, filename: string) => {
     link.download = filename
     link.click()
   } catch (err: any) {
-    console.error('Download error:', err)
+    // Error logged: 'Download error:', err)
     showError(`Failed to download file: ${handleTrpcError(err)}`)
   }
 }

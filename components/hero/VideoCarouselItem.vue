@@ -132,12 +132,9 @@ const onVideoLoaded = () => {
 }
 
 const onVideoError = (error: Event) => {
-  console.error('Video loading error:', error)
-  
   // Attempt retry if under max retries
   if (retryCount.value < maxRetries) {
     retryCount.value++
-    console.log(`Retrying video load (${retryCount.value}/${maxRetries})...`)
     
     // Force reload by updating src
     const videoElement = (error.target as HTMLVideoElement)

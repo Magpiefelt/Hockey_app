@@ -167,14 +167,22 @@ export const emailsRouter = router({
       const original = result.rows[0]
       
       try {
-        // TODO: Integrate with actual email service
-        // For now, just create a new log entry
+        // Resend email using the email utility
+        const { sendEmail } = await import('../../utils/email')
         
-        await query(
-          `INSERT INTO email_logs (recipient_email, subject, email_type, status, sent_at)
-           VALUES ($1, $2, $3, $4, NOW())`,
-          [original.recipient_email, original.subject, original.email_type, 'sent']
-        )
+        // Note: This is a basic implementation. In production, you'd want to
+        // reconstruct the full email template based on email_type
+        await sendEmail({
+          to: original.recipient_email,
+          subject: original.subject,
+          html: `<p>This is a resent email. Original type: ${original.email_type}</p>`,
+          text: `This is a resent email. Original type: ${original.email_type}`
+        }, original.email_type, {}, null)
+        
+        logger.info('Email resent successfully', { 
+          logId: input.logId, 
+          recipient: original.recipient_email 
+        })
         
         return {
           success: true,

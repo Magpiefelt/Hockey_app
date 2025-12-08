@@ -174,7 +174,7 @@ export default defineNuxtConfig({
     typeCheck: false // Disabled for build compatibility
   },
   
-  // Route rules for caching
+  // Route rules for caching and optimization
   routeRules: {
     // Cache static pages
     '/': { cache: { maxAge: 60 * 10 } },
@@ -182,6 +182,31 @@ export default defineNuxtConfig({
     '/gallery': { cache: { maxAge: 60 * 10 } },
     // Don't cache dynamic pages
     '/request': { cache: false },
-    '/admin/**': { cache: false }
+    '/admin/**': { cache: false },
+    '/orders/**': { cache: false },
+    // API routes
+    '/api/**': { cors: true },
+    '/api/health': { cache: { maxAge: 60 } },
+    '/api/metrics': { cache: false },
+    // Static assets with long cache
+    '/_nuxt/**': { headers: { 'cache-control': 'public, max-age=31536000, immutable' } },
+    '/videos/**': { headers: { 'cache-control': 'public, max-age=86400' } },
+    '/logo.png': { headers: { 'cache-control': 'public, max-age=86400' } }
+  },
+  
+  // Compression
+  nitro: {
+    ...{
+      preset: 'node-server',
+      prerender: {
+        crawlLinks: false,
+        routes: []
+      },
+      devServer: {
+        host: '0.0.0.0'
+      }
+    },
+    compressPublicAssets: true,
+    minify: true
   }
 })

@@ -13,7 +13,7 @@ export const useTrpc = () => {
       try {
         return await client?.[procedure]?.(input)
       } catch (error) {
-        console.error(`tRPC call failed: ${procedure}`, error)
+        // tRPC call failed - error will be handled by caller
         throw error
       }
     }

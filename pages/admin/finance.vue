@@ -200,7 +200,7 @@ const fetchMetrics = async () => {
     const { handleTrpcError } = await import('~/composables/useTrpc')
     error.value = handleTrpcError(err)
     showError('Failed to load financial metrics')
-    console.error('Error loading finance data:', err)
+    // Error logged: 'Error loading finance data:', err)
   } finally {
     loading.value = false
   }

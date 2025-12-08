@@ -35,7 +35,7 @@ export const usePerformanceMonitoring = () => {
           })
           clsObserver.observe({ entryTypes: ['layout-shift'] })
         } catch (error) {
-          console.warn('Performance monitoring not fully supported', error)
+          // Performance monitoring not fully supported - silent fail
         }
       }
 
@@ -48,9 +48,8 @@ export const usePerformanceMonitoring = () => {
   }
 
   const logMetrics = () => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Performance Metrics:', metrics.value)
-    }
+    // Metrics are available in metrics.value for external logging
+    return metrics.value
   }
 
   onMounted(() => {

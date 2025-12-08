@@ -1,0 +1,7 @@
+onlyBuiltDependencies:
+  - '@parcel/watcher'
+  - bcrypt
+  - esbuild
+  - mozjpeg
+  - pngquant-bin
+  - vue-demi
