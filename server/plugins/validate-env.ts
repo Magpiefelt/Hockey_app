@@ -84,3 +84,4 @@ export default defineNitroPlugin((nitroApp) => {
   console.log(`   Redis: ${config.redisUrl ? '✓ Configured' : '○ Optional (not set)'}`)
 })
 // Force rebuild to pick up environment variables
+// Build: 1765159112
