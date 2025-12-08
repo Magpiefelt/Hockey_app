@@ -4,6 +4,7 @@
       <h2 class="text-3xl font-bold text-white mb-2">Package #1 - Basic</h2>
       <p class="text-slate-400">Professional player introductions for up to 20 players</p>
     </div>
+
     <form @submit.prevent="handleSubmit" class="space-y-6">
       <!-- Team Information -->
       <div class="space-y-4">
@@ -109,6 +110,9 @@
         </div>
 
         <div v-if="localFormData.introSong.method === 'youtube'">
+          <label class="block text-sm font-medium text-slate-300 mb-2">
+            YouTube URL
+          </label>
           <input
             v-model="localFormData.introSong.youtube"
             type="url"
@@ -118,6 +122,9 @@
         </div>
 
         <div v-else-if="localFormData.introSong.method === 'spotify'">
+          <label class="block text-sm font-medium text-slate-300 mb-2">
+            Spotify URL
+          </label>
           <input
             v-model="localFormData.introSong.spotify"
             type="url"
@@ -127,6 +134,9 @@
         </div>
 
         <div v-else>
+          <label class="block text-sm font-medium text-slate-300 mb-2">
+            Song Name and Artist
+          </label>
           <input
             v-model="localFormData.introSong.text"
             type="text"
@@ -232,26 +242,7 @@ const emit = defineEmits<{
 const localFormData = computed({
   get: () => {
     return {
-      teamName: '',
-      organization: '',
-      eventDate: '',
-      roster: {
-        method: 'manual',
-        players: [''],
-        pdfFile: null,
-        webLink: ''
-      },
-      introSong: {
-        method: 'youtube',
-        youtube: '',
-        spotify: '',
-        text: ''
-      },
-      contactName: '',
-      contactEmail: '',
-      contactPhone: '',
-      notes: '',
-      ...props.modelValue
+...props.modelValue
     }
   },
   set: (value) => {
@@ -259,18 +250,16 @@ const localFormData = computed({
   }
 })
 
+
+
 const addPlayer = () => {
   if (localFormData.value.roster.players.length < 20) {
-    const updatedData = { ...localFormData.value }
-    updatedData.roster.players = [...updatedData.roster.players, '']
-    emit('update:modelValue', updatedData)
+    localFormData.value.roster.players.push('')
   }
 }
 
 const removePlayer = (index: number) => {
-  const updatedData = { ...localFormData.value }
-  updatedData.roster.players = updatedData.roster.players.filter((_, i) => i !== index)
-  emit('update:modelValue', updatedData)
+  localFormData.value.roster.players.splice(index, 1)
 }
 
 const handleSubmit = () => {
