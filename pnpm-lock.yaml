@@ -20,6 +20,9 @@ importers:
       '@nuxt/ui':
         specifier: ^3.0.0
         version: 3.3.7(@babel/parser@7.28.5)(db0@0.3.4)(embla-carousel@8.6.0)(ioredis@5.8.2)(magicast@0.5.1)(typescript@5.9.3)(vite@7.2.7(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))(vue-router@4.6.3(vue@3.5.25(typescript@5.9.3)))(vue@3.5.25(typescript@5.9.3))(zod@4.1.13)
+      '@oxc-minify/binding-linux-x64-gnu':
+        specifier: ^0.99.0
+        version: 0.99.0
       '@oxc-parser/binding-linux-x64-gnu':
         specifier: ^0.99.0
         version: 0.99.0
@@ -1243,6 +1246,12 @@ packages:
 
   '@oxc-minify/binding-linux-x64-gnu@0.96.0':
     resolution: {integrity: sha512-UMM1jkns+p+WwwmdjC5giI3SfR2BCTga18x3C0cAu6vDVf4W37uTZeTtSIGmwatTBbgiq++Te24/DE0oCdm1iQ==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [x64]
+    os: [linux]
+
+  '@oxc-minify/binding-linux-x64-gnu@0.99.0':
+    resolution: {integrity: sha512-2Iq4piS+6i96mTvvvGwhPa2BVfys7ChV2r7Do7lciZSniXwwhQNJ/6yvqsp3hgaVvXhPYfbn9dEGRb1T1wZ5ww==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [linux]
@@ -8426,6 +8435,8 @@ snapshots:
 
   '@oxc-minify/binding-linux-x64-gnu@0.96.0':
     optional: true
+
+  '@oxc-minify/binding-linux-x64-gnu@0.99.0': {}
 
   '@oxc-minify/binding-linux-x64-musl@0.96.0':
     optional: true
