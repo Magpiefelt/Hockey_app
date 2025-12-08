@@ -5,6 +5,16 @@ export const useScrollReveal = (options?: { threshold?: number; once?: boolean }
   onMounted(() => {
     if (!elementRef.value) return
     
+    // Check if element is already in viewport on mount
+    const rect = elementRef.value.getBoundingClientRect()
+    const isInitiallyVisible = rect.top < window.innerHeight && rect.bottom > 0
+    
+    if (isInitiallyVisible) {
+      // Show immediately if already in viewport (fixes hero section issue)
+      isVisible.value = true
+      return
+    }
+    
     // Use Intersection Observer for better performance
     const observer = new IntersectionObserver(
       (entries) => {
