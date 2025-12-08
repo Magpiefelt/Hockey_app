@@ -8,10 +8,17 @@ export default defineNuxtConfig({
   
   modules: [
     '@nuxt/content',
-    // '@nuxt/icon', // Disabled - causes build issues
+    '@nuxt/icon',
     '@nuxtjs/tailwindcss',
     '@pinia/nuxt'
   ],
+  
+  // Icon configuration
+  icon: {
+    serverBundle: {
+      collections: ['mdi'] // Only bundle MDI icons for better performance
+    }
+  },
   
   css: ['~/assets/css/main.css'],
   
