@@ -323,10 +323,16 @@ onMounted(() => {
   }
 })
 
-// Package data - dynamically loaded from content files
-const { data: packagesData } = await useAsyncData('packages', () => 
-  queryContent('/packages').find()
-)
+// Package data - loaded from database via tRPC
+const { $client } = useNuxtApp()
+const { data: packagesData, error: packagesError } = await useAsyncData('packages', async () => {
+  try {
+    return await $client.packages.getAll.query()
+  } catch (error) {
+    console.error('Failed to load packages:', error)
+    return []
+  }
+})
 
 // Computed property with safe fallback
 const packages = computed(() => packagesData.value || [])
@@ -454,14 +460,19 @@ const handleFinalSubmit = async () => {
       requirementsJson: formData
     })
     
-    showSuccess('Request submitted successfully!')
-    
     // Clear form data from localStorage
     clearFormState()
     
+    // Reset submitting state before navigation
+    isSubmitting.value = false
+    
+    // Show success notification
+    showSuccess('Request submitted successfully!')
+    
     // Navigate to thank you page
-    router.push('/thanks')
+    await router.push('/thanks')
   } catch (error: any) {
+    console.error('Order submission error:', error)
     submissionError.value = error.message || 'There was an error submitting your request. Please try again or contact us directly.'
     isSubmitting.value = false
     // Scroll to top to show error

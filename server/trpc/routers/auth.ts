@@ -284,5 +284,139 @@ export const authRouter = router({
       })
       
       return { success: true }
+    }),
+
+  /**
+   * Request password reset (public)
+   */
+  forgotPassword: publicProcedure
+    .input(z.object({
+      email: z.string().email()
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const email = sanitizeEmail(input.email)
+      
+      logger.info('Password reset requested', { email })
+      
+      // Find user
+      const user = await queryOne<{ id: number; name: string; email: string }>(
+        'SELECT id, name, email FROM users WHERE email = $1',
+        [email]
+      )
+      
+      // Don't reveal if user exists or not (security best practice)
+      if (!user) {
+        logger.warn('Password reset requested for non-existent user', { email })
+        // Still return success to prevent user enumeration
+        return { success: true, message: 'If an account exists with this email, you will receive a password reset link.' }
+      }
+      
+      // Generate secure random token
+      const crypto = await import('crypto')
+      const token = crypto.randomBytes(32).toString('hex')
+      
+      // Token expires in 1 hour
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000)
+      
+      // Store token in database
+      await executeQuery(
+        `INSERT INTO password_reset_tokens (user_id, token, expires_at)
+         VALUES ($1, $2, $3)`,
+        [user.id, token, expiresAt]
+      )
+      
+      // Send password reset email
+      const config = useRuntimeConfig()
+      const resetUrl = `${config.public.appBaseUrl}/reset-password?token=${token}`
+      
+      const { sendPasswordResetEmail } = await import('../../utils/email')
+      await sendPasswordResetEmail({
+        to: user.email,
+        name: user.name,
+        resetUrl
+      })
+      
+      logger.info('Password reset email sent', { userId: user.id, email: user.email })
+      
+      await logAuthEvent(AuditAction.PASSWORD_RESET_REQUEST, user.id, true, {
+        email: user.email,
+        ip: ctx.event.context.ip
+      })
+      
+      return { 
+        success: true, 
+        message: 'If an account exists with this email, you will receive a password reset link.' 
+      }
+    }),
+
+  /**
+   * Reset password with token (public)
+   */
+  resetPassword: publicProcedure
+    .input(z.object({
+      token: z.string(),
+      newPassword: z.string().min(8)
+    }))
+    .mutation(async ({ input, ctx }) => {
+      // Validate new password strength
+      const passwordValidation = isStrongPassword(input.newPassword)
+      if (!passwordValidation.valid) {
+        throw new AuthenticationError(passwordValidation.errors.join(', '))
+      }
+      
+      logger.info('Password reset attempt', { token: input.token.substring(0, 8) + '...' })
+      
+      // Find valid token
+      const tokenRecord = await queryOne<{
+        id: number
+        user_id: number
+        expires_at: Date
+        used: boolean
+      }>(
+        `SELECT id, user_id, expires_at, used
+         FROM password_reset_tokens
+         WHERE token = $1`,
+        [input.token]
+      )
+      
+      if (!tokenRecord) {
+        logger.warn('Invalid password reset token', { token: input.token.substring(0, 8) + '...' })
+        throw new AuthenticationError('Invalid or expired password reset token')
+      }
+      
+      // Check if token has been used
+      if (tokenRecord.used) {
+        logger.warn('Password reset token already used', { tokenId: tokenRecord.id })
+        throw new AuthenticationError('This password reset link has already been used')
+      }
+      
+      // Check if token has expired
+      if (new Date() > new Date(tokenRecord.expires_at)) {
+        logger.warn('Password reset token expired', { tokenId: tokenRecord.id })
+        throw new AuthenticationError('This password reset link has expired. Please request a new one.')
+      }
+      
+      // Hash new password
+      const newPasswordHash = await hashPassword(input.newPassword)
+      
+      // Update password and mark token as used
+      await executeQuery(
+        'UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2',
+        [newPasswordHash, tokenRecord.user_id]
+      )
+      
+      await executeQuery(
+        'UPDATE password_reset_tokens SET used = TRUE, used_at = NOW() WHERE id = $1',
+        [tokenRecord.id]
+      )
+      
+      logger.info('Password reset successful', { userId: tokenRecord.user_id })
+      
+      await logAuthEvent(AuditAction.PASSWORD_RESET, tokenRecord.user_id, true, {
+        ip: ctx.event.context.ip,
+        userAgent: ctx.event.context.userAgent
+      })
+      
+      return { success: true, message: 'Your password has been reset successfully. You can now log in with your new password.' }
     })
 })

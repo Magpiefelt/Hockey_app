@@ -40,6 +40,12 @@ interface PaymentReceiptData {
   orderId: number
 }
 
+interface PasswordResetData {
+  to: string
+  name: string
+  resetUrl: string
+}
+
 /**
  * Create email transporter based on environment configuration
  */
@@ -48,7 +54,7 @@ function createTransporter(): Transporter {
   
   // Check if SMTP credentials are configured
   if (config.smtpHost && config.smtpUser && config.smtpPass) {
-    return nodemailer.createTransporter({
+    return nodemailer.createTransport({
       host: config.smtpHost,
       port: parseInt(config.smtpPort || '587'),
       secure: config.smtpSecure === 'true',
@@ -61,7 +67,7 @@ function createTransporter(): Transporter {
   
   // Fallback to console logging for development
   logger.warn('SMTP not configured, emails will be logged to console')
-  return nodemailer.createTransporter({
+  return nodemailer.createTransport({
     streamTransport: true,
     newline: 'unix',
     buffer: true
@@ -466,5 +472,116 @@ export async function sendCustomEmail(
     'custom',
     { to, subject },
     quoteRequestId
+  )
+}
+
+/**
+ * Send password reset email
+ */
+export async function sendPasswordResetEmail(data: PasswordResetData): Promise<boolean> {
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body {
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          line-height: 1.6;
+          color: #333;
+          max-width: 600px;
+          margin: 0 auto;
+          padding: 20px;
+        }
+        .container {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          padding: 40px;
+          border-radius: 10px;
+        }
+        .content {
+          background: white;
+          padding: 30px;
+          border-radius: 8px;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+          color: #667eea;
+          margin-top: 0;
+        }
+        .button {
+          display: inline-block;
+          padding: 12px 30px;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          text-decoration: none;
+          border-radius: 5px;
+          margin: 20px 0;
+          font-weight: bold;
+        }
+        .footer {
+          margin-top: 30px;
+          padding-top: 20px;
+          border-top: 1px solid #eee;
+          font-size: 12px;
+          color: #666;
+          text-align: center;
+        }
+        .warning {
+          background: #fff3cd;
+          border-left: 4px solid #ffc107;
+          padding: 12px;
+          margin: 20px 0;
+          border-radius: 4px;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="content">
+          <h1>🔐 Password Reset Request</h1>
+          
+          <p>Hi ${data.name},</p>
+          
+          <p>We received a request to reset your password for your Elite Sports DJ account. Click the button below to create a new password:</p>
+          
+          <div style="text-align: center;">
+            <a href="${data.resetUrl}" class="button">Reset My Password</a>
+          </div>
+          
+          <p>Or copy and paste this link into your browser:</p>
+          <p style="word-break: break-all; color: #667eea;">${data.resetUrl}</p>
+          
+          <div class="warning">
+            <strong>⚠️ Important:</strong> This link will expire in 1 hour for security reasons.
+          </div>
+          
+          <p><strong>Didn't request this?</strong> If you didn't request a password reset, you can safely ignore this email. Your password will remain unchanged.</p>
+          
+          <p>For security reasons, never share this link with anyone.</p>
+          
+          <p>Questions? Contact us:</p>
+          <p>
+            📞 Phone: (555) 123-4567<br>
+            📧 Email: info@elitesportsdj.com
+          </p>
+          
+          <p>Best regards,<br>The Elite Sports DJ Team</p>
+        </div>
+        <div class="footer">
+          <p>© ${new Date().getFullYear()} Elite Sports DJ. All rights reserved.</p>
+          <p>This is an automated message, please do not reply to this email.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `
+  
+  return sendEmail(
+    {
+      to: data.to,
+      subject: 'Password Reset Request - Elite Sports DJ',
+      html
+    },
+    'password_reset',
+    data
   )
 }

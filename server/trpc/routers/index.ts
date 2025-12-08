@@ -5,6 +5,7 @@ import { adminRouter } from './admin'
 import { filesRouter } from './files'
 import { paymentsRouter } from './payments'
 import { emailsRouter } from './emails'
+import { packagesRouter } from './packages'
 
 export const appRouter = router({
   auth: authRouter,
@@ -12,7 +13,8 @@ export const appRouter = router({
   admin: adminRouter,
   files: filesRouter,
   payments: paymentsRouter,
-  emails: emailsRouter
+  emails: emailsRouter,
+  packages: packagesRouter
 })
 
 export type AppRouter = typeof appRouter

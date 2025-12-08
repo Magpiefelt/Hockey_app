@@ -4,11 +4,14 @@
       <div class="flex h-16 items-center justify-between">
         <!-- Logo -->
         <NuxtLink to="/" class="flex items-center gap-3 transition-opacity hover:opacity-80">
-          <img 
-            src="/logo.png" 
-            alt="Elite Sports DJ" 
-            class="h-16 w-auto object-contain" 
-          />
+          <div class="relative h-16 w-16 flex items-center justify-center">
+            <img 
+              src="/logo.png" 
+              alt="Elite Sports DJ" 
+              class="h-full w-auto object-contain"
+              style="background-color: transparent; mix-blend-mode: normal;"
+            />
+          </div>
           <span class="hidden text-xl font-bold text-white sm:inline">
             Elite Sports DJ
           </span>

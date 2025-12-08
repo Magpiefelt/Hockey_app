@@ -15,6 +15,7 @@
     "format": "prettier --write .",
     "db:init": "tsx scripts/init-db.ts",
     "db:seed": "tsx scripts/seed-db.ts",
+    "db:seed-packages": "tsx scripts/seed-packages.ts",
     "db:test": "tsx scripts/test-db.ts",
     "db:test-workflows": "tsx scripts/test-workflows.ts",
     "migrate": "tsx scripts/migrate.ts",

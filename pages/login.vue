@@ -30,14 +30,24 @@
           />
 
           <!-- Password -->
-          <UiInput
-            v-model="form.password"
-            label="Password"
-            type="password"
-            placeholder="••••••••"
-            required
-            :disabled="isLoading"
-          />
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <label class="block text-sm font-medium text-slate-300">Password</label>
+              <NuxtLink 
+                to="/forgot-password" 
+                class="text-xs text-cyan-400 hover:text-cyan-300 transition-colors"
+              >
+                Forgot password?
+              </NuxtLink>
+            </div>
+            <UiInput
+              v-model="form.password"
+              type="password"
+              placeholder="••••••••"
+              required
+              :disabled="isLoading"
+            />
+          </div>
 
           <!-- Error Message -->
           <div v-if="error" class="p-4 bg-error-500/10 border border-error-500/30 rounded-lg">

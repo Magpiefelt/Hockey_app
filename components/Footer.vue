@@ -13,7 +13,14 @@
         <!-- Brand Column -->
         <div class="space-y-4">
           <div class="flex items-center gap-3">
-            <img src="/logo.png" alt="Elite Sports DJ" class="h-12 w-auto" />
+            <div class="relative h-12 w-12 flex items-center justify-center">
+              <img 
+                src="/logo.png" 
+                alt="Elite Sports DJ" 
+                class="h-full w-auto object-contain"
+                style="background-color: transparent; mix-blend-mode: normal;"
+              />
+            </div>
           </div>
           <p class="text-sm leading-relaxed text-slate-400">
             Professional game day entertainment for hockey, lacrosse, baseball, basketball, and more.

@@ -11,6 +11,8 @@ export enum AuditAction {
   LOGOUT = 'auth.logout',
   REGISTER = 'auth.register',
   PASSWORD_CHANGE = 'auth.password_change',
+  PASSWORD_RESET_REQUEST = 'auth.password_reset_request',
+  PASSWORD_RESET = 'auth.password_reset',
   
   // Orders
   ORDER_CREATED = 'order.created',
