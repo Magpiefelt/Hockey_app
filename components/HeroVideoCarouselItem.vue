@@ -35,28 +35,10 @@
         loop
         muted
         playsinline
-        preload="metadata"
-        loading="lazy"
+        preload="none"
         @loadeddata="onVideoLoaded"
         @error="onVideoError"
       ></video>
-      
-      <!-- Overlay for portrait videos with blurred background -->
-      <div 
-        v-if="isPortrait" 
-        class="absolute inset-0 -z-10"
-      >
-        <video
-          :src="videoSrc"
-          class="h-full w-full object-cover blur-2xl opacity-50"
-          autoplay
-          loop
-          muted
-          playsinline
-          preload="metadata"
-          loading="lazy"
-        ></video>
-      </div>
     </div>
     
     <!-- Video Info Overlay -->

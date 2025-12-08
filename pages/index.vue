@@ -139,7 +139,7 @@
           </div>
           
           <!-- RIGHT COLUMN: Video Carousel (45%) -->
-          <div class="flex items-start justify-center lg:col-span-6 lg:pt-0">
+          <div class="flex items-start justify-end lg:col-span-6 lg:pt-0 lg:pl-16">
             <RevealOnScroll animation="fade-left">
               <div class="w-full max-w-sm">
                 <HeroVideoCarousel 
