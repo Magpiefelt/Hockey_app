@@ -17,11 +17,11 @@ export default defineNitroPlugin((nitroApp) => {
     { key: 'SESSION_SECRET', value: config.sessionSecret, critical: true },
   ]
   
-  // Production-only required variables
+  // Production-only optional variables (Stripe and AWS are now optional)
   if (isProduction) {
     requiredEnvVars.push(
-      { key: 'STRIPE_SECRET_KEY', value: config.stripeSecretKey, critical: true },
-      { key: 'STRIPE_PUBLISHABLE_KEY', value: config.public.stripePublishableKey, critical: true },
+      { key: 'STRIPE_SECRET_KEY', value: config.stripeSecretKey, critical: false },
+      { key: 'STRIPE_PUBLISHABLE_KEY', value: config.public.stripePublishableKey, critical: false },
       { key: 'S3_BUCKET_NAME', value: config.s3BucketName, critical: false },
       { key: 'SENDGRID_API_KEY', value: config.sendgridApiKey, critical: false }
     )
