@@ -77,7 +77,7 @@
                   <img 
                     src="/logo.png" 
                     alt="Elite Sports DJ" 
-                    class="h-64 w-auto object-contain sm:h-72 md:h-80 lg:h-96" 
+                    class="h-64 w-auto object-contain sm:h-72 md:h-80 lg:h-96 hero-logo-animate" 
                   />
                 </div>
                 
@@ -914,6 +914,41 @@ const faqItems = ref([
 
 
 <style scoped>
+/* Hero Logo Animation */
+@keyframes hero-logo-pulse {
+  0%, 100% {
+    transform: scale(1) rotate(0deg);
+    filter: drop-shadow(0 0 20px rgba(34, 211, 238, 0.4)) drop-shadow(0 0 40px rgba(59, 130, 246, 0.3));
+  }
+  50% {
+    transform: scale(1.05) rotate(2deg);
+    filter: drop-shadow(0 0 30px rgba(34, 211, 238, 0.6)) drop-shadow(0 0 60px rgba(59, 130, 246, 0.5));
+  }
+}
+
+@keyframes hero-logo-float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-15px);
+  }
+}
+
+.hero-logo-animate {
+  animation: 
+    hero-logo-pulse 4s ease-in-out infinite,
+    hero-logo-float 6s ease-in-out infinite;
+  transition: all 0.3s ease;
+}
+
+.hero-logo-animate:hover {
+  animation-play-state: paused;
+  transform: scale(1.1) rotate(5deg);
+  filter: drop-shadow(0 0 40px rgba(34, 211, 238, 0.8)) drop-shadow(0 0 80px rgba(59, 130, 246, 0.6));
+  cursor: pointer;
+}
+
 /* Float animation for logo */
 @keyframes float {
   0%, 100% {

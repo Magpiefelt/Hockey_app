@@ -3,12 +3,12 @@
     <div class="container mx-auto">
       <div class="flex h-16 items-center justify-between">
         <!-- Logo -->
-        <NuxtLink to="/" class="flex items-center gap-3 transition-opacity hover:opacity-80">
+        <NuxtLink to="/" class="flex items-center gap-3 group">
           <div class="relative h-16 w-16 flex items-center justify-center">
             <img 
               src="/logo.png" 
               alt="Elite Sports DJ" 
-              class="h-full w-auto object-contain"
+              class="h-full w-auto object-contain transition-all duration-500 group-hover:scale-110 group-hover:rotate-6 logo-pulse"
             />
           </div>
           <span class="hidden text-xl font-bold text-white sm:inline">
@@ -159,7 +159,7 @@ const navItems = [
   { label: 'Services', to: '/#services' },
   { label: 'Packages', to: '/#packages' },
   { label: 'Testimonials', to: '/#testimonials' },
-  { label: 'Contact', to: '/request' },
+  { label: 'Contact', to: '/contact' },
 ]
 
 const isActive = (path: string) => {
@@ -196,3 +196,26 @@ watch(() => route.path, () => {
   mobileMenuOpen.value = false
 })
 </script>
+
+
+<style scoped>
+/* Logo pulse animation */
+@keyframes logo-pulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 8px rgba(34, 211, 238, 0.3));
+  }
+  50% {
+    filter: drop-shadow(0 0 16px rgba(34, 211, 238, 0.6));
+  }
+}
+
+.logo-pulse {
+  animation: logo-pulse 3s ease-in-out infinite;
+}
+
+/* Smooth transitions */
+.group:hover .logo-pulse {
+  animation-play-state: paused;
+  filter: drop-shadow(0 0 20px rgba(34, 211, 238, 0.8));
+}
+</style>

@@ -263,6 +263,60 @@ const removePlayer = (index: number) => {
 }
 
 const handleSubmit = () => {
+  // Validate required fields before submission
+  if (!localFormData.value.teamName || !localFormData.value.teamName.trim()) {
+    alert('Please enter your team name')
+    return
+  }
+  
+  if (!localFormData.value.eventDate) {
+    alert('Please select an event date')
+    return
+  }
+  
+  // Validate at least one player
+  const hasPlayers = localFormData.value.roster.players.some((p: string) => p && p.trim())
+  if (!hasPlayers) {
+    alert('Please add at least one player')
+    return
+  }
+  
+  // Validate intro song
+  if (localFormData.value.introSong.method === 'youtube' && !localFormData.value.introSong.youtube) {
+    alert('Please provide a YouTube link for your intro song')
+    return
+  }
+  if (localFormData.value.introSong.method === 'spotify' && !localFormData.value.introSong.spotify) {
+    alert('Please provide a Spotify link for your intro song')
+    return
+  }
+  if (localFormData.value.introSong.method === 'text' && !localFormData.value.introSong.text) {
+    alert('Please describe your intro song')
+    return
+  }
+  
+  // Validate contact info
+  if (!localFormData.value.contactName || !localFormData.value.contactName.trim()) {
+    alert('Please enter your name')
+    return
+  }
+  
+  if (!localFormData.value.contactEmail || !localFormData.value.contactEmail.trim()) {
+    alert('Please enter your email address')
+    return
+  }
+  
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!emailRegex.test(localFormData.value.contactEmail)) {
+    alert('Please enter a valid email address')
+    return
+  }
+  
+  if (!localFormData.value.contactPhone || !localFormData.value.contactPhone.trim()) {
+    alert('Please enter your phone number')
+    return
+  }
+  
   emit('submit')
 }
 </script>

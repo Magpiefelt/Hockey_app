@@ -35,9 +35,11 @@
         loop
         muted
         playsinline
-        preload="none"
+        preload="metadata"
+        loading="lazy"
         @loadeddata="onVideoLoaded"
         @error="onVideoError"
+        @canplay="onVideoCanPlay"
       ></video>
     </div>
     
@@ -110,6 +112,11 @@ const videoClass = computed(() => {
 })
 
 const onVideoLoaded = () => {
+  videoLoaded.value = true
+}
+
+const onVideoCanPlay = () => {
+  // Mark as loaded when video can start playing
   videoLoaded.value = true
 }
 

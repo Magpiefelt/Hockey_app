@@ -7,7 +7,7 @@
           <img 
             src="/logo.png" 
             alt="Elite Sports DJ" 
-            class="h-20 w-auto object-contain" 
+            class="h-20 w-auto object-contain logo-float" 
           />
         </div>
         <h1 class="text-3xl font-bold text-white mb-2">
@@ -76,8 +76,18 @@
           </p>
         </div>
 
-        <!-- Back to Home -->
+        <!-- Registration Link -->
         <div class="mt-6 text-center">
+          <p class="text-slate-400 text-sm">
+            Don't have an account?
+            <NuxtLink to="/register" class="text-cyan-400 hover:text-cyan-300 font-semibold transition-colors">
+              Create Account
+            </NuxtLink>
+          </p>
+        </div>
+
+        <!-- Back to Home -->
+        <div class="mt-4 text-center">
           <NuxtLink to="/" class="text-brand-400 hover:text-brand-300 text-sm transition-colors">
             ← Back to Home
           </NuxtLink>
