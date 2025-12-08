@@ -4,10 +4,77 @@
  */
 
 import { query } from '../db/connection'
+import { requireAdmin } from '../utils/auth'
 import { logger } from '../utils/logger'
+
+function getClientIp(event: H3Event): string {
+  return event.context.ip ||
+    getHeader(event, 'x-forwarded-for')?.split(',')[0]?.trim() ||
+    getHeader(event, 'x-real-ip') ||
+    event.node.req.socket.remoteAddress ||
+    'unknown'
+}
+
+function isIpAllowed(event: H3Event, allowlist: string): boolean {
+  if (!allowlist || allowlist.trim() === '') return true
+
+  const clientIp = getClientIp(event)
+  const allowedIps = allowlist.split(',').map(ip => ip.trim()).filter(Boolean)
+
+  return allowedIps.some((allowedIp) => {
+    if (allowedIp === '*') return true
+    if (allowedIp === clientIp) return true
+
+    if (allowedIp.endsWith('.*')) {
+      const prefix = allowedIp.slice(0, -2)
+      return clientIp.startsWith(prefix)
+    }
+
+    return false
+  })
+}
+
+function validateMetricsAccess(event: H3Event) {
+  const config = useRuntimeConfig()
+  const metricsApiKey = process.env.METRICS_API_KEY || config.metricsApiKey
+  const metricsIpAllowlist = process.env.METRICS_IP_ALLOWLIST || config.metricsIpAllowlist || ''
+
+  if (!isIpAllowed(event, metricsIpAllowlist)) {
+    const clientIp = getClientIp(event)
+    logger.warn('Metrics access denied - IP not allowlisted', { clientIp })
+    throw createError({
+      statusCode: 403,
+      message: 'Access denied'
+    })
+  }
+
+  const apiKeyFromHeader = getHeader(event, 'x-api-key') ||
+    getHeader(event, 'authorization')?.replace(/^Bearer\s+/i, '')
+
+  if (metricsApiKey && apiKeyFromHeader === metricsApiKey) {
+    return
+  }
+
+  try {
+    requireAdmin(event)
+  } catch (error: any) {
+    const statusCode = error?.message === 'Admin access required' ? 403 : 401
+    logger.warn('Metrics access denied', {
+      path: event.path,
+      hasApiKey: Boolean(apiKeyFromHeader)
+    })
+
+    throw createError({
+      statusCode,
+      message: 'Unauthorized'
+    })
+  }
+}
 
 export default defineEventHandler(async (event) => {
   try {
+    validateMetricsAccess(event)
+
     const metrics: any = {
       timestamp: new Date().toISOString(),
       system: {
@@ -120,6 +187,9 @@ export default defineEventHandler(async (event) => {
     return metrics
 
   } catch (error: any) {
+    if (error?.statusCode && error.statusCode !== 500) {
+      throw error
+    }
     logger.error('Metrics endpoint error', error)
     throw createError({
       statusCode: 500,
