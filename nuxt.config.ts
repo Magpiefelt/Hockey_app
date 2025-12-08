@@ -157,10 +157,8 @@ export default defineNuxtConfig({
         output: {
           manualChunks: {
             'vendor': ['vue', 'vue-router', 'pinia']
-          },
-          // Enable code splitting for better caching
-          chunkFileNames: 'chunks/[name]-[hash].js',
-          entryFileNames: '[name]-[hash].js'
+          }
+          // Let Nuxt handle file naming and paths for SSR compatibility
         }
       },
       // Optimize images and assets
@@ -201,7 +199,7 @@ export default defineNuxtConfig({
     '/api/health': { cache: { maxAge: 60 } },
     '/api/metrics': { cache: false },
     // Static assets with long cache
-    '/_nuxt/**': { headers: { 'cache-control': 'public, max-age=31536000, immutable' } },
+    '/_nuxt/**': { static: true, headers: { 'cache-control': 'public, max-age=31536000, immutable' } },
     '/videos/**': { headers: { 'cache-control': 'public, max-age=86400' } },
     '/logo.png': { headers: { 'cache-control': 'public, max-age=86400' } }
   }
