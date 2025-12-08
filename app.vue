@@ -1,6 +1,8 @@
 <template>
   <div>
+    <AppHeader />
     <NuxtPage />
+    <Footer />
   </div>
 </template>
 
@@ -8,12 +10,6 @@
 // Root application component
 // This component wraps the entire application and provides the NuxtPage outlet
 // for rendering page components based on the current route
-
-// You can add global app-level logic here if needed, such as:
-// - Global error handling
-// - App-wide state initialization
-// - Analytics tracking
-// - Theme management
 </script>
 
 <style>

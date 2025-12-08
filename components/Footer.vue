@@ -115,19 +115,19 @@
               </NuxtLink>
             </li>
             <li>
-              <NuxtLink to="/gallery" class="text-sm text-slate-400 transition-colors hover:text-cyan-400">
-                Gallery
-              </NuxtLink>
+              <a href="/#testimonials" class="text-sm text-slate-400 transition-colors hover:text-cyan-400">
+                Testimonials
+              </a>
             </li>
             <li>
-              <NuxtLink to="/about" class="text-sm text-slate-400 transition-colors hover:text-cyan-400">
+              <a href="/#stats" class="text-sm text-slate-400 transition-colors hover:text-cyan-400">
                 About Us
-              </NuxtLink>
+              </a>
             </li>
             <li>
-              <NuxtLink to="/contact" class="text-sm text-slate-400 transition-colors hover:text-cyan-400">
+              <a href="/request" class="text-sm text-slate-400 transition-colors hover:text-cyan-400">
                 Contact
-              </NuxtLink>
+              </a>
             </li>
           </ul>
         </div>
@@ -169,12 +169,12 @@
           </p>
           
           <div class="flex flex-wrap gap-6 text-sm">
-            <NuxtLink to="/privacy" class="text-slate-500 transition-colors hover:text-cyan-400">
+            <a href="#" class="text-slate-500 transition-colors hover:text-cyan-400">
               Privacy Policy
-            </NuxtLink>
-            <NuxtLink to="/terms" class="text-slate-500 transition-colors hover:text-cyan-400">
+            </a>
+            <a href="#" class="text-slate-500 transition-colors hover:text-cyan-400">
               Terms of Service
-            </NuxtLink>
+            </a>
           </div>
         </div>
       </div>

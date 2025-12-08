@@ -44,8 +44,8 @@
     </div>
     
     <!-- Gradient Overlays for Fade Effect -->
-    <div class="pointer-events-none absolute left-0 right-0 top-0 z-10 h-20 bg-gradient-to-b from-slate-950/80 to-transparent"></div>
-    <div class="pointer-events-none absolute bottom-0 left-0 right-0 z-10 h-20 bg-gradient-to-t from-slate-950/80 to-transparent"></div>
+    <div class="pointer-events-none absolute left-0 right-0 top-0 z-10 h-32 bg-gradient-to-b from-slate-950/90 to-transparent"></div>
+    <div class="pointer-events-none absolute bottom-0 left-0 right-0 z-10 h-40 bg-gradient-to-t from-slate-950/90 to-transparent"></div>
   </div>
 </template>
 

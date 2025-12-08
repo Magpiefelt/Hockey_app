@@ -57,8 +57,8 @@
       <div class="container relative z-10 flex min-h-screen items-center px-4 py-20">
         <div class="grid w-full grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-12">
           
-          <!-- LEFT COLUMN: Branding & Text (60%) -->
-          <div class="flex items-center justify-center lg:col-span-7">
+          <!-- LEFT COLUMN: Branding & Text (55%) -->
+          <div class="flex items-center justify-center lg:col-span-6">
             <RevealOnScroll animation="fade-right">
               <div class="max-w-3xl text-center lg:text-left">
                 
@@ -84,7 +84,7 @@
                       <img 
                         src="/logo.png" 
                         alt="Elite Sports DJ" 
-                        class="relative h-56 w-auto object-contain drop-shadow-2xl sm:h-64 md:h-80 lg:h-96 xl:h-[28rem] animate-float" 
+                        class="relative h-72 w-auto object-contain drop-shadow-2xl sm:h-80 md:h-96 lg:h-[28rem] xl:h-[32rem] animate-float" 
                       />
                     </div>
                   </div>
@@ -147,8 +147,8 @@
             </RevealOnScroll>
           </div>
           
-          <!-- RIGHT COLUMN: Video Carousel (40%) -->
-          <div class="flex items-center justify-center lg:col-span-5">
+          <!-- RIGHT COLUMN: Video Carousel (45%) -->
+          <div class="flex items-center justify-end lg:col-span-6 lg:pl-12">
             <RevealOnScroll animation="fade-left">
               <div class="w-full max-w-md">
                 <HeroVideoCarousel 
