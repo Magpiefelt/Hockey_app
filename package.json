@@ -4,7 +4,7 @@
   "private": true,
   "packageManager": "pnpm@10.24.0",
   "scripts": {
-    "build": "rm -rf .nuxt .output && nuxt build",
+    "build": "rm -rf .nuxt .output && nuxt build && bash scripts/post-build.sh",
     "dev": "nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
@@ -52,6 +52,7 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
+    "@iconify-json/mdi": "^1.2.3",
     "@nuxt/icon": "^2.1.0",
     "@nuxtjs/tailwindcss": "^6.12.2",
     "@types/bcrypt": "^6.0.0",
