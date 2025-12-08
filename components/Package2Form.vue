@@ -268,7 +268,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed } from 'vue'
 
 const props = defineProps<{
   modelValue: any
@@ -280,24 +280,54 @@ const emit = defineEmits<{
   (e: 'back'): void
 }>()
 
-const localFormData = ref({ ...props.modelValue })
-
-watch(localFormData, (newVal) => {
-  emit('update:modelValue', newVal)
-}, { deep: true })
-
-watch(() => props.modelValue, (newVal) => {
-  localFormData.value = { ...newVal }
-}, { deep: true })
+// Use computed with getter/setter instead of ref with watch
+// This is the proper Vue 3 pattern for v-model on child components
+const localFormData = computed({
+  get: () => {
+    // Provide default structure to prevent undefined errors
+    return {
+      teamName: '',
+      organization: '',
+      eventDate: '',
+      roster: {
+        method: 'manual',
+        players: [''],
+        pdfFile: null,
+        webLink: ''
+      },
+      introSong: {
+        method: 'youtube',
+        youtube: '',
+        spotify: '',
+        text: ''
+      },
+      warmupSong1: '',
+      warmupSong2: '',
+      warmupSong3: '',
+      contactName: '',
+      contactEmail: '',
+      contactPhone: '',
+      notes: '',
+      ...props.modelValue
+    }
+  },
+  set: (value) => {
+    emit('update:modelValue', value)
+  }
+})
 
 const addPlayer = () => {
   if (localFormData.value.roster.players.length < 20) {
-    localFormData.value.roster.players.push('')
+    const updatedData = { ...localFormData.value }
+    updatedData.roster.players = [...updatedData.roster.players, '']
+    emit('update:modelValue', updatedData)
   }
 }
 
 const removePlayer = (index: number) => {
-  localFormData.value.roster.players.splice(index, 1)
+  const updatedData = { ...localFormData.value }
+  updatedData.roster.players = updatedData.roster.players.filter((_, i) => i !== index)
+  emit('update:modelValue', updatedData)
 }
 
 const handleSubmit = () => {

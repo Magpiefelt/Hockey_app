@@ -4,7 +4,6 @@
       <h2 class="text-3xl font-bold text-white mb-2">Package #1 - Basic</h2>
       <p class="text-slate-400">Professional player introductions for up to 20 players</p>
     </div>
-
     <form @submit.prevent="handleSubmit" class="space-y-6">
       <!-- Team Information -->
       <div class="space-y-4">
@@ -110,9 +109,6 @@
         </div>
 
         <div v-if="localFormData.introSong.method === 'youtube'">
-          <label class="block text-sm font-medium text-slate-300 mb-2">
-            YouTube URL
-          </label>
           <input
             v-model="localFormData.introSong.youtube"
             type="url"
@@ -122,9 +118,6 @@
         </div>
 
         <div v-else-if="localFormData.introSong.method === 'spotify'">
-          <label class="block text-sm font-medium text-slate-300 mb-2">
-            Spotify URL
-          </label>
           <input
             v-model="localFormData.introSong.spotify"
             type="url"
@@ -134,9 +127,6 @@
         </div>
 
         <div v-else>
-          <label class="block text-sm font-medium text-slate-300 mb-2">
-            Song Name and Artist
-          </label>
           <input
             v-model="localFormData.introSong.text"
             type="text"
@@ -227,7 +217,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed } from 'vue'
 
 const props = defineProps<{
   modelValue: any
@@ -239,24 +229,48 @@ const emit = defineEmits<{
   (e: 'back'): void
 }>()
 
-const localFormData = ref({ ...props.modelValue })
-
-watch(localFormData, (newVal) => {
-  emit('update:modelValue', newVal)
-}, { deep: true })
-
-watch(() => props.modelValue, (newVal) => {
-  localFormData.value = { ...newVal }
-}, { deep: true })
+const localFormData = computed({
+  get: () => {
+    return {
+      teamName: '',
+      organization: '',
+      eventDate: '',
+      roster: {
+        method: 'manual',
+        players: [''],
+        pdfFile: null,
+        webLink: ''
+      },
+      introSong: {
+        method: 'youtube',
+        youtube: '',
+        spotify: '',
+        text: ''
+      },
+      contactName: '',
+      contactEmail: '',
+      contactPhone: '',
+      notes: '',
+      ...props.modelValue
+    }
+  },
+  set: (value) => {
+    emit('update:modelValue', value)
+  }
+})
 
 const addPlayer = () => {
   if (localFormData.value.roster.players.length < 20) {
-    localFormData.value.roster.players.push('')
+    const updatedData = { ...localFormData.value }
+    updatedData.roster.players = [...updatedData.roster.players, '']
+    emit('update:modelValue', updatedData)
   }
 }
 
 const removePlayer = (index: number) => {
-  localFormData.value.roster.players.splice(index, 1)
+  const updatedData = { ...localFormData.value }
+  updatedData.roster.players = updatedData.roster.players.filter((_, i) => i !== index)
+  emit('update:modelValue', updatedData)
 }
 
 const handleSubmit = () => {

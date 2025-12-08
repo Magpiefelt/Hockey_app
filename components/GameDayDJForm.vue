@@ -2,7 +2,7 @@
   <div class="space-y-8">
     <div class="text-center mb-8">
       <h2 class="text-3xl font-bold text-white mb-2">Game Day DJ Service</h2>
-      <p class="text-slate-400">Professional DJ services for your entire event</p>
+      <p class="text-slate-400">Full game day DJ services with custom music selection</p>
     </div>
 
     <form @submit.prevent="handleSubmit" class="space-y-6">
@@ -28,25 +28,6 @@
 
         <div>
           <label class="block text-sm font-medium text-slate-300 mb-2">
-            Event Type <span class="text-red-400">*</span>
-          </label>
-          <select
-            v-model="localFormData.eventType"
-            required
-            class="w-full px-4 py-3 rounded-lg bg-dark-secondary border border-white/10 text-white focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/20"
-          >
-            <option value="">Select event type...</option>
-            <option value="hockey">Hockey Game</option>
-            <option value="lacrosse">Lacrosse Game</option>
-            <option value="baseball">Baseball Game</option>
-            <option value="basketball">Basketball Game</option>
-            <option value="tournament">Tournament</option>
-            <option value="other">Other</option>
-          </select>
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-slate-300 mb-2">
             Event Date <span class="text-red-400">*</span>
           </label>
           <input
@@ -59,72 +40,75 @@
 
         <div>
           <label class="block text-sm font-medium text-slate-300 mb-2">
-            Event Duration (hours) <span class="text-red-400">*</span>
+            Game Time <span class="text-red-400">*</span>
           </label>
           <input
-            v-model.number="localFormData.eventDuration"
-            type="number"
-            min="1"
-            max="12"
+            v-model="localFormData.gameTime"
+            type="time"
             required
             class="w-full px-4 py-3 rounded-lg bg-dark-secondary border border-white/10 text-white focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/20"
-            placeholder="3"
           />
         </div>
 
         <div>
           <label class="block text-sm font-medium text-slate-300 mb-2">
-            Venue Name
+            Venue Name & Address <span class="text-red-400">*</span>
           </label>
-          <input
-            v-model="localFormData.venueName"
-            type="text"
+          <textarea
+            v-model="localFormData.venueAddress"
+            rows="3"
+            required
             class="w-full px-4 py-3 rounded-lg bg-dark-secondary border border-white/10 text-white placeholder-slate-500 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/20"
-            placeholder="City Sports Arena"
-          />
+            placeholder="City Sports Arena, 123 Main St, Anytown, USA"
+          ></textarea>
         </div>
       </div>
 
       <!-- Music Preferences -->
       <div class="space-y-4">
         <h3 class="text-xl font-bold text-white flex items-center gap-2">
-          <Icon name="mdi:music-note" class="w-5 h-5 text-cyan-400" />
+          <Icon name="mdi:music-box-multiple" class="w-5 h-5 text-cyan-400" />
           Music Preferences
         </h3>
         
         <div>
           <label class="block text-sm font-medium text-slate-300 mb-2">
-            Preferred Music Genres
+            Music Genres (select multiple)
+          </label>
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <label v-for="genre in genres" :key="genre" class="flex items-center gap-2 p-2 rounded-lg bg-dark-secondary border border-white/10 hover:border-cyan-400/30 cursor-pointer transition-colors">
+              <input
+                type="checkbox"
+                :value="genre"
+                v-model="localFormData.musicGenres"
+                class="w-4 h-4 rounded border-white/20 text-cyan-500 focus:ring-cyan-400"
+              />
+              <span class="text-sm text-white">{{ genre }}</span>
+            </label>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-slate-300 mb-2">
+            Specific Song Requests (optional)
           </label>
           <textarea
-            v-model="localFormData.musicGenres"
-            rows="3"
+            v-model="localFormData.songRequests"
+            rows="4"
             class="w-full px-4 py-3 rounded-lg bg-dark-secondary border border-white/10 text-white placeholder-slate-500 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/20"
-            placeholder="e.g., Rock, Hip-Hop, Pop, Electronic..."
+            placeholder="e.g., Thunderstruck - AC/DC, We Will Rock You - Queen"
           ></textarea>
         </div>
 
         <div>
           <label class="block text-sm font-medium text-slate-300 mb-2">
-            Songs/Artists to Include
+            Do Not Play List (optional)
           </label>
           <textarea
-            v-model="localFormData.mustPlaySongs"
+            v-model="localFormData.doNotPlay"
             rows="3"
             class="w-full px-4 py-3 rounded-lg bg-dark-secondary border border-white/10 text-white placeholder-slate-500 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/20"
-            placeholder="List any specific songs or artists you want included..."
-          ></textarea>
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-slate-300 mb-2">
-            Songs/Artists to Avoid
-          </label>
-          <textarea
-            v-model="localFormData.avoidSongs"
-            rows="2"
-            class="w-full px-4 py-3 rounded-lg bg-dark-secondary border border-white/10 text-white placeholder-slate-500 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/20"
-            placeholder="Any songs or artists to avoid..."
+            placeholder="e.g., Baby Shark, Macarena"
           ></textarea>
         </div>
       </div>
@@ -192,7 +176,7 @@
       <!-- Form Actions -->
       <div class="flex gap-4 pt-4">
         <button
-          @click="$emit('back')"
+          @click="$emit(\'back\')"
           type="button"
           class="flex-1 px-6 py-3 rounded-lg border-2 border-white/10 text-white font-semibold hover:bg-white/5 transition-colors"
         >
@@ -210,37 +194,53 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed } from \'vue\'
 
 const props = defineProps<{
   modelValue: any
 }>()
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: any): void
-  (e: 'submit'): void
-  (e: 'back'): void
+  (e: \'update:modelValue\', value: any): void
+  (e: \'submit\'): void
+  (e: \'back\'): void
 }>()
 
-const localFormData = ref({ 
-  eventType: '',
-  eventDuration: 3,
-  venueName: '',
-  musicGenres: '',
-  mustPlaySongs: '',
-  avoidSongs: '',
-  ...props.modelValue 
+const genres = [
+  \'Top 40\	,
+  \'Hip Hop\	,
+  \'Rock\	,
+  \'Pop\	,
+  \'EDM\	,
+  \'Country\	,
+  \'80s\	,
+  \'90s\	,
+  \'2000s\	
+]
+
+const localFormData = computed({
+  get: () => {
+    return {
+      teamName: \'\	,
+      eventDate: \'\	,
+      gameTime: \'\	,
+      venueAddress: \'\	,
+      musicGenres: [],
+      songRequests: \'\	,
+      doNotPlay: \'\	,
+      contactName: \'\	,
+      contactEmail: \'\	,
+      contactPhone: \'\	,
+      notes: \'\	,
+      ...props.modelValue
+    }
+  },
+  set: (value) => {
+    emit(\'update:modelValue\', value)
+  }
 })
 
-watch(localFormData, (newVal) => {
-  emit('update:modelValue', newVal)
-}, { deep: true })
-
-watch(() => props.modelValue, (newVal) => {
-  localFormData.value = { ...newVal }
-}, { deep: true })
-
 const handleSubmit = () => {
-  emit('submit')
+  emit(\'submit\')
 }
 </script>

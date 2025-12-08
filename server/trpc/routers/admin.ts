@@ -107,9 +107,9 @@ export const adminRouter = router({
         let sql = `
           SELECT 
             qr.id, qr.contact_name as name, qr.contact_email as email,
-            qr.contact_email as email_snapshot, qr.status, qr.event_date,
+            qr.contact_phone as phone, qr.status, qr.event_date,
             qr.service_type, qr.sport_type, qr.quoted_amount, qr.total_amount,
-            qr.created_at, qr.updated_at,
+            qr.requirements_json, qr.created_at, qr.updated_at,
             p.slug as package_id, COALESCE(p.name, qr.service_type) as service_name
           FROM quote_requests qr
           LEFT JOIN packages p ON qr.package_id = p.id
@@ -126,9 +126,16 @@ export const adminRouter = router({
         }
         
         if (input?.search) {
-          sql += ` AND (qr.contact_name ILIKE $${paramCount} OR qr.contact_email ILIKE $${paramCount})`
+          sql += ` AND (
+            qr.contact_name ILIKE $${paramCount} OR 
+            qr.contact_email ILIKE $${paramCount} OR 
+            qr.contact_phone ILIKE $${paramCount} OR
+            qr.service_type ILIKE $${paramCount} OR
+            qr.id::text = $${paramCount + 1}
+          )`
           params.push(`%${input.search}%`)
-          paramCount++
+          params.push(input.search) // Exact match for ID
+          paramCount += 2
         }
         
         sql += ' ORDER BY qr.created_at DESC'
@@ -157,13 +164,15 @@ export const adminRouter = router({
           id: row.id.toString(),
           name: row.name,
           email: row.email,
-          emailSnapshot: row.email_snapshot,
+          phone: row.phone,
           packageId: row.package_id,
           serviceType: row.service_name,
           sportType: row.sport_type,
           status: row.status,
           quotedAmount: row.quoted_amount,
           totalAmount: row.total_amount,
+          requirementsJson: row.requirements_json,
+          eventDate: row.event_date?.toISOString(),
           createdAt: row.created_at.toISOString(),
           updatedAt: row.updated_at?.toISOString()
         }))

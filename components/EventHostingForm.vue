@@ -248,7 +248,7 @@
       <!-- Form Actions -->
       <div class="flex gap-4 pt-4">
         <button
-          @click="$emit('back')"
+          @click="$emit(\'back\')"
           type="button"
           class="flex-1 px-6 py-3 rounded-lg border-2 border-white/10 text-white font-semibold hover:bg-white/5 transition-colors"
         >
@@ -266,44 +266,49 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed } from \'vue\'
 
 const props = defineProps<{
   modelValue: any
 }>()
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: any): void
-  (e: 'submit'): void
-  (e: 'back'): void
+  (e: \'update:modelValue\', value: any): void
+  (e: \'submit\'): void
+  (e: \'back\'): void
 }>()
 
-const localFormData = ref({ 
-  eventType: '',
-  eventDuration: 4,
-  attendance: null,
-  venueName: '',
-  services: {
-    announcements: false,
-    contests: false,
-    fanEngagement: false,
-    awards: false,
-    interviews: false
+const localFormData = computed({
+  get: () => {
+    return {
+      teamName: \'\',
+      eventType: \'\',
+      eventDate: \'\',
+      eventDuration: 4,
+      attendance: null,
+      venueName: \'\',
+      services: {
+        announcements: false,
+        contests: false,
+        fanEngagement: false,
+        awards: false,
+        interviews: false
+      },
+      eventSchedule: \'\',
+      specialAnnouncements: \'\',
+      contactName: \'\',
+      contactEmail: \'\',
+      contactPhone: \'\',
+      notes: \'\',
+      ...props.modelValue
+    }
   },
-  eventSchedule: '',
-  specialAnnouncements: '',
-  ...props.modelValue 
+  set: (value) => {
+    emit(\'update:modelValue\', value)
+  }
 })
 
-watch(localFormData, (newVal) => {
-  emit('update:modelValue', newVal)
-}, { deep: true })
-
-watch(() => props.modelValue, (newVal) => {
-  localFormData.value = { ...newVal }
-}, { deep: true })
-
 const handleSubmit = () => {
-  emit('submit')
+  emit(\'submit\')
 }
 </script>

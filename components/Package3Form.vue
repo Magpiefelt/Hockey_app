@@ -1,11 +1,8 @@
 <template>
   <div class="space-y-8">
     <div class="text-center mb-8">
-      <div class="inline-block px-4 py-1 rounded-full bg-yellow-500/20 border border-yellow-500/50 text-yellow-400 text-sm font-bold mb-3">
-        BEST VALUE
-      </div>
       <h2 class="text-3xl font-bold text-white mb-2">Package #3 - Ultimate</h2>
-      <p class="text-slate-400">Complete game-day audio experience</p>
+      <p class="text-slate-400">Everything in Package #2 plus goal horn and victory song</p>
     </div>
 
     <form @submit.prevent="handleSubmit" class="space-y-6">
@@ -141,7 +138,7 @@
       </div>
 
       <!-- Warmup Songs -->
-      <div class="space-y-4 p-6 rounded-lg bg-cyan-500/5 border-2 border-cyan-500/30">
+      <div class="space-y-4">
         <h3 class="text-xl font-bold text-white flex items-center gap-2">
           <Icon name="mdi:playlist-music" class="w-5 h-5 text-cyan-400" />
           Warmup Mix (2-3 Songs)
@@ -187,38 +184,34 @@
       </div>
 
       <!-- Ultimate Package Features -->
-      <div class="space-y-4 p-6 rounded-lg bg-yellow-500/5 border-2 border-yellow-500/30">
+      <div class="space-y-4 p-6 rounded-lg bg-cyan-500/5 border-2 border-cyan-500/30">
         <h3 class="text-xl font-bold text-white flex items-center gap-2">
-          <Icon name="mdi:trophy" class="w-5 h-5 text-yellow-400" />
+          <Icon name="mdi:star-circle" class="w-5 h-5 text-cyan-400" />
           Ultimate Package Features
         </h3>
         
         <div>
           <label class="block text-sm font-medium text-slate-300 mb-2">
-            Custom Goal Horn <span class="text-red-400">*</span>
+            Custom Goal Horn (Optional)
           </label>
           <input
             v-model="localFormData.goalHorn"
             type="text"
-            required
-            placeholder="Goal horn sound/song preference"
+            placeholder="Song Name - Artist or YouTube link"
             class="w-full px-4 py-3 rounded-lg bg-dark-secondary border border-white/10 text-white placeholder-slate-500 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/20"
           />
-          <p class="mt-1 text-xs text-slate-500">e.g., "Classic NHL horn" or "Custom song snippet"</p>
         </div>
 
         <div>
           <label class="block text-sm font-medium text-slate-300 mb-2">
-            Victory Celebration Song <span class="text-red-400">*</span>
+            Victory Celebration Song (Optional)
           </label>
           <input
             v-model="localFormData.winSong"
             type="text"
-            required
-            placeholder="Win song - Song Name - Artist"
+            placeholder="Song Name - Artist or YouTube link"
             class="w-full px-4 py-3 rounded-lg bg-dark-secondary border border-white/10 text-white placeholder-slate-500 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/20"
           />
-          <p class="mt-1 text-xs text-slate-500">Song to play after a victory</p>
         </div>
       </div>
 
@@ -285,7 +278,7 @@
       <!-- Form Actions -->
       <div class="flex gap-4 pt-4">
         <button
-          @click="$emit('back')"
+          @click="$emit(\'back\')"
           type="button"
           class="flex-1 px-6 py-3 rounded-lg border-2 border-white/10 text-white font-semibold hover:bg-white/5 transition-colors"
         >
@@ -303,39 +296,68 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed } from \'vue\'
 
 const props = defineProps<{
   modelValue: any
 }>()
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: any): void
-  (e: 'submit'): void
-  (e: 'back'): void
+  (e: \'update:modelValue\', value: any): void
+  (e: \'submit\'): void
+  (e: \'back\'): void
 }>()
 
-const localFormData = ref({ ...props.modelValue })
-
-watch(localFormData, (newVal) => {
-  emit('update:modelValue', newVal)
-}, { deep: true })
-
-watch(() => props.modelValue, (newVal) => {
-  localFormData.value = { ...newVal }
-}, { deep: true })
+const localFormData = computed({
+  get: () => {
+    return {
+      teamName: \'\',
+      organization: \'\',
+      eventDate: \'\',
+      roster: {
+        method: \'manual\',
+        players: [\'\'],
+        pdfFile: null,
+        webLink: \'\'
+      },
+      introSong: {
+        method: \'youtube\',
+        youtube: \'\',
+        spotify: \'\',
+        text: \'\'
+      },
+      warmupSong1: \'\',
+      warmupSong2: \'\',
+      warmupSong3: \'\',
+      goalHorn: \'\',
+      winSong: \'\',
+      contactName: \'\',
+      contactEmail: \'\',
+      contactPhone: \'\',
+      notes: \'\',
+      ...props.modelValue
+    }
+  },
+  set: (value) => {
+    emit(\'update:modelValue\', value)
+  }
+})
 
 const addPlayer = () => {
   if (localFormData.value.roster.players.length < 20) {
-    localFormData.value.roster.players.push('')
+    const updatedData = { ...localFormData.value }
+    updatedData.roster.players = [...updatedData.roster.players, \'\']
+    emit(\'update:modelValue\', updatedData)
   }
 }
 
 const removePlayer = (index: number) => {
-  localFormData.value.roster.players.splice(index, 1)
+  const updatedData = { ...localFormData.value }
+  updatedData.roster.players = updatedData.roster.players.filter((_, i) => i !== index)
+  emit(\'update:modelValue\', updatedData)
 }
 
 const handleSubmit = () => {
-  emit('submit')
+  emit(\'submit\')
 }
 </script>
