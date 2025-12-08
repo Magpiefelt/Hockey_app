@@ -53,48 +53,6 @@ export const useAuthStore = defineStore('auth', {
       this.isLoading = true
       
       try {
-        // Check if we're in development mode (no backend available)
-        const isDevelopment = import.meta.env.DEV || !import.meta.env.VITE_API_URL
-        
-        if (isDevelopment) {
-          // Simulate login in development with demo credentials
-          console.log('Development mode: Simulating login', { email })
-          await new Promise(resolve => setTimeout(resolve, 1000))
-          
-          // Check demo credentials
-          if (email === 'admin@elitesportsdj.com' && password === 'admin123') {
-            const demoUser = {
-              id: 'demo-admin-id',
-              email: 'admin@elitesportsdj.com',
-              name: 'Demo Admin',
-              role: 'admin'
-            }
-            this.setUser(demoUser)
-            return {
-              success: true,
-              user: demoUser
-            }
-          } else if (email === 'user@example.com' && password === 'user123') {
-            const demoUser = {
-              id: 'demo-user-id',
-              email: 'user@example.com',
-              name: 'Demo User',
-              role: 'user'
-            }
-            this.setUser(demoUser)
-            return {
-              success: true,
-              user: demoUser
-            }
-          } else {
-            return {
-              success: false,
-              error: 'Invalid credentials. Try admin@elitesportsdj.com / admin123 or user@example.com / user123'
-            }
-          }
-        }
-        
-        // Production: Use tRPC client
         const { $client } = useNuxtApp()
         
         // Call TRPC auth.login mutation

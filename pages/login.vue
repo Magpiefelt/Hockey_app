@@ -67,15 +67,6 @@
           </UiButton>
         </form>
 
-        <!-- Demo Hint -->
-        <div class="mt-6 p-4 bg-cyan-500/10 border border-cyan-400/30 rounded-lg">
-          <p class="text-cyan-300 text-sm font-semibold mb-2">🎮 Demo Credentials</p>
-          <p class="text-slate-300 text-xs leading-relaxed">
-            <strong>Admin:</strong> admin@elitesportsdj.com / admin123<br/>
-            <strong>Note:</strong> Database must be set up first. See README for instructions.
-          </p>
-        </div>
-
         <!-- Registration Link -->
         <div class="mt-6 text-center">
           <p class="text-slate-400 text-sm">

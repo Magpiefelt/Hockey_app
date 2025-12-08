@@ -282,25 +282,14 @@ const handleRegister = async () => {
   errorMessage.value = ''
 
   try {
-    // Check if we're in development mode (no backend available)
-    const isDevelopment = import.meta.env.DEV || !import.meta.env.VITE_API_URL
+    const { $client } = useNuxtApp()
     
-    if (isDevelopment) {
-      // Simulate registration in development
-      console.log('Development mode: Simulating registration', {
-        name: formData.name,
-        email: formData.email
-      })
-      await new Promise(resolve => setTimeout(resolve, 1500))
-    } else {
-      // Use auth store for production registration
-      const { $client } = useNuxtApp()
-      await $client.auth.register.mutate({
-        name: formData.name,
-        email: formData.email,
-        password: formData.password
-      })
-    }
+    // Call tRPC auth.register mutation
+    await $client.auth.register.mutate({
+      name: formData.name,
+      email: formData.email,
+      password: formData.password
+    })
 
     // Show success message
     showSuccess.value = true
@@ -311,18 +300,6 @@ const handleRegister = async () => {
     }, 2000)
   } catch (error: any) {
     console.error('Registration error:', error)
-    
-    // In development, still proceed to login page
-    const isDevelopment = import.meta.env.DEV || !import.meta.env.VITE_API_URL
-    if (isDevelopment) {
-      console.warn('Development mode: Proceeding to login despite error')
-      showSuccess.value = true
-      setTimeout(() => {
-        router.push('/login?registered=true')
-      }, 2000)
-      return
-    }
-    
     errorMessage.value = error.data?.message || 'Registration failed. Please try again or contact support.'
   } finally {
     isSubmitting.value = false
