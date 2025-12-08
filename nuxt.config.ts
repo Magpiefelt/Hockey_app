@@ -43,6 +43,8 @@ export default defineNuxtConfig({
     smtpPass: process.env.SMTP_PASS || '',
     smtpFrom: process.env.SMTP_FROM || 'Elite Sports DJ <noreply@elitesportsdj.com>',
     adminIpWhitelist: process.env.ADMIN_IP_WHITELIST || '',
+    metricsApiKey: process.env.METRICS_API_KEY || '',
+    metricsIpAllowlist: process.env.METRICS_IP_ALLOWLIST || '',
     
     // Public keys (exposed to client)
     public: {
