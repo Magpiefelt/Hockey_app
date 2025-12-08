@@ -55,7 +55,7 @@
       
       <!-- Split-Screen Content Container -->
       <div class="container relative z-10 flex min-h-screen items-center px-4 py-20">
-        <div class="grid w-full grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-12">
+        <div class="grid w-full grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-0">
           
           <!-- LEFT COLUMN: Branding & Text (55%) -->
           <div class="flex items-center justify-center lg:col-span-6">
@@ -75,16 +75,13 @@
                 <!-- Logo with Glow Effect -->
                 <div class="mb-12 flex justify-center lg:justify-start">
                   <div class="logo-container relative">
-                    <!-- Glow rings -->
-                    <div class="absolute inset-0 -m-8 rounded-full bg-gradient-to-r from-blue-500 via-cyan-500 to-blue-500 opacity-20 blur-2xl animate-pulse"></div>
-                    <div class="absolute inset-0 -m-4 rounded-full bg-gradient-to-r from-blue-400 to-cyan-400 opacity-30 blur-xl"></div>
-                    
-                    <!-- Logo -->
+                    <!-- Logo with simple shadow glow -->
                     <div class="relative">
                       <img 
                         src="/logo.png" 
                         alt="Elite Sports DJ" 
-                        class="relative h-72 w-auto object-contain drop-shadow-2xl sm:h-80 md:h-96 lg:h-[28rem] xl:h-[32rem] animate-float" 
+                        class="relative h-72 w-auto object-contain sm:h-80 md:h-96 lg:h-[28rem] xl:h-[32rem]" 
+                        style="filter: drop-shadow(0 0 40px rgba(59, 130, 246, 0.6)) drop-shadow(0 0 80px rgba(34, 211, 238, 0.4));" 
                       />
                     </div>
                   </div>
@@ -148,9 +145,9 @@
           </div>
           
           <!-- RIGHT COLUMN: Video Carousel (45%) -->
-          <div class="flex items-center justify-end lg:col-span-6 lg:pl-12">
+          <div class="flex items-start justify-center lg:col-span-6 lg:pt-0">
             <RevealOnScroll animation="fade-left">
-              <div class="w-full max-w-md">
+              <div class="w-full max-w-lg xl:max-w-xl">
                 <HeroVideoCarousel 
                   :videos="heroVideos"
                   :scroll-speed="25"
@@ -846,38 +843,38 @@ const galleryImagesError = ref<Record<number, boolean>>({})
 
 const galleryImages = ref([
   {
-    url: '/videos/07465b89-b98e-424d-a378-76da8baa0202.mp4',
-    thumbnail: '/videos/07465b89-b98e-424d-a378-76da8baa0202.mp4',
+    url: '/videos/07465b89-b98e-424d-a378-76da8baa0202.jpg',
+    thumbnail: '/videos/07465b89-b98e-424d-a378-76da8baa0202.jpg',
     alt: 'Ice Hockey Game Day',
     caption: 'Ice Hockey Game Day'
   },
   {
-    url: '/videos/502b2929-babc-4672-89b4-28b76582173e.mp4',
-    thumbnail: '/videos/502b2929-babc-4672-89b4-28b76582173e.mp4',
+    url: '/videos/502b2929-babc-4672-89b4-28b76582173e.jpg',
+    thumbnail: '/videos/502b2929-babc-4672-89b4-28b76582173e.jpg',
     alt: 'Dynamic Player Introductions',
     caption: 'Dynamic Player Introductions'
   },
   {
-    url: '/videos/a389a0ea-f77c-4324-9cea-a12632bbfb5f.mp4',
-    thumbnail: '/videos/a389a0ea-f77c-4324-9cea-a12632bbfb5f.mp4',
+    url: '/videos/a389a0ea-f77c-4324-9cea-a12632bbfb5f.jpg',
+    thumbnail: '/videos/a389a0ea-f77c-4324-9cea-a12632bbfb5f.jpg',
     alt: 'Arena DJ Services',
     caption: 'Arena DJ Services'
   },
   {
-    url: '/videos/e889cdc0-d53e-42da-bf1f-6818e675148e.mp4',
-    thumbnail: '/videos/e889cdc0-d53e-42da-bf1f-6818e675148e.mp4',
+    url: '/videos/e889cdc0-d53e-42da-bf1f-6818e675148e.jpg',
+    thumbnail: '/videos/e889cdc0-d53e-42da-bf1f-6818e675148e.jpg',
     alt: 'Professional Event Hosting',
     caption: 'Professional Event Hosting'
   },
   {
-    url: '/videos/eb33f3d7-190c-4ec1-8864-beac99ac6b23.mp4',
-    thumbnail: '/videos/eb33f3d7-190c-4ec1-8864-beac99ac6b23.mp4',
+    url: '/videos/eb33f3d7-190c-4ec1-8864-beac99ac6b23.jpg',
+    thumbnail: '/videos/eb33f3d7-190c-4ec1-8864-beac99ac6b23.jpg',
     alt: 'Complete Game Day Experience',
     caption: 'Complete Game Day Experience'
   },
   {
-    url: '/videos/f9a10068-aa48-4f4d-9826-1bc443978fee.mp4',
-    thumbnail: '/videos/f9a10068-aa48-4f4d-9826-1bc443978fee.mp4',
+    url: '/videos/f9a10068-aa48-4f4d-9826-1bc443978fee.jpg',
+    thumbnail: '/videos/f9a10068-aa48-4f4d-9826-1bc443978fee.jpg',
     alt: 'Multi-Sport Events',
     caption: 'Multi-Sport Events'
   }
