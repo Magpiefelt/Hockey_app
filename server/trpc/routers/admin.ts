@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { TRPCError } from '@trpc/server'
 import { router, adminProcedure } from '../trpc'
 import { query, transaction } from '../../db/connection'
+import { sendCustomEmail, sendQuoteEmail, sendOrderConfirmation, sendInvoiceEmail, sendPaymentReceipt } from '../../utils/email'
 
 export const adminRouter = router({
   /**
@@ -349,7 +350,7 @@ export const adminRouter = router({
             
             // Send status change notification email
             try {
-              const { sendCustomEmail } = await import('../utils/email')
+              // Using static import from top of file
               const statusMessages: Record<string, { subject: string; message: string }> = {
                 'quoted': {
                   subject: 'Quote Ready',
@@ -457,7 +458,7 @@ export const adminRouter = router({
           
           // Send quote email to customer
           try {
-            const { sendQuoteEmail } = await import('../utils/email')
+            // Using static import from top of file
             await sendQuoteEmail({
               to: order.contact_email,
               name: order.contact_name,
@@ -786,11 +787,11 @@ export const adminRouter = router({
         
         // Determine which email function to use based on template
         try {
-          const emailUtils = await import('../utils/email')
+          // Using static imports from top of file
           
           switch (emailLog.template) {
             case 'order_confirmation':
-              await emailUtils.sendOrderConfirmation({
+              await sendOrderConfirmation({
                 to: emailLog.to_email,
                 name: metadata.name,
                 serviceType: metadata.serviceType,
@@ -799,7 +800,7 @@ export const adminRouter = router({
               break
               
             case 'quote':
-              await emailUtils.sendQuoteEmail({
+              await sendQuoteEmail({
                 to: emailLog.to_email,
                 name: metadata.name,
                 quoteAmount: metadata.quoteAmount,
@@ -809,7 +810,7 @@ export const adminRouter = router({
               break
               
             case 'invoice':
-              await emailUtils.sendInvoiceEmail({
+              await sendInvoiceEmail({
                 to: emailLog.to_email,
                 name: metadata.name,
                 amount: metadata.amount,
@@ -819,7 +820,7 @@ export const adminRouter = router({
               break
               
             case 'payment_receipt':
-              await emailUtils.sendPaymentReceipt({
+              await sendPaymentReceipt({
                 to: emailLog.to_email,
                 name: metadata.name,
                 amount: metadata.amount,

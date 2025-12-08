@@ -321,61 +321,10 @@ onMounted(() => {
   }
 })
 
-// Package data - hardcoded to match form components
-const packages = ref([
-  {
-    id: 'player-intros-basic',
-    name: 'Package #1 - Basic Package',
-    description: 'Professional player introductions for up to 20 players',
-    price: 80,
-    price_cents: 8000,
-    popular: false,
-    icon: '🎤',
-    features: [
-      'Professional player introductions',
-      'Up to 20 players',
-      'Pronunciation audio support',
-      'Custom intro song selection',
-      'High-quality audio production'
-    ],
-    featured: false
-  },
-  {
-    id: 'player-intros-warmup',
-    name: 'Package #2 - Warmup Package',
-    description: 'All features from Package #1 plus custom warmup mix with 2-3 additional songs',
-    price: 110,
-    price_cents: 11000,
-    popular: true,
-    icon: '🎵',
-    features: [
-      'Everything in Package #1',
-      'Custom warmup mix',
-      '2-3 additional warmup songs',
-      'Seamless audio transitions',
-      'Professional mixing'
-    ],
-    featured: true
-  },
-  {
-    id: 'player-intros-ultimate',
-    name: 'Package #3 - Ultimate Game Day Package',
-    description: 'Complete game-day audio experience with all features from Package #2 plus goal horns, win songs, and custom audio packages',
-    price: 190,
-    price_cents: 19000,
-    popular: false,
-    icon: '🏆',
-    features: [
-      'Everything in Package #2',
-      'Custom goal horn',
-      'Victory celebration song',
-      'Complete game-day audio package',
-      'Premium audio production',
-      'Unlimited revisions'
-    ],
-    featured: false
-  }
-])
+// Package data - dynamically loaded from content files
+const { data: packages } = await useAsyncData('packages', () => 
+  queryContent('/packages').find()
+)
 
 const selectedPackage = computed(() => {
   return packages.value.find(pkg => pkg.id === selectedPackageId.value)
