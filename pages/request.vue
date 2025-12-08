@@ -234,6 +234,10 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watch } from 'vue'
 
+definePageMeta({
+  layout: 'default'
+})
+
 useHead({
   title: 'Request Service - Elite Sports DJ Services',
   meta: [
@@ -326,6 +330,7 @@ const { data: packagesData } = await useAsyncData('packages', () =>
   queryContent('/packages').find()
 )
 
+// Computed property with safe fallback
 const packages = computed(() => packagesData.value || [])
 
 const selectedPackage = computed(() => {

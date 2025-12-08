@@ -778,6 +778,10 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 
+definePageMeta({
+  layout: 'default'
+})
+
 // Define video data for the hero carousel
 const heroVideos = ref([
   {

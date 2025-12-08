@@ -112,6 +112,10 @@
 </template>
 
 <script setup lang="ts">
+definePageMeta({
+  layout: 'default'
+})
+
 useHead({
   title: 'Thank You - Elite Sports DJ Services',
   meta: [
