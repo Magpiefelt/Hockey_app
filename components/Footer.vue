@@ -18,7 +18,6 @@
                 src="/logo.png" 
                 alt="Elite Sports DJ" 
                 class="h-full w-auto object-contain"
-                style="background-color: transparent; mix-blend-mode: normal;"
               />
             </div>
           </div>
