@@ -129,17 +129,7 @@ export default defineNuxtConfig({
     },
     // Compression and minification
     compressPublicAssets: true,
-    minify: true,
-    
-    // Serve Nuxt client bundles from the Vite build directory
-    // This ensures Nitro knows about the _nuxt assets and serves them correctly
-    publicAssets: [
-      {
-        dir: '../.nuxt/dist/client/_nuxt',
-        baseURL: '/_nuxt',
-        maxAge: 60 * 60 * 24 * 365 // 1 year cache for immutable assets
-      }
-    ]
+    minify: true
   },
   
   // Build optimizations
@@ -156,13 +146,6 @@ export default defineNuxtConfig({
   // Vite optimizations
   vite: {
     build: {
-      minify: 'terser',
-      terserOptions: {
-        compress: {
-          drop_console: true,
-          drop_debugger: true
-        }
-      },
       rollupOptions: {
         output: {
           manualChunks: {
