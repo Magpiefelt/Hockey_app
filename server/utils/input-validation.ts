@@ -63,9 +63,10 @@ export const dateSchema = z.string()
   .or(z.date())
 
 /**
- * Sanitize HTML to prevent XSS
+ * Sanitize HTML to prevent XSS (strict - escapes all HTML)
+ * Use this for user input that should not contain any HTML
  */
-export function sanitizeHtml(input: string): string {
+export function sanitizeHtmlStrict(input: string): string {
   return input
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')

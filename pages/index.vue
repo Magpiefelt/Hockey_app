@@ -461,29 +461,29 @@
                 BEST FOR SMALL TEAMS
               </div>
               <div class="mb-6 mt-8">
-                <h3 class="mb-2 text-3xl font-black text-white">Basic</h3>
+                <h3 class="mb-2 text-3xl font-black text-white">Package #1 - Basic</h3>
                 <div class="mb-4 flex items-baseline gap-2">
-                  <span class="text-5xl font-black text-cyan-400">$299</span>
-                  <span class="text-slate-400">/event</span>
+                  <span class="text-5xl font-black text-cyan-400">$80</span>
+                  <span class="text-slate-400">/game</span>
                 </div>
-                <p class="text-slate-300">Perfect for smaller events and games</p>
+                <p class="text-slate-300">Professional player introductions</p>
               </div>
               <ul class="mb-8 space-y-3 text-slate-300">
                 <li class="flex items-start gap-2">
                   <Icon name="mdi:check-circle" class="mt-1 h-5 w-5 flex-shrink-0 text-cyan-400" />
-                  <span>2 hours of DJ services</span>
+                  <span>Up to 20 players</span>
                 </li>
                 <li class="flex items-start gap-2">
                   <Icon name="mdi:check-circle" class="mt-1 h-5 w-5 flex-shrink-0 text-cyan-400" />
-                  <span>Basic sound system</span>
+                  <span>Pronunciation audio support</span>
                 </li>
                 <li class="flex items-start gap-2">
                   <Icon name="mdi:check-circle" class="mt-1 h-5 w-5 flex-shrink-0 text-cyan-400" />
-                  <span>Pre-game music</span>
+                  <span>Custom intro song</span>
                 </li>
               </ul>
               <UiButton 
-                to="/request"
+                to="/request?package=player-intros-basic"
                 class="w-full bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-3 font-bold text-white transition-all hover:scale-105"
               >
                 Get Started
@@ -497,33 +497,33 @@
                 MOST POPULAR
               </div>
               <div class="mb-6 mt-8">
-                <h3 class="mb-2 text-3xl font-black text-white">Professional</h3>
+                <h3 class="mb-2 text-3xl font-black text-white">Package #2 - Warmup</h3>
                 <div class="mb-4 flex items-baseline gap-2">
-                  <span class="text-5xl font-black text-cyan-400">$599</span>
-                  <span class="text-slate-400">/event</span>
+                  <span class="text-5xl font-black text-cyan-400">$110</span>
+                  <span class="text-slate-400">/game</span>
                 </div>
-                <p class="text-slate-300">Complete game day experience</p>
+                <p class="text-slate-300">Intros + custom warmup mix</p>
               </div>
               <ul class="mb-8 space-y-3 text-slate-300">
                 <li class="flex items-start gap-2">
                   <Icon name="mdi:check-circle" class="mt-1 h-5 w-5 flex-shrink-0 text-cyan-400" />
-                  <span>Full game DJ services</span>
+                  <span>Everything in Package #1</span>
                 </li>
                 <li class="flex items-start gap-2">
                   <Icon name="mdi:check-circle" class="mt-1 h-5 w-5 flex-shrink-0 text-cyan-400" />
-                  <span>Professional sound system</span>
+                  <span>Custom warmup mix</span>
                 </li>
                 <li class="flex items-start gap-2">
                   <Icon name="mdi:check-circle" class="mt-1 h-5 w-5 flex-shrink-0 text-cyan-400" />
-                  <span>Player introductions</span>
+                  <span>2-3 additional songs</span>
                 </li>
                 <li class="flex items-start gap-2">
                   <Icon name="mdi:check-circle" class="mt-1 h-5 w-5 flex-shrink-0 text-cyan-400" />
-                  <span>Custom music selection</span>
+                  <span>Professional mixing</span>
                 </li>
               </ul>
               <UiButton 
-                to="/request"
+                to="/request?package=player-intros-warmup"
                 class="w-full bg-gradient-to-r from-cyan-600 to-blue-600 px-6 py-3 font-bold text-white transition-all hover:scale-105"
               >
                 Get Started
@@ -538,37 +538,37 @@
                 BEST VALUE
               </div>
               <div class="mb-6 mt-8">
-                <h3 class="mb-2 text-3xl font-black text-white">Premium</h3>
+                <h3 class="mb-2 text-3xl font-black text-white">Package #3 - Ultimate</h3>
                 <div class="mb-4 flex items-baseline gap-2">
-                  <span class="text-5xl font-black text-cyan-400">$999</span>
-                  <span class="text-slate-400">/event</span>
+                  <span class="text-5xl font-black text-cyan-400">$190</span>
+                  <span class="text-slate-400">/game</span>
                 </div>
-                <p class="text-slate-300">Ultimate entertainment package</p>
+                <p class="text-slate-300">Complete game-day audio</p>
               </div>
               <ul class="mb-8 space-y-3 text-slate-300">
                 <li class="flex items-start gap-2">
                   <Icon name="mdi:check-circle" class="mt-1 h-5 w-5 flex-shrink-0 text-cyan-400" />
-                  <span>Full game DJ + hosting</span>
+                  <span>Everything in Package #2</span>
                 </li>
                 <li class="flex items-start gap-2">
                   <Icon name="mdi:check-circle" class="mt-1 h-5 w-5 flex-shrink-0 text-cyan-400" />
-                  <span>Premium sound & lighting</span>
+                  <span>Custom goal horn</span>
                 </li>
                 <li class="flex items-start gap-2">
                   <Icon name="mdi:check-circle" class="mt-1 h-5 w-5 flex-shrink-0 text-cyan-400" />
-                  <span>Custom player intros</span>
+                  <span>Victory celebration song</span>
                 </li>
                 <li class="flex items-start gap-2">
                   <Icon name="mdi:check-circle" class="mt-1 h-5 w-5 flex-shrink-0 text-cyan-400" />
-                  <span>Contest hosting</span>
+                  <span>Premium audio production</span>
                 </li>
                 <li class="flex items-start gap-2">
                   <Icon name="mdi:check-circle" class="mt-1 h-5 w-5 flex-shrink-0 text-cyan-400" />
-                  <span>Social media content</span>
+                  <span>Unlimited revisions</span>
                 </li>
               </ul>
               <UiButton 
-                to="/request"
+                to="/request?package=player-intros-ultimate"
                 class="w-full bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-3 font-bold text-white transition-all hover:scale-105"
               >
                 Get Started

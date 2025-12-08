@@ -124,7 +124,10 @@ export default defineNuxtConfig({
     // No proxy needed - frontend calls backend directly
     devServer: {
       host: '0.0.0.0'
-    }
+    },
+    // Compression and minification
+    compressPublicAssets: true,
+    minify: true
   },
   
   // Build optimizations
@@ -199,21 +202,5 @@ export default defineNuxtConfig({
     '/_nuxt/**': { headers: { 'cache-control': 'public, max-age=31536000, immutable' } },
     '/videos/**': { headers: { 'cache-control': 'public, max-age=86400' } },
     '/logo.png': { headers: { 'cache-control': 'public, max-age=86400' } }
-  },
-  
-  // Compression
-  nitro: {
-    ...{
-      preset: 'node-server',
-      prerender: {
-        crawlLinks: false,
-        routes: []
-      },
-      devServer: {
-        host: '0.0.0.0'
-      }
-    },
-    compressPublicAssets: true,
-    minify: true
   }
 })

@@ -15,7 +15,7 @@ export const preloadComponent = async (componentName: string) => {
 /**
  * Preload multiple components
  */
-export const preloadComponents = async (componentNames: string[]) => {
+export const preloadAppComponents = async (componentNames: string[]) => {
   await Promise.all(componentNames.map(name => preloadComponent(name)))
 }
 
@@ -35,7 +35,7 @@ export const useComponentPreload = () => {
     
     const components = componentMap[routeName] || []
     if (components.length > 0) {
-      preloadComponents(components)
+      preloadAppComponents(components)
     }
   }
   

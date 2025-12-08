@@ -6,15 +6,20 @@ export default defineNitroPlugin((nitroApp) => {
   const config = useRuntimeConfig()
   const isProduction = process.env.NODE_ENV === 'production'
   
-  // Skip validation for Railway health checks
-  if (process.env.RAILWAY_HEALTHCHECK_TIMEOUT_SEC) {
-    console.log('✅ Railway health check: Skipping validation')
+  // Skip validation for health check endpoints
+  // This allows health checks to pass during deployment before all env vars are loaded
+  const isHealthCheck = process.env.RAILWAY_HEALTHCHECK_TIMEOUT_SEC || 
+                        process.env.HEALTH_CHECK_MODE === 'true'
+  
+  if (isHealthCheck) {
+    console.log('✅ Health check mode: Skipping validation')
     return
   }
   
-  // Skip strict validation in development or when testing
+  // Skip strict validation in development or when explicitly disabled
   if (!isProduction || process.env.SKIP_ENV_VALIDATION === 'true') {
     console.log('✅ Development/Test mode: Skipping strict environment validation')
+    console.log('   💡 Set NODE_ENV=production to enable strict validation')
     return
   }
   
