@@ -83,3 +83,4 @@ export default defineNitroPlugin((nitroApp) => {
   console.log(`   Email: ${config.sendgridApiKey ? '✓ Configured' : '○ Optional (not set)'}`)
   console.log(`   Redis: ${config.redisUrl ? '✓ Configured' : '○ Optional (not set)'}`)
 })
+// Force rebuild to pick up environment variables
