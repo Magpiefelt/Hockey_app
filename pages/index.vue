@@ -120,27 +120,27 @@
                 </p>
                 
                 <!-- CTA Buttons -->
-                <div class="flex flex-col items-center justify-center gap-6 sm:flex-row lg:justify-start">
-                  <UiButton 
+                <div class="flex flex-col items-center justify-center gap-6 sm:flex-row lg:justify-start">                  <NuxtLink
                     to="/request"
-                    class="group relative overflow-hidden bg-gradient-to-r from-blue-600 to-cyan-600 px-10 py-5 text-xl font-bold text-white shadow-2xl shadow-blue-500/50 transition-all hover:scale-105 hover:shadow-cyan-500/50"
+                    class="group relative overflow-hidden bg-gradient-to-r from-blue-600 to-cyan-600 px-10 py-5 text-xl font-bold text-white shadow-2xl shadow-blue-500/50 transition-all hover:scale-105 hover:shadow-cyan-500/50 rounded-lg inline-flex items-center justify-center"
                   >
                     <span class="relative z-10 flex items-center gap-3">
                       Get Started
                       <Icon name="mdi:arrow-right" class="h-6 w-6 transition-transform group-hover:translate-x-1" />
                     </span>
                     <div class="absolute inset-0 bg-gradient-to-r from-cyan-600 to-blue-600 opacity-0 transition-opacity group-hover:opacity-100"></div>
-                  </UiButton>
+                  </NuxtLink>
                   
-                  <UiButton 
-                    to="#packages"
-                    class="group border-2 border-cyan-400/50 bg-slate-900/50 px-10 py-5 text-xl font-bold text-white backdrop-blur-md transition-all hover:scale-105 hover:border-cyan-400 hover:bg-slate-800/50"
+                  <a
+                    href="#packages"
+                    @click.prevent="scrollToPackages"
+                    class="group border-2 border-cyan-400/50 bg-slate-900/50 px-10 py-5 text-xl font-bold text-white backdrop-blur-md transition-all hover:scale-105 hover:border-cyan-400 hover:bg-slate-800/50 rounded-lg inline-flex items-center justify-center cursor-pointer"
                   >
                     <span class="flex items-center gap-3">
                       View Packages
                       <Icon name="mdi:package-variant" class="h-6 w-6" />
                     </span>
-                  </UiButton>
+                  </a>
                 </div>
                 
               </div>
@@ -366,9 +366,13 @@
                   <span>Crowd engagement</span>
                 </li>
               </ul>
-              <div class="text-sm text-cyan-400 font-semibold">
+              <div class="text-sm text-cyan-400 font-semibold mb-4">
                 Starting at $299/event
               </div>
+              <NuxtLink to="/request" class="inline-flex items-center gap-2 text-cyan-400 hover:text-cyan-300 font-semibold transition-colors">
+                Request Quote
+                <Icon name="mdi:arrow-right" class="h-4 w-4" />
+              </NuxtLink>
             </div>
           </RevealOnScroll>
 
@@ -395,9 +399,13 @@
                   <span>Hype videos</span>
                 </li>
               </ul>
-              <div class="text-sm text-cyan-400 font-semibold">
+              <div class="text-sm text-cyan-400 font-semibold mb-4">
                 Included in Professional & Premium packages
               </div>
+              <NuxtLink to="/request" class="inline-flex items-center gap-2 text-cyan-400 hover:text-cyan-300 font-semibold transition-colors">
+                Request Quote
+                <Icon name="mdi:arrow-right" class="h-4 w-4" />
+              </NuxtLink>
             </div>
           </RevealOnScroll>
 
@@ -424,9 +432,13 @@
                   <span>Fan interaction</span>
                 </li>
               </ul>
-              <div class="text-sm text-cyan-400 font-semibold">
+              <div class="text-sm text-cyan-400 font-semibold mb-4">
                 Premium package exclusive
               </div>
+              <NuxtLink to="/request" class="inline-flex items-center gap-2 text-cyan-400 hover:text-cyan-300 font-semibold transition-colors">
+                Request Quote
+                <Icon name="mdi:arrow-right" class="h-4 w-4" />
+              </NuxtLink>
             </div>
           </RevealOnScroll>
         </div>
@@ -445,7 +457,7 @@
         <RevealOnScroll animation="fade-up">
           <div class="mx-auto mb-16 max-w-3xl text-center">
             <h2 class="mb-6 text-5xl font-black text-white md:text-6xl">
-              Service <span class="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">Packages</span>
+              <span class="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">Elite</span> Packages
             </h2>
             <p class="text-xl text-slate-300 font-medium">
               Choose the perfect package for your event
@@ -770,8 +782,6 @@
       </div>
     </section>
     
-    <!-- Footer -->
-    <Footer />
   </div>
 </template>
 
@@ -781,6 +791,14 @@ import { ref } from 'vue'
 definePageMeta({
   layout: 'default'
 })
+
+// Smooth scroll to packages section
+const scrollToPackages = () => {
+  const packagesSection = document.getElementById('packages')
+  if (packagesSection) {
+    packagesSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+}
 
 // Define video data for the hero carousel
 const heroVideos = ref([
@@ -828,28 +846,40 @@ const galleryImagesError = ref<Record<number, boolean>>({})
 
 const galleryImages = ref([
   {
-    url: 'https://images.unsplash.com/photo-1546519638-68e109498ffc?w=800&auto=format&q=75',
-    thumbnail: 'https://images.unsplash.com/photo-1546519638-68e109498ffc?w=400&auto=format&q=75',
-    alt: 'Hockey game',
-    caption: 'Professional Hockey Event'
+    url: '/videos/07465b89-b98e-424d-a378-76da8baa0202.mp4',
+    thumbnail: '/videos/07465b89-b98e-424d-a378-76da8baa0202.mp4',
+    alt: 'Ice Hockey Game Day',
+    caption: 'Ice Hockey Game Day'
   },
   {
-    url: 'https://images.unsplash.com/photo-1519861531473-9200262188bf?w=800&auto=format&q=75',
-    thumbnail: 'https://images.unsplash.com/photo-1519861531473-9200262188bf?w=400&auto=format&q=75',
-    alt: 'Basketball game',
-    caption: 'Basketball Tournament'
+    url: '/videos/502b2929-babc-4672-89b4-28b76582173e.mp4',
+    thumbnail: '/videos/502b2929-babc-4672-89b4-28b76582173e.mp4',
+    alt: 'Dynamic Player Introductions',
+    caption: 'Dynamic Player Introductions'
   },
   {
-    url: 'https://images.unsplash.com/photo-1577223625816-7546f13df25d?w=800&auto=format&q=75',
-    thumbnail: 'https://images.unsplash.com/photo-1577223625816-7546f13df25d?w=400&auto=format&q=75',
-    alt: 'Lacrosse match',
-    caption: 'Lacrosse Championship'
+    url: '/videos/a389a0ea-f77c-4324-9cea-a12632bbfb5f.mp4',
+    thumbnail: '/videos/a389a0ea-f77c-4324-9cea-a12632bbfb5f.mp4',
+    alt: 'Arena DJ Services',
+    caption: 'Arena DJ Services'
   },
   {
-    url: 'https://images.unsplash.com/photo-1624526267942-ab0ff8a3e972?w=800&auto=format&q=75',
-    thumbnail: 'https://images.unsplash.com/photo-1624526267942-ab0ff8a3e972?w=400&auto=format&q=75',
-    alt: 'Baseball stadium',
-    caption: 'Baseball Season Opener'
+    url: '/videos/e889cdc0-d53e-42da-bf1f-6818e675148e.mp4',
+    thumbnail: '/videos/e889cdc0-d53e-42da-bf1f-6818e675148e.mp4',
+    alt: 'Professional Event Hosting',
+    caption: 'Professional Event Hosting'
+  },
+  {
+    url: '/videos/eb33f3d7-190c-4ec1-8864-beac99ac6b23.mp4',
+    thumbnail: '/videos/eb33f3d7-190c-4ec1-8864-beac99ac6b23.mp4',
+    alt: 'Complete Game Day Experience',
+    caption: 'Complete Game Day Experience'
+  },
+  {
+    url: '/videos/f9a10068-aa48-4f4d-9826-1bc443978fee.mp4',
+    thumbnail: '/videos/f9a10068-aa48-4f4d-9826-1bc443978fee.mp4',
+    alt: 'Multi-Sport Events',
+    caption: 'Multi-Sport Events'
   }
 ])
 
