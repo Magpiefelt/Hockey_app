@@ -67,8 +67,7 @@
       </div>
 
       <!-- Main Content Card -->
-      <RevealOnScroll animation="fade-up">
-        <div class="card p-8 md:p-10">
+      <div class="card p-8 md:p-10">
           <!-- Package Selection -->
           <div v-if="currentStep === 'selection'">
             <!-- Loading State -->
@@ -152,8 +151,7 @@
             @submit="handleFormStepComplete"
             @back="handleBack"
           />
-        </div>
-      </RevealOnScroll>
+      </div>
 
       <!-- Info Cards (only show on selection step) -->
       <RevealOnScroll v-if="currentStep === 'selection'" animation="fade-up">
