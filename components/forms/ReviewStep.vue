@@ -126,6 +126,9 @@
         <div v-if="formData.goalHorn">
           <strong class="text-white">Goal Horn:</strong> {{ formatSong(formData.goalHorn) }}
         </div>
+        <div v-if="formData.goalSong">
+          <strong class="text-white">Goal Song:</strong> {{ formatSong(formData.goalSong) }}
+        </div>
         <div v-if="formData.winSong">
           <strong class="text-white">Win Song:</strong> {{ formatSong(formData.winSong) }}
         </div>
@@ -178,6 +181,31 @@
         <p><strong class="text-white">Name:</strong> {{ formData.contactInfo?.name || formData.contactName || 'Not provided' }}</p>
         <p><strong class="text-white">Email:</strong> {{ formData.contactInfo?.email || formData.contactEmail || 'Not provided' }}</p>
         <p><strong class="text-white">Phone:</strong> {{ formData.contactInfo?.phone || formData.contactPhone || 'Not provided' }}</p>
+      </div>
+    </div>
+
+    <!-- Sponsors -->
+    <div v-if="formData.sponsors && formData.sponsors.length > 0 && formData.sponsors.some(s => s.trim())" class="card p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h4 class="text-xl font-bold text-white flex items-center gap-2">
+          <Icon name="mdi:handshake" class="w-6 h-6 text-cyan-400" />
+          Sponsors
+        </h4>
+        <button
+          type="button"
+          @click="$emit('edit', 'sponsors')"
+          class="text-sm text-cyan-400 hover:text-cyan-300 underline"
+          aria-label="Edit sponsors"
+        >
+          Edit
+        </button>
+      </div>
+      <div class="space-y-2 text-slate-300">
+        <ul class="mt-2 space-y-1 ml-4 list-disc">
+          <li v-for="(sponsor, idx) in formData.sponsors.filter(s => s.trim())" :key="idx">
+            {{ sponsor }}
+          </li>
+        </ul>
       </div>
     </div>
 
@@ -252,6 +280,7 @@ const hasSongs = computed(() => {
          props.formData.warmupSong2 || 
          props.formData.warmupSong3 ||
          props.formData.goalHorn ||
+         props.formData.goalSong ||
          props.formData.winSong
 })
 

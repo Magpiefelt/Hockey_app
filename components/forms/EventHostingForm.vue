@@ -151,6 +151,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, watch } from 'vue'
+import { deepMerge } from '~/utils/deepMerge'
 
 const emit = defineEmits<{
   submit: [data: any]
@@ -178,27 +179,33 @@ const eventTypeOptions = [
   { value: 'other', label: 'Other' }
 ]
 
-const formData = reactive({
+// Initialize with defaults
+const defaultFormData = {
   packageId: 'event-hosting',
-  eventDate: props.modelValue?.eventDate || '',
-  eventType: props.modelValue?.eventType || '',
-  eventTypeOther: props.modelValue?.eventTypeOther || '',
-  expectedAttendance: props.modelValue?.expectedAttendance || '',
-  contactInfo: props.modelValue?.contactInfo || {
+  eventDate: '',
+  eventType: '',
+  eventTypeOther: '',
+  expectedAttendance: '',
+  contactInfo: {
     name: '',
     email: '',
     phone: ''
   },
-  contactName: props.modelValue?.contactName || '',
-  contactEmail: props.modelValue?.contactEmail || '',
-  contactPhone: props.modelValue?.contactPhone || '',
-  notes: props.modelValue?.notes || ''
-})
+  contactName: '',
+  contactEmail: '',
+  contactPhone: '',
+  notes: ''
+}
+
+// Merge props with defaults using deep merge
+const formData = reactive(
+  props.modelValue ? deepMerge(defaultFormData, props.modelValue) : defaultFormData
+)
 
 // Watch for external changes
 watch(() => props.modelValue, (newValue) => {
   if (newValue) {
-    Object.assign(formData, newValue)
+    Object.assign(formData, deepMerge(formData, newValue))
   }
 }, { deep: true })
 

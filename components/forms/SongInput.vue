@@ -162,9 +162,9 @@ const validateSpotifyUrl = () => {
 const emitUpdate = () => {
   emit('update:modelValue', {
     method: inputMethod.value,
-    youtube: inputMethod.value === 'youtube' ? songData.youtube : undefined,
-    spotify: inputMethod.value === 'spotify' ? songData.spotify : undefined,
-    text: inputMethod.value === 'text' ? songData.text : undefined
+    youtube: songData.youtube,
+    spotify: songData.spotify,
+    text: songData.text
   })
 }
 

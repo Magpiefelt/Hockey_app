@@ -140,6 +140,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, watch } from 'vue'
+import { deepMerge } from '~/utils/deepMerge'
 
 const emit = defineEmits<{
   submit: [data: any]
@@ -158,37 +159,43 @@ const errors = reactive({
   teamName: ''
 })
 
-const formData = reactive({
+// Initialize with defaults
+const defaultFormData = {
   packageId: 'player-intros-basic',
-  teamName: props.modelValue?.teamName || '',
-  roster: props.modelValue?.roster || {
+  teamName: '',
+  roster: {
     method: 'manual' as 'manual' | 'pdf' | 'weblink',
     players: [''],
     pdfFile: null as File | null,
     webLink: ''
   },
-  audioFiles: props.modelValue?.audioFiles || [] as File[],
-  introSong: props.modelValue?.introSong || {
+  audioFiles: [] as File[],
+  introSong: {
     method: 'youtube' as 'youtube' | 'spotify' | 'text',
     youtube: '',
     spotify: '',
     text: ''
   },
-  contactInfo: props.modelValue?.contactInfo || {
+  contactInfo: {
     name: '',
     email: '',
     phone: ''
   },
-  contactName: props.modelValue?.contactName || '',
-  contactEmail: props.modelValue?.contactEmail || '',
-  contactPhone: props.modelValue?.contactPhone || '',
-  notes: props.modelValue?.notes || ''
-})
+  contactName: '',
+  contactEmail: '',
+  contactPhone: '',
+  notes: ''
+}
+
+// Merge props with defaults using deep merge
+const formData = reactive(
+  props.modelValue ? deepMerge(defaultFormData, props.modelValue) : defaultFormData
+)
 
 // Watch for external changes
 watch(() => props.modelValue, (newValue) => {
   if (newValue) {
-    Object.assign(formData, newValue)
+    Object.assign(formData, deepMerge(formData, newValue))
   }
 }, { deep: true })
 

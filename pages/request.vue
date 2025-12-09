@@ -231,6 +231,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, watch } from 'vue'
+import { deepMerge } from '~/utils/deepMerge'
 
 definePageMeta({
   layout: 'default'
@@ -276,11 +277,13 @@ const formData = reactive<any>({
     spotify: '',
     text: ''
   },
-  warmupSong1: null,
-  warmupSong2: null,
-  warmupSong3: null,
-  goalHorn: null,
-  winSong: null,
+  warmupSong1: undefined,
+  warmupSong2: undefined,
+  warmupSong3: undefined,
+  goalHorn: undefined,
+  goalSong: undefined,
+  winSong: undefined,
+  sponsors: undefined,
   includeSample: false,
   contactInfo: {
     name: '',
@@ -377,7 +380,7 @@ function resumeForm() {
   if (storedData.value) {
     selectedPackageId.value = storedData.value.packageId
     currentStep.value = storedData.value.currentStep as StepType
-    Object.assign(formData, storedData.value.formData)
+    Object.assign(formData, deepMerge(formData, storedData.value.formData))
     showResumePrompt.value = false
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -426,20 +429,10 @@ const handleBack = () => {
 }
 
 const handleFormStepComplete = (data: any) => {
-  // Merge form data - ensure contactInfo is properly merged
-  Object.assign(formData, data)
+  // Deep merge form data to preserve nested objects
+  Object.assign(formData, deepMerge(formData, data))
   
-  // Ensure contactInfo is properly set
-  if (data.contactInfo) {
-    formData.contactInfo = { ...data.contactInfo }
-  }
-  
-  // Also ensure top-level contact fields are set for backward compatibility
-  if (data.contactName) formData.contactName = data.contactName
-  if (data.contactEmail) formData.contactEmail = data.contactEmail
-  if (data.contactPhone) formData.contactPhone = data.contactPhone
-  
-  console.log('Form data after merge:', JSON.parse(JSON.stringify(formData)))
+  console.log('Form data after deep merge:', JSON.parse(JSON.stringify(formData)))
   
   // Move to review step
   currentStep.value = 'review'

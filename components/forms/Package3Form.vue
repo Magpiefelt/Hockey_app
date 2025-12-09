@@ -266,6 +266,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, watch } from 'vue'
+import { deepMerge } from '~/utils/deepMerge'
 
 const emit = defineEmits<{
   submit: [data: any]
@@ -284,75 +285,81 @@ const errors = reactive({
   teamName: ''
 })
 
-const formData = reactive({
+// Initialize with defaults
+const defaultFormData = {
   packageId: 'player-intros-ultimate',
-  teamName: props.modelValue?.teamName || '',
-  roster: props.modelValue?.roster || {
+  teamName: '',
+  roster: {
     method: 'manual' as 'manual' | 'pdf' | 'weblink',
     players: [''],
     pdfFile: null as File | null,
     webLink: ''
   },
-  audioFiles: props.modelValue?.audioFiles || [] as File[],
-  introSong: props.modelValue?.introSong || {
+  audioFiles: [] as File[],
+  introSong: {
     method: 'youtube' as 'youtube' | 'spotify' | 'text',
     youtube: '',
     spotify: '',
     text: ''
   },
-  warmupSong1: props.modelValue?.warmupSong1 || {
+  warmupSong1: {
     method: 'youtube' as 'youtube' | 'spotify' | 'text',
     youtube: '',
     spotify: '',
     text: ''
   },
-  warmupSong2: props.modelValue?.warmupSong2 || {
+  warmupSong2: {
     method: 'youtube' as 'youtube' | 'spotify' | 'text',
     youtube: '',
     spotify: '',
     text: ''
   },
-  warmupSong3: props.modelValue?.warmupSong3 || {
+  warmupSong3: {
     method: 'youtube' as 'youtube' | 'spotify' | 'text',
     youtube: '',
     spotify: '',
     text: ''
   },
-  goalHorn: props.modelValue?.goalHorn || {
+  goalHorn: {
     method: 'youtube' as 'youtube' | 'spotify' | 'text',
     youtube: '',
     spotify: '',
     text: ''
   },
-  goalSong: props.modelValue?.goalSong || {
+  goalSong: {
     method: 'youtube' as 'youtube' | 'spotify' | 'text',
     youtube: '',
     spotify: '',
     text: ''
   },
-  winSong: props.modelValue?.winSong || {
+  winSong: {
     method: 'youtube' as 'youtube' | 'spotify' | 'text',
     youtube: '',
     spotify: '',
     text: ''
   },
-  sponsors: props.modelValue?.sponsors || [''],
-  includeSample: props.modelValue?.includeSample || false,
-  contactInfo: props.modelValue?.contactInfo || {
+  sponsors: [''],
+  includeSample: false,
+  contactInfo: {
     name: '',
     email: '',
     phone: ''
   },
-  contactName: props.modelValue?.contactName || '',
-  contactEmail: props.modelValue?.contactEmail || '',
-  contactPhone: props.modelValue?.contactPhone || '',
-  notes: props.modelValue?.notes || ''
-})
+  contactName: '',
+  contactEmail: '',
+  contactPhone: '',
+  notes: ''
+}
+
+// Merge props with defaults using deep merge
+const formData = reactive(
+  props.modelValue ? deepMerge(defaultFormData, props.modelValue) : defaultFormData
+)
 
 // Watch for external changes
 watch(() => props.modelValue, (newValue) => {
   if (newValue) {
-    Object.assign(formData, newValue)
+    Object.assign(formData, deepMerge(formData, newValue))
   }
 }, { deep: true })
 
