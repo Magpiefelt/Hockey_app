@@ -13,14 +13,6 @@ export default defineNuxtConfig({
     '@pinia/nuxt'
   ],
   
-  // Components auto-import configuration
-  components: [
-    {
-      path: '~/components',
-      pathPrefix: false,
-    },
-  ],
-  
   // Icon configuration
   icon: {
     serverBundle: {

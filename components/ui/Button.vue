@@ -4,17 +4,14 @@
     :to="to"
     :type="!to ? type : undefined"
     :disabled="disabled"
-    :class="[$attrs.class ? $attrs.class : buttonClasses]"
+    :class="buttonClasses"
+    v-bind="$attrs"
   >
     <slot />
   </component>
 </template>
 
 <script setup lang="ts">
-defineOptions({
-  inheritAttrs: false
-})
-
 interface Props {
   variant?: 'primary' | 'secondary' | 'outline' | 'ghost'
   size?: 'sm' | 'md' | 'lg'
