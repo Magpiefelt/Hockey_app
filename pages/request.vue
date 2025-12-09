@@ -443,37 +443,25 @@ const handleFinalSubmit = async () => {
     const contactEmail = formData.contactInfo?.email || formData.contactEmail || ''
     const contactPhone = formData.contactInfo?.phone || formData.contactPhone || ''
     
-    // Check if we're in development/test mode (no backend available)
-    const isDevelopment = import.meta.env.DEV || !import.meta.env.VITE_API_URL
-    
-    if (isDevelopment) {
-      // Simulate API call in development
-      console.log('Development mode: Simulating order submission', {
-        name: contactName,
-        email: contactEmail,
-        phone: contactPhone,
-        organization: formData.organization || '',
-        serviceType: selectedPackageId.value,
-        packageId: selectedPackageId.value,
-        message: formData.notes || '',
-        requirementsJson: formData
-      })
-      
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 1500))
-    } else {
-      // Create order in database (production)
-      const result = await trpc.orders.create.mutate({
-        name: contactName,
-        email: contactEmail,
-        phone: contactPhone,
-        organization: formData.organization || '',
-        serviceType: selectedPackageId.value,
-        packageId: selectedPackageId.value,
-        message: formData.notes || '',
-        requirementsJson: formData
-      })
+    // Prepare order data
+    const orderData = {
+      name: contactName,
+      email: contactEmail,
+      phone: contactPhone,
+      organization: formData.organization || '',
+      serviceType: selectedPackageId.value,
+      packageId: selectedPackageId.value,
+      eventDate: formData.eventDate || '',
+      message: formData.notes || '',
+      requirementsJson: formData
     }
+    
+    console.log('Submitting order to database:', orderData)
+    
+    // Create order in database
+    const result = await trpc.orders.create.mutate(orderData)
+    
+    console.log('Order created successfully:', result)
     
     // Clear form data from localStorage
     clearFormState()
@@ -488,21 +476,19 @@ const handleFinalSubmit = async () => {
     await router.push('/thanks')
   } catch (error: any) {
     console.error('Order submission error:', error)
+    console.error('Error details:', {
+      message: error.message,
+      data: error.data,
+      cause: error.cause
+    })
     
-    // In development, still show thank you page even if there's an error
-    // This allows testing the full flow without a backend
-    const isDevelopment = import.meta.env.DEV || !import.meta.env.VITE_API_URL
-    if (isDevelopment) {
-      console.warn('Development mode: Proceeding to thank you page despite error')
-      clearFormState()
-      isSubmitting.value = false
-      await router.push('/thanks')
-      return
-    }
-    
-    // In production, show error
-    submissionError.value = error.message || 'There was an error submitting your request. Please try again or contact us directly.'
+    // Show error to user
+    const { showError } = useNotification()
+    const errorMessage = error.data?.message || error.message || 'There was an error submitting your request. Please try again or contact us directly.'
+    submissionError.value = errorMessage
+    showError(errorMessage)
     isSubmitting.value = false
+    
     // Scroll to top to show error
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }

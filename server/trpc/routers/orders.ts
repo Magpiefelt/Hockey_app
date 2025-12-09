@@ -61,12 +61,12 @@ export const ordersRouter = router({
         // Get package ID from slug if provided
         let dbPackageId = null
         if (input.packageId) {
-          const pkg = await queryOne<{ id: number }>(
+          const pkgResult = await client.query<{ id: number }>(
             'SELECT id FROM packages WHERE slug = $1',
             [input.packageId]
           )
-          if (pkg) {
-            dbPackageId = pkg.id
+          if (pkgResult.rows.length > 0) {
+            dbPackageId = pkgResult.rows[0].id
           }
         }
         
@@ -81,7 +81,7 @@ export const ordersRouter = router({
         }
         
         // Insert order
-        const order = await queryOne<{ id: number }>(
+        const orderResult = await client.query<{ id: number }>(
           `INSERT INTO quote_requests (
             user_id, package_id, contact_name, contact_email, contact_phone,
             status, event_date, service_type, sport_type, requirements_json
@@ -102,14 +102,14 @@ export const ordersRouter = router({
           ]
         )
         
-        if (!order) {
+        if (orderResult.rows.length === 0) {
           throw new Error('Failed to create order')
         }
         
-        const orderId = order.id
+        const orderId = orderResult.rows[0].id
         
         // Log status change
-        await executeQuery(
+        await client.query(
           `INSERT INTO order_status_history (quote_id, new_status, notes)
            VALUES ($1, $2, $3)`,
           [orderId, 'submitted', 'Order created']

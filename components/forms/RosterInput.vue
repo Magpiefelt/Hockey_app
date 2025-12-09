@@ -93,6 +93,19 @@
       </button>
     </div>
 
+    <!-- Error Message -->
+    <div
+      v-if="errorMessage"
+      class="p-3 rounded-lg bg-red-500/10 border border-red-500/30"
+      role="alert"
+      aria-live="assertive"
+    >
+      <p class="text-sm text-red-400 flex items-center gap-2">
+        <Icon name="mdi:alert-circle" class="w-5 h-5" />
+        {{ errorMessage }}
+      </p>
+    </div>
+
     <!-- PDF Upload -->
     <div v-if="inputMethod === 'pdf'">
       <div
@@ -164,6 +177,7 @@ const players = ref<string[]>(props.modelValue?.players || [''])
 const pdfFile = ref<File | null>(props.modelValue?.pdfFile || null)
 const rosterWebLink = ref<string>(props.modelValue?.webLink || '')
 const fileInput = ref<HTMLInputElement | null>(null)
+const errorMessage = ref<string>('')
 
 const addPlayer = () => {
   if (players.value.length < 20) {
@@ -195,15 +209,20 @@ const handleFileDrop = (event: DragEvent) => {
 const validateAndSetPdf = (file: File) => {
   const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB in bytes
   
+  // Clear previous errors
+  errorMessage.value = ''
+  
   // Check file type
   if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
-    alert('Please upload a PDF file.')
+    errorMessage.value = 'Please upload a PDF file.'
+    setTimeout(() => errorMessage.value = '', 5000)
     return
   }
   
   // Check file size
   if (file.size > MAX_FILE_SIZE) {
-    alert(`File is too large. Maximum size is 10MB. Your file is ${(file.size / 1024 / 1024).toFixed(2)}MB.`)
+    errorMessage.value = `File is too large. Maximum size is 10MB. Your file is ${(file.size / 1024 / 1024).toFixed(2)}MB.`
+    setTimeout(() => errorMessage.value = '', 5000)
     return
   }
   
