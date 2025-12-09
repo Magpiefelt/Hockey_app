@@ -258,10 +258,13 @@ const defaultFormData = {
   notes: ''
 }
 
-// Merge props with defaults using deep merge
-const formData = reactive(
-  props.modelValue ? deepMerge(defaultFormData, props.modelValue) : defaultFormData
-)
+// Create reactive formData and merge props with defaults
+const formData = reactive({ ...defaultFormData })
+
+// If props.modelValue exists, deep merge it into formData
+if (props.modelValue) {
+  Object.assign(formData, deepMerge(formData, props.modelValue))
+}
 
 // Watch for external changes
 watch(() => props.modelValue, (newValue) => {
