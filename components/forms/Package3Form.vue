@@ -410,10 +410,24 @@ const removeSponsor = (index: number) => {
 const handleSubmit = async () => {
   hasAttemptedSubmit.value = true
   
+  console.log('=== PACKAGE3FORM VALIDATION CHECK ===')  
+  console.log('formData.teamName:', formData.teamName, '(valid:', formData.teamName.trim().length > 0, ')')
+  console.log('isContactValid:', isContactValid.value)
+  console.log('formData.introSong:', formData.introSong)
+  console.log('hasSongData(introSong):', hasSongData(formData.introSong))
+  console.log('formData.warmupSong1:', formData.warmupSong1)
+  console.log('hasSongData(warmupSong1):', hasSongData(formData.warmupSong1))
+  console.log('formData.goalSong:', formData.goalSong)
+  console.log('hasSongData(goalSong):', hasSongData(formData.goalSong))
+  console.log('isFormValid:', isFormValid.value)
+  
   if (!isFormValid.value) {
+    console.log('❌ VALIDATION FAILED - Form will not submit')
     window.scrollTo({ top: 0, behavior: 'smooth' })
     return
   }
+  
+  console.log('✅ VALIDATION PASSED - Proceeding with submission')
 
   isSubmitting.value = true
   try {

@@ -233,11 +233,21 @@ function handleContactValidation(isValid: boolean) {
 const handleSubmit = async () => {
   hasAttemptedSubmit.value = true
   
+  console.log('=== PACKAGE1FORM VALIDATION CHECK ===')  
+  console.log('formData.teamName:', formData.teamName, '(valid:', formData.teamName.trim().length > 0, ')')
+  console.log('isContactValid:', isContactValid.value)
+  console.log('formData.introSong:', formData.introSong)
+  console.log('hasSongData(introSong):', hasSongData(formData.introSong))
+  console.log('isFormValid:', isFormValid.value)
+  
   if (!isFormValid.value) {
+    console.log('❌ VALIDATION FAILED - Form will not submit')
     // Scroll to first error
     window.scrollTo({ top: 0, behavior: 'smooth' })
     return
   }
+  
+  console.log('✅ VALIDATION PASSED - Proceeding with submission')
 
   isSubmitting.value = true
   try {
