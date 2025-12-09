@@ -287,6 +287,10 @@ const formData = reactive<any>({
     email: '',
     phone: ''
   },
+  // Keep these for backward compatibility with form components
+  contactName: '',
+  contactEmail: '',
+  contactPhone: '',
   notes: ''
 })
 
