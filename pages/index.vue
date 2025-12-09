@@ -77,7 +77,7 @@
                   <img 
                     src="/logo.png" 
                     alt="Elite Sports DJ" 
-                    class="h-48 w-auto object-contain sm:h-64 md:h-72 lg:h-80 xl:h-96 hero-logo-animate" 
+                    class="h-40 w-auto object-contain sm:h-56 md:h-64 lg:h-72 xl:h-80 hero-logo-animate" 
                   />
                 </div>
                 
@@ -93,7 +93,7 @@
                 </div>
                 
                 <!-- Main Headline -->
-                <h1 class="hero-headline mb-8 text-4xl font-black leading-tight text-white sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl">
+                <h1 class="hero-headline mb-8 text-3xl font-black leading-tight text-white sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl">
                   <span class="block mb-2">ELEVATE YOUR</span>
                   <span class="block bg-gradient-to-r from-blue-400 via-cyan-300 to-blue-400 bg-clip-text text-transparent animate-gradient">
                     GAME DAY
