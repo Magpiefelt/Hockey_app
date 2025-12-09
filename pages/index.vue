@@ -64,11 +64,11 @@
                 
                 <!-- Trust Badge -->
                 <div class="mb-6 flex justify-center lg:justify-start">
-                  <div class="inline-flex items-center gap-3 rounded-full border border-cyan-400/30 bg-slate-900/50 px-4 py-2 backdrop-blur-sm">
-                    <Icon name="mdi:star" class="h-5 w-5 text-yellow-400" />
-                    <span class="text-sm font-semibold text-slate-200">Trusted by 50+ Teams</span>
-                    <span class="text-sm text-slate-400">•</span>
-                    <span class="text-sm font-semibold text-slate-200">500+ Events</span>
+                  <div class="inline-flex items-center gap-2 sm:gap-3 rounded-full border border-cyan-400/30 bg-slate-900/50 px-3 sm:px-4 py-2 backdrop-blur-sm">
+                    <Icon name="mdi:star" class="h-4 w-4 sm:h-5 sm:w-5 text-yellow-400" />
+                    <span class="text-xs sm:text-sm font-semibold text-slate-200">Trusted by 50+ Teams</span>
+                    <span class="text-xs sm:text-sm text-slate-400">•</span>
+                    <span class="text-xs sm:text-sm font-semibold text-slate-200">500+ Events</span>
                   </div>
                 </div>
                 
@@ -77,23 +77,23 @@
                   <img 
                     src="/logo.png" 
                     alt="Elite Sports DJ" 
-                    class="h-64 w-auto object-contain sm:h-72 md:h-80 lg:h-96 hero-logo-animate" 
+                    class="h-48 w-auto object-contain sm:h-64 md:h-72 lg:h-80 xl:h-96 hero-logo-animate" 
                   />
                 </div>
                 
                 <!-- Dynamic Badge with Sports Icons -->
                 <div class="mb-8 flex justify-center lg:justify-start">
-                  <div class="badge-sports inline-flex items-center gap-3 rounded-full border-2 border-cyan-400/50 bg-gradient-to-r from-blue-600/30 via-cyan-600/30 to-blue-600/30 px-6 py-3 backdrop-blur-md">
-                    <Icon name="mdi:hockey-sticks" class="h-5 w-5 text-cyan-300 animate-bounce" style="animation-delay: 0s;" />
-                    <Icon name="mdi:basketball" class="h-5 w-5 text-blue-300 animate-bounce" style="animation-delay: 0.2s;" />
-                    <span class="text-base font-bold tracking-wider text-white uppercase">Professional Game Day Entertainment</span>
-                    <Icon name="mdi:baseball" class="h-5 w-5 text-cyan-300 animate-bounce" style="animation-delay: 0.4s;" />
-                    <Icon name="mdi:football" class="h-5 w-5 text-blue-300 animate-bounce" style="animation-delay: 0.6s;" />
+                  <div class="badge-sports inline-flex flex-wrap items-center justify-center gap-2 sm:gap-3 rounded-full border-2 border-cyan-400/50 bg-gradient-to-r from-blue-600/30 via-cyan-600/30 to-blue-600/30 px-4 sm:px-6 py-2 sm:py-3 backdrop-blur-md max-w-full">
+                    <Icon name="mdi:hockey-sticks" class="h-4 w-4 sm:h-5 sm:w-5 text-cyan-300 animate-bounce hidden sm:inline-block" style="animation-delay: 0s;" />
+                    <Icon name="mdi:basketball" class="h-4 w-4 sm:h-5 sm:w-5 text-blue-300 animate-bounce hidden sm:inline-block" style="animation-delay: 0.2s;" />
+                    <span class="text-xs sm:text-sm md:text-base font-bold tracking-wider text-white uppercase text-center">Professional Game Day Entertainment</span>
+                    <Icon name="mdi:baseball" class="h-4 w-4 sm:h-5 sm:w-5 text-cyan-300 animate-bounce hidden sm:inline-block" style="animation-delay: 0.4s;" />
+                    <Icon name="mdi:football" class="h-4 w-4 sm:h-5 sm:w-5 text-blue-300 animate-bounce hidden sm:inline-block" style="animation-delay: 0.6s;" />
                   </div>
                 </div>
                 
                 <!-- Main Headline -->
-                <h1 class="hero-headline mb-8 text-6xl font-black leading-tight text-white md:text-7xl lg:text-8xl xl:text-9xl">
+                <h1 class="hero-headline mb-8 text-4xl font-black leading-tight text-white sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl">
                   <span class="block mb-2">ELEVATE YOUR</span>
                   <span class="block bg-gradient-to-r from-blue-400 via-cyan-300 to-blue-400 bg-clip-text text-transparent animate-gradient">
                     GAME DAY
@@ -102,7 +102,7 @@
                 </h1>
                 
                 <!-- Subheadline -->
-                <p class="mb-12 max-w-3xl text-xl leading-relaxed text-slate-200 md:text-2xl font-medium mx-auto lg:mx-0">
+                <p class="mb-12 max-w-3xl text-base sm:text-lg md:text-xl lg:text-2xl leading-relaxed text-slate-200 font-medium mx-auto lg:mx-0">
                   Professional DJ services, player introductions, and event hosting for 
                   <span class="text-cyan-300 font-bold">hockey</span>, 
                   <span class="text-blue-300 font-bold">lacrosse</span>, 
@@ -111,9 +111,9 @@
                 </p>
                 
                 <!-- CTA Buttons -->
-                <div class="flex flex-col items-center justify-center gap-6 sm:flex-row lg:justify-start">                  <NuxtLink
+                <div class="flex flex-col items-center justify-center gap-4 sm:gap-6 sm:flex-row lg:justify-start">                  <NuxtLink
                     to="/request"
-                    class="group relative overflow-hidden bg-gradient-to-r from-blue-600 to-cyan-600 px-10 py-5 text-xl font-bold text-white shadow-2xl shadow-blue-500/50 transition-all hover:scale-105 hover:shadow-cyan-500/50 rounded-lg inline-flex items-center justify-center"
+                    class="group relative overflow-hidden bg-gradient-to-r from-blue-600 to-cyan-600 px-8 py-4 sm:px-10 sm:py-5 text-lg sm:text-xl font-bold text-white shadow-2xl shadow-blue-500/50 transition-all hover:scale-105 hover:shadow-cyan-500/50 rounded-lg inline-flex items-center justify-center w-full sm:w-auto"
                   >
                     <span class="relative z-10 flex items-center gap-3">
                       Get Started
@@ -125,7 +125,7 @@
                   <a
                     href="#packages"
                     @click.prevent="scrollToPackages"
-                    class="group border-2 border-cyan-400/50 bg-slate-900/50 px-10 py-5 text-xl font-bold text-white backdrop-blur-md transition-all hover:scale-105 hover:border-cyan-400 hover:bg-slate-800/50 rounded-lg inline-flex items-center justify-center cursor-pointer"
+                    class="group border-2 border-cyan-400/50 bg-slate-900/50 px-8 py-4 sm:px-10 sm:py-5 text-lg sm:text-xl font-bold text-white backdrop-blur-md transition-all hover:scale-105 hover:border-cyan-400 hover:bg-slate-800/50 rounded-lg inline-flex items-center justify-center cursor-pointer w-full sm:w-auto"
                   >
                     <span class="flex items-center gap-3">
                       View Packages
