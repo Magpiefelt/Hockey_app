@@ -438,9 +438,10 @@ const handleFinalSubmit = async () => {
     const { showSuccess, showError } = useNotification()
     
     // Prepare submission data
-    const contactName = formData.contactName || formData.contactInfo?.name || ''
-    const contactEmail = formData.contactEmail || formData.contactInfo?.email || ''
-    const contactPhone = formData.contactPhone || formData.contactInfo?.phone || ''
+    // Extract contact info - prioritize contactInfo object as that's what the form uses
+    const contactName = formData.contactInfo?.name || formData.contactName || ''
+    const contactEmail = formData.contactInfo?.email || formData.contactEmail || ''
+    const contactPhone = formData.contactInfo?.phone || formData.contactPhone || ''
     
     // Check if we're in development/test mode (no backend available)
     const isDevelopment = import.meta.env.DEV || !import.meta.env.VITE_API_URL

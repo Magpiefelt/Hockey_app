@@ -5,7 +5,6 @@
 
 export const useTrpc = () => {
   const { $client } = useNuxtApp()
-  
   return $client
 }
 

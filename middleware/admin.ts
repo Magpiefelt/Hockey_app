@@ -9,15 +9,14 @@
  */
 
 export default defineNuxtRouteMiddleware(async (to, from) => {
-  const authStore = useAuthStore()
-  
-  // On server side, we can't access localStorage, so we skip the check
-  // The client-side navigation will handle the redirect
+  // Only run on client side (auth state is in localStorage)
   if (process.server) {
     return
   }
+
+  const authStore = useAuthStore()
   
-  // Initialize auth if not already done (client-side only)
+  // Initialize auth if not already done
   if (!authStore.isAuthenticated && !authStore.isLoading) {
     await authStore.initAuth()
   }

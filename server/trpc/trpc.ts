@@ -5,7 +5,7 @@ import { logger } from '../utils/logger'
 import { toTRPCError } from '../utils/errors'
 
 const t = initTRPC.context<Context>().create({
-  transformer: superjson,
+  // transformer: superjson, // Disabled - causes body parsing issues with trpc-nuxt
 })
 
 /**
