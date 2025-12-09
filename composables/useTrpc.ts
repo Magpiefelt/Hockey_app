@@ -4,18 +4,30 @@
  */
 
 export const useTrpc = () => {
-  const client = useNuxtData('trpc-client')
+  const { $client } = useNuxtApp()
   
-  return {
-    client,
-    // Add common methods here
-    async call(procedure: string, input?: any) {
-      try {
-        return await client?.[procedure]?.(input)
-      } catch (error) {
-        // tRPC call failed - error will be handled by caller
-        throw error
-      }
-    }
+  return $client
+}
+
+/**
+ * Handle tRPC errors and return user-friendly messages
+ */
+export const handleTrpcError = (error: any): string => {
+  if (error?.data?.code === 'UNAUTHORIZED') {
+    return 'You are not authorized to perform this action'
   }
+  
+  if (error?.data?.code === 'NOT_FOUND') {
+    return 'The requested resource was not found'
+  }
+  
+  if (error?.data?.code === 'BAD_REQUEST') {
+    return error.message || 'Invalid request'
+  }
+  
+  if (error?.message) {
+    return error.message
+  }
+  
+  return 'An unexpected error occurred'
 }
