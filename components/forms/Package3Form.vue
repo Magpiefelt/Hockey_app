@@ -417,6 +417,11 @@ const handleSubmit = async () => {
 
   isSubmitting.value = true
   try {
+    console.log('=== PACKAGE3FORM SUBMIT ===')    
+    console.log('formData.contactInfo:', formData.contactInfo)
+    console.log('formData.teamName:', formData.teamName)
+    console.log('formData.goalSong:', formData.goalSong)
+    
     // Merge contact info into top level for compatibility
     const submitData = {
       ...formData,
@@ -424,6 +429,8 @@ const handleSubmit = async () => {
       contactEmail: formData.contactInfo.email,
       contactPhone: formData.contactInfo.phone
     }
+    
+    console.log('submitData being emitted:', JSON.parse(JSON.stringify(submitData)))
     emit('submit', submitData)
   } finally {
     isSubmitting.value = false

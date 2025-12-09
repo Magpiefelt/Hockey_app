@@ -429,10 +429,24 @@ const handleBack = () => {
 }
 
 const handleFormStepComplete = (data: any) => {
-  // Deep merge form data to preserve nested objects
-  Object.assign(formData, deepMerge(formData, data))
+  console.log('=== FORM STEP COMPLETE ===')  
+  console.log('Received data from child:', JSON.parse(JSON.stringify(data)))
+  console.log('data.contactInfo:', data.contactInfo)
+  console.log('data.contactName:', data.contactName)
+  console.log('formData BEFORE merge:', JSON.parse(JSON.stringify(formData)))
   
-  console.log('Form data after deep merge:', JSON.parse(JSON.stringify(formData)))
+  // Deep merge form data to preserve nested objects
+  const mergeResult = deepMerge(formData, data)
+  console.log('Deep merge result:', JSON.parse(JSON.stringify(mergeResult)))
+  
+  // Assign each property individually to ensure Vue reactivity tracks all changes
+  Object.keys(mergeResult).forEach(key => {
+    formData[key] = mergeResult[key]
+  })
+  
+  console.log('formData AFTER merge:', JSON.parse(JSON.stringify(formData)))
+  console.log('formData.contactInfo after merge:', formData.contactInfo)
+  console.log('formData.contactName after merge:', formData.contactName)
   
   // Move to review step
   currentStep.value = 'review'
@@ -459,7 +473,13 @@ const handleFinalSubmit = async () => {
     const trpc = useTrpc()
     const { showSuccess, showError } = useNotification()
     
-    console.log('Form data before extraction:', JSON.parse(JSON.stringify(formData)))
+    console.log('=== SUBMISSION DEBUG ===')    
+    console.log('Form data keys:', Object.keys(formData))
+    console.log('formData.contactInfo:', formData.contactInfo)
+    console.log('formData.contactName:', formData.contactName)
+    console.log('formData.contactEmail:', formData.contactEmail)
+    console.log('formData.contactPhone:', formData.contactPhone)
+    console.log('Full formData:', JSON.parse(JSON.stringify(formData)))
     
     // Prepare submission data
     // Extract contact info - prioritize contactInfo object as that's what the form uses
@@ -467,7 +487,10 @@ const handleFinalSubmit = async () => {
     const contactEmail = formData.contactInfo?.email || formData.contactEmail || ''
     const contactPhone = formData.contactInfo?.phone || formData.contactPhone || ''
     
-    console.log('Extracted contact info:', { contactName, contactEmail, contactPhone })
+    console.log('Extracted contact info:')
+    console.log('  contactName:', contactName, '(from', formData.contactInfo?.name ? 'contactInfo.name' : formData.contactName ? 'contactName' : 'default', ')')
+    console.log('  contactEmail:', contactEmail, '(from', formData.contactInfo?.email ? 'contactInfo.email' : formData.contactEmail ? 'contactEmail' : 'default', ')')
+    console.log('  contactPhone:', contactPhone, '(from', formData.contactInfo?.phone ? 'contactInfo.phone' : formData.contactPhone ? 'contactPhone' : 'default', ')')
     
     // Validate contact info before submission
     if (!contactName || contactName.trim().length < 1) {

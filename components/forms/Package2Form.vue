@@ -307,20 +307,25 @@ const handleSubmit = async () => {
   hasAttemptedSubmit.value = true
   
   if (!isFormValid.value) {
-    // Scroll to first error
     window.scrollTo({ top: 0, behavior: 'smooth' })
     return
   }
 
   isSubmitting.value = true
   try {
-    // Merge contact info into top level for compatibility
+    console.log('=== PACKAGE2FORM SUBMIT ===')    
+    console.log('formData.contactInfo:', formData.contactInfo)
+    console.log('formData.teamName:', formData.teamName)
+    console.log('formData.warmupSong1:', formData.warmupSong1)
+    
     const submitData = {
       ...formData,
       contactName: formData.contactInfo.name,
       contactEmail: formData.contactInfo.email,
       contactPhone: formData.contactInfo.phone
     }
+    
+    console.log('submitData being emitted:', JSON.parse(JSON.stringify(submitData)))
     emit('submit', submitData)
   } finally {
     isSubmitting.value = false
