@@ -30,10 +30,7 @@
 </template>
 
 <script setup lang="ts">
-import { useUIStore } from '~/stores/ui'
-
-const uiStore = useUIStore()
-const toasts = computed(() => uiStore.toasts)
+const { notifications: toasts, remove } = useNotification()
 
 function toastClasses(type: string) {
   const base = 'border-l-4 bg-white'
@@ -59,8 +56,8 @@ function getIcon(type: string) {
   return icons[type as keyof typeof icons] || 'info'
 }
 
-function removeToast(id: string) {
-  uiStore.removeToast(id)
+function removeToast(id: number) {
+  remove(id)
 }
 </script>
 

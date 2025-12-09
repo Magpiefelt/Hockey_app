@@ -314,5 +314,48 @@ export const ordersRouter = router({
           createdAt: file.created_at.toISOString()
         }))
       }
+    }),
+
+  /**
+   * Attach a file to an order
+   */
+  attachFile: protectedProcedure
+    .input(z.object({
+      orderId: z.union([z.string(), z.number()]),
+      fileId: z.union([z.string(), z.number()])
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const orderId = typeof input.orderId === 'string' ? parseInt(input.orderId) : input.orderId
+      const fileId = typeof input.fileId === 'string' ? parseInt(input.fileId) : input.fileId
+      
+      logger.debug('Attaching file to order', { orderId, fileId, userId: ctx.user.userId })
+      
+      // Verify the order exists and user has access
+      const order = await queryOne<{ id: number; user_id: number | null }>(
+        'SELECT id, user_id FROM quote_requests WHERE id = $1',
+        [orderId]
+      )
+      
+      if (!order) {
+        throw new NotFoundError('Order')
+      }
+      
+      // Check authorization
+      if (order.user_id !== ctx.user.userId && ctx.user.role !== 'admin') {
+        throw new AuthorizationError('Not authorized to attach files to this order')
+      }
+      
+      // Update the file to link it to the order
+      await executeQuery(
+        'UPDATE file_uploads SET quote_id = $1 WHERE id = $2',
+        [orderId, fileId]
+      )
+      
+      logger.info('File attached to order', { orderId, fileId, userId: ctx.user.userId })
+      
+      return {
+        success: true,
+        message: 'File attached successfully'
+      }
     })
 })
