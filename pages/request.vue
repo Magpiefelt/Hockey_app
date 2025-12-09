@@ -430,21 +430,21 @@ const handleBack = () => {
 
 const handleFormStepComplete = (data: any) => {
   console.log('=== FORM STEP COMPLETE ===')  
-  console.log('Received data from child:', JSON.parse(JSON.stringify(data)))
+  console.log('Received data from child:', data)
   console.log('data.contactInfo:', data.contactInfo)
   console.log('data.contactName:', data.contactName)
-  console.log('formData BEFORE merge:', JSON.parse(JSON.stringify(formData)))
+  console.log('formData BEFORE merge:', formData)
   
   // Deep merge form data to preserve nested objects
   const mergeResult = deepMerge(formData, data)
-  console.log('Deep merge result:', JSON.parse(JSON.stringify(mergeResult)))
+  console.log('Deep merge result:', mergeResult)
   
   // Assign each property individually to ensure Vue reactivity tracks all changes
   Object.keys(mergeResult).forEach(key => {
     formData[key] = mergeResult[key]
   })
   
-  console.log('formData AFTER merge:', JSON.parse(JSON.stringify(formData)))
+  console.log('formData AFTER merge:', formData)
   console.log('formData.contactInfo after merge:', formData.contactInfo)
   console.log('formData.contactName after merge:', formData.contactName)
   
@@ -479,7 +479,7 @@ const handleFinalSubmit = async () => {
     console.log('formData.contactName:', formData.contactName)
     console.log('formData.contactEmail:', formData.contactEmail)
     console.log('formData.contactPhone:', formData.contactPhone)
-    console.log('Full formData:', JSON.parse(JSON.stringify(formData)))
+    console.log('Full formData:', formData)
     
     // Prepare submission data
     // Extract contact info - prioritize contactInfo object as that's what the form uses

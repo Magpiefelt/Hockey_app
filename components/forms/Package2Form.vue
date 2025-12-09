@@ -337,7 +337,7 @@ const handleSubmit = async () => {
       contactPhone: formData.contactInfo.phone
     }
     
-    console.log('submitData being emitted:', JSON.parse(JSON.stringify(submitData)))
+    console.log('submitData being emitted:', submitData)
     emit('submit', submitData)
   } finally {
     isSubmitting.value = false
