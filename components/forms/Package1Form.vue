@@ -265,6 +265,14 @@ const handleSubmit = async () => {
     }
     
     console.log('submitData being emitted:', submitData)
+    console.log('typeof submitData:', typeof submitData)
+    console.log('submitData is undefined?', submitData === undefined)
+    
+    if (!submitData) {
+      console.error('ERROR: submitData is falsy, cannot emit!')
+      return
+    }
+    
     emit('submit', submitData)
   } finally {
     isSubmitting.value = false

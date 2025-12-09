@@ -431,6 +431,18 @@ const handleBack = () => {
 const handleFormStepComplete = (data: any) => {
   console.log('=== FORM STEP COMPLETE ===')  
   console.log('Received data from child:', data)
+  console.log('typeof data:', typeof data)
+  console.log('data === undefined:', data === undefined)
+  console.log('data === null:', data === null)
+  
+  if (!data) {
+    console.error('ERROR: No data received from child form!')
+    console.error('This means the child form emitted submit without payload')
+    console.error('Current step:', currentStep.value)
+    console.error('Selected package:', selectedPackageId.value)
+    return
+  }
+  
   console.log('data.contactInfo:', data.contactInfo)
   console.log('data.contactName:', data.contactName)
   console.log('formData BEFORE merge:', formData)
