@@ -287,9 +287,6 @@ const formData = reactive<any>({
     email: '',
     phone: ''
   },
-  contactName: '',
-  contactEmail: '',
-  contactPhone: '',
   notes: ''
 })
 
@@ -425,8 +422,20 @@ const handleBack = () => {
 }
 
 const handleFormStepComplete = (data: any) => {
-  // Merge form data
+  // Merge form data - ensure contactInfo is properly merged
   Object.assign(formData, data)
+  
+  // Ensure contactInfo is properly set
+  if (data.contactInfo) {
+    formData.contactInfo = { ...data.contactInfo }
+  }
+  
+  // Also ensure top-level contact fields are set for backward compatibility
+  if (data.contactName) formData.contactName = data.contactName
+  if (data.contactEmail) formData.contactEmail = data.contactEmail
+  if (data.contactPhone) formData.contactPhone = data.contactPhone
+  
+  console.log('Form data after merge:', JSON.parse(JSON.stringify(formData)))
   
   // Move to review step
   currentStep.value = 'review'
@@ -453,11 +462,26 @@ const handleFinalSubmit = async () => {
     const trpc = useTrpc()
     const { showSuccess, showError } = useNotification()
     
+    console.log('Form data before extraction:', JSON.parse(JSON.stringify(formData)))
+    
     // Prepare submission data
     // Extract contact info - prioritize contactInfo object as that's what the form uses
     const contactName = formData.contactInfo?.name || formData.contactName || ''
     const contactEmail = formData.contactInfo?.email || formData.contactEmail || ''
     const contactPhone = formData.contactInfo?.phone || formData.contactPhone || ''
+    
+    console.log('Extracted contact info:', { contactName, contactEmail, contactPhone })
+    
+    // Validate contact info before submission
+    if (!contactName || contactName.trim().length < 1) {
+      throw new Error('Name is required. Please go back and fill in your contact information.')
+    }
+    if (!contactEmail || !contactEmail.includes('@')) {
+      throw new Error('Valid email is required. Please go back and fill in your contact information.')
+    }
+    if (!contactPhone || contactPhone.replace(/\D/g, '').length < 10) {
+      throw new Error('Valid phone number is required. Please go back and fill in your contact information.')
+    }
     
     // Prepare order data
     const orderData = {

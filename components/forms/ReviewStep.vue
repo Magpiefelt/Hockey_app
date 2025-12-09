@@ -175,9 +175,9 @@
         </button>
       </div>
       <div class="space-y-2 text-slate-300">
-        <p><strong class="text-white">Name:</strong> {{ formData.contactName || formData.contactInfo?.name }}</p>
-        <p><strong class="text-white">Email:</strong> {{ formData.contactEmail || formData.contactInfo?.email }}</p>
-        <p><strong class="text-white">Phone:</strong> {{ formData.contactPhone || formData.contactInfo?.phone }}</p>
+        <p><strong class="text-white">Name:</strong> {{ formData.contactInfo?.name || formData.contactName || 'Not provided' }}</p>
+        <p><strong class="text-white">Email:</strong> {{ formData.contactInfo?.email || formData.contactEmail || 'Not provided' }}</p>
+        <p><strong class="text-white">Phone:</strong> {{ formData.contactInfo?.phone || formData.contactPhone || 'Not provided' }}</p>
       </div>
     </div>
 
