@@ -1,6 +1,6 @@
 <template>
   <component
-    :is="to ? 'NuxtLink' : 'button'"
+    :is="componentType"
     :to="to"
     :type="!to ? type : undefined"
     :disabled="disabled"
@@ -27,6 +27,14 @@ const props = withDefaults(defineProps<Props>(), {
   type: 'button',
   disabled: false,
   fullWidth: false,
+})
+
+// Properly resolve NuxtLink component for dynamic component usage
+const componentType = computed(() => {
+  if (props.to) {
+    return resolveComponent('NuxtLink')
+  }
+  return 'button'
 })
 
 const buttonClasses = computed(() => {
