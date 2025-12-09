@@ -384,7 +384,23 @@ function resumeForm() {
 
 function dismissResumePrompt() {
   showResumePrompt.value = false
+}
+
+function startFresh() {
   clearFormState()
+  showResumePrompt.value = false
+  // Reset to selection step
+  currentStep.value = 'selection'
+  selectedPackageId.value = ''
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+function clearSavedData() {
+  if (confirm('Are you sure you want to clear your saved form data? This cannot be undone.')) {
+    clearFormState()
+    const { showSuccess } = useNotification()
+    showSuccess('Saved form data cleared')
+  }
 }
 
 const handlePackageSelect = async (packageId: string) => {

@@ -37,6 +37,7 @@
             variant="primary"
             size="sm"
             class="hidden sm:inline-flex"
+            aria-label="Request DJ service for your event"
           >
             Request Service
           </UiButton>
@@ -46,6 +47,9 @@
             <button
               @click="userMenuOpen = !userMenuOpen"
               class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-white"
+              aria-label="User menu"
+              aria-expanded="userMenuOpen"
+              aria-haspopup="true"
             >
               <Icon name="mdi:account-circle" class="h-6 w-6" />
               <span class="hidden sm:inline">{{ session.user.email }}</span>
@@ -61,6 +65,7 @@
                 <button
                   @click="navigateToOrders"
                   class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-slate-300 transition-colors hover:bg-white/5 hover:text-white"
+                  aria-label="View my orders"
                 >
                   <Icon name="mdi:clipboard-list" class="h-4 w-4" />
                   My Orders
@@ -69,6 +74,7 @@
                   v-if="session.user.role === 'admin'"
                   @click="navigateToAdmin"
                   class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-slate-300 transition-colors hover:bg-white/5 hover:text-white"
+                  aria-label="Go to admin dashboard"
                 >
                   <Icon name="mdi:shield-crown" class="h-4 w-4" />
                   Admin Dashboard
@@ -77,6 +83,7 @@
                 <button
                   @click="handleLogout"
                   class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-error-400 transition-colors hover:bg-error-500/10"
+                  aria-label="Logout from account"
                 >
                   <Icon name="mdi:logout" class="h-4 w-4" />
                   Logout

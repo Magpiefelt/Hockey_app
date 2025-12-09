@@ -57,6 +57,7 @@
                 v-model="formData.name"
                 type="text"
                 placeholder="John Doe"
+                required
                 class="w-full px-4 py-3 bg-dark-secondary border-2 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400 transition-colors"
                 :class="{ 'border-red-500': errors.name, 'border-slate-700': !errors.name }"
                 @blur="validateField('name')"
@@ -74,6 +75,7 @@
                 v-model="formData.email"
                 type="email"
                 placeholder="john@example.com"
+                required
                 class="w-full px-4 py-3 bg-dark-secondary border-2 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400 transition-colors"
                 :class="{ 'border-red-500': errors.email, 'border-slate-700': !errors.email }"
                 @blur="validateField('email')"
@@ -272,15 +274,30 @@ const handleSubmit = async () => {
     // Show success message
     showSuccess.value = true
     
-    // Reset form
-    formData.name = ''
-    formData.email = ''
-    formData.phone = ''
-    formData.subject = ''
-    formData.message = ''
+    // Reset form to empty values (not placeholders)
+    Object.assign(formData, {
+      name: '',
+      email: '',
+      phone: '',
+      subject: '',
+      message: ''
+    })
+
+    // Clear any validation errors
+    Object.assign(errors, {
+      name: '',
+      email: '',
+      subject: '',
+      message: ''
+    })
 
     // Scroll to top to show success message
     window.scrollTo({ top: 0, behavior: 'smooth' })
+
+    // Auto-hide success message after 5 seconds
+    setTimeout(() => {
+      showSuccess.value = false
+    }, 5000)
   } catch (error) {
     console.error('Contact form submission error:', error)
     errorMessage.value = 'Failed to send message. Please try again or email us directly.'
