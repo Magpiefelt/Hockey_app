@@ -227,7 +227,11 @@ function validateTeamName() {
 }
 
 function handleContactValidation(isValid: boolean) {
+  console.log('📞 PACKAGE1FORM: Received contact validation:', isValid)
+  console.log('📞 Previous isContactValid:', isContactValid.value)
   isContactValid.value = isValid
+  console.log('📞 New isContactValid:', isContactValid.value)
+  console.log('📞 isFormValid after update:', isFormValid.value)
 }
 
 const handleSubmit = async () => {
