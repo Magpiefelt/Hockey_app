@@ -15,49 +15,13 @@
         v-model="formData.teamName"
         type="text"
         required
-        placeholder="Thunder Hockey"
+        placeholder="Enter your team name"
         :error="errors.teamName"
         @blur="validateTeamName"
         aria-describedby="teamName-help"
       />
       <p id="teamName-help" class="mt-1 text-sm text-slate-400">
-        The name of your team
-      </p>
-    </div>
-
-    <!-- Organization/League -->
-    <div>
-      <label for="organization" class="block text-sm font-semibold text-white mb-2">
-        Organization/League
-      </label>
-      <UiInput
-        id="organization"
-        v-model="formData.organization"
-        type="text"
-        placeholder="City Sports League"
-        aria-describedby="organization-help"
-      />
-      <p id="organization-help" class="mt-1 text-sm text-slate-400">
-        The league or organization you're affiliated with
-      </p>
-    </div>
-
-    <!-- Event Date -->
-    <div>
-      <label for="eventDate" class="block text-sm font-semibold text-white mb-2">
-        Event Date <span class="text-red-400" aria-label="required">*</span>
-      </label>
-      <UiInput
-        id="eventDate"
-        v-model="formData.eventDate"
-        type="date"
-        required
-        :error="errors.eventDate"
-        @blur="validateEventDate"
-        aria-describedby="eventDate-help"
-      />
-      <p id="eventDate-help" class="mt-1 text-sm text-slate-400">
-        When is your event scheduled?
+        The name of your team or organization
       </p>
     </div>
 
@@ -192,16 +156,13 @@ const hasAttemptedSubmit = ref(false)
 const isContactValid = ref(false)
 
 const errors = reactive({
-  teamName: '',
-  eventDate: ''
+  teamName: ''
 })
 
 // Initialize with defaults
 const defaultFormData = {
   packageId: 'player-intros-basic',
   teamName: '',
-  organization: '',
-  eventDate: '',
   roster: {
     method: 'manual' as 'manual' | 'pdf' | 'weblink',
     players: [''],
@@ -244,7 +205,6 @@ watch(() => props.modelValue, (newValue) => {
 const isFormValid = computed(() => {
   return (
     formData.teamName.trim().length > 0 &&
-    formData.eventDate.trim().length > 0 &&
     isContactValid.value &&
     hasSongData(formData.introSong)
   )
@@ -263,14 +223,6 @@ function validateTeamName() {
     errors.teamName = 'Team name is required'
   } else {
     errors.teamName = ''
-  }
-}
-
-function validateEventDate() {
-  if (!formData.eventDate || formData.eventDate.trim().length === 0) {
-    errors.eventDate = 'Event date is required'
-  } else {
-    errors.eventDate = ''
   }
 }
 
