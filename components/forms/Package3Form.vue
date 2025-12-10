@@ -406,7 +406,7 @@ const isFormValid = computed(() => {
     hasSongData(formData.warmupSong1) &&
     hasSongData(formData.warmupSong2) &&
     hasSongData(formData.goalHorn) &&
-    hasSongData(formData.victorySong)
+    hasSongData(formData.goalSong) &&
     hasSongData(formData.winSong)
   )
 })
