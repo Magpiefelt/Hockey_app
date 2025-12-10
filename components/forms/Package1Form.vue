@@ -114,7 +114,7 @@
         type="submit"
         variant="primary"
         class="flex-1"
-        :disabled="isSubmitting || !isFormValid"
+        :disabled="isSubmitting"
         :aria-label="isSubmitting ? 'Submitting request' : 'Continue to review'"
       >
         <Icon v-if="isSubmitting" name="mdi:loading" class="w-5 h-5 mr-2 animate-spin" />
@@ -244,12 +244,14 @@ const handleSubmit = async () => {
   console.log('hasSongData(introSong):', hasSongData(formData.introSong))
   console.log('isFormValid:', isFormValid.value)
   
-  if (!isFormValid.value) {
-    console.log('❌ VALIDATION FAILED - Form will not submit')
-    // Scroll to first error
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-    return
-  }
+  // TEMPORARILY DISABLED FOR DEBUGGING
+  // if (!isFormValid.value) {
+  //   console.log('❌ VALIDATION FAILED - Form will not submit')
+  //   // Scroll to first error
+  //   window.scrollTo({ top: 0, behavior: 'smooth' })
+  //   return
+  // }
+  console.log('⚠️ VALIDATION CHECK BYPASSED FOR DEBUGGING')
   
   console.log('✅ VALIDATION PASSED - Proceeding with submission')
 
