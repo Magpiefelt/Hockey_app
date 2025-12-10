@@ -139,7 +139,9 @@
 </template>
 
 <script setup lang="ts">
-console.log('🔥🔥🔥 PACKAGE1FORM COMPONENT LOADED - BUILD TIMESTAMP:', new Date().toISOString())
+const CACHE_BUST_VERSION = '20251210-1700' // Update this to force browser cache refresh
+console.log('🔥🔥🔥 PACKAGE1FORM LOADED - VERSION:', CACHE_BUST_VERSION)
+console.log('🔥🔥🔥 BUILD TIMESTAMP:', new Date().toISOString())
 console.log('🔥🔥🔥 IF YOU SEE THIS, THE NEW CODE IS DEPLOYED!')
 
 import { ref, reactive, computed, watch } from 'vue'
