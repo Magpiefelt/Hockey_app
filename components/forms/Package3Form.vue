@@ -15,9 +15,37 @@
         v-model="formData.teamName"
         type="text"
         required
-        placeholder="Enter your team name"
+        placeholder="Thunder Hockey"
         :error="errors.teamName"
         @blur="validateTeamName"
+      />
+    </div>
+
+    <!-- Organization/League -->
+    <div>
+      <label for="organization" class="block text-sm font-semibold text-white mb-2">
+        Organization/League
+      </label>
+      <UiInput
+        id="organization"
+        v-model="formData.organization"
+        type="text"
+        placeholder="City Sports League"
+      />
+    </div>
+
+    <!-- Event Date -->
+    <div>
+      <label for="eventDate" class="block text-sm font-semibold text-white mb-2">
+        Event Date <span class="text-red-400" aria-label="required">*</span>
+      </label>
+      <UiInput
+        id="eventDate"
+        v-model="formData.eventDate"
+        type="date"
+        required
+        :error="errors.eventDate"
+        @blur="validateEventDate"
       />
     </div>
 
@@ -282,13 +310,16 @@ const hasAttemptedSubmit = ref(false)
 const isContactValid = ref(false)
 
 const errors = reactive({
-  teamName: ''
+  teamName: '',
+  eventDate: ''
 })
 
 // Initialize with defaults
 const defaultFormData = {
   packageId: 'player-intros-ultimate',
   teamName: '',
+  organization: '',
+  eventDate: '',
   roster: {
     method: 'manual' as 'manual' | 'pdf' | 'weblink',
     players: [''],
@@ -369,12 +400,13 @@ watch(() => props.modelValue, (newValue) => {
 const isFormValid = computed(() => {
   return (
     formData.teamName.trim().length > 0 &&
+    formData.eventDate.trim().length > 0 &&
     isContactValid.value &&
     hasSongData(formData.introSong) &&
     hasSongData(formData.warmupSong1) &&
     hasSongData(formData.warmupSong2) &&
     hasSongData(formData.goalHorn) &&
-    hasSongData(formData.goalSong) &&
+    hasSongData(formData.victorySong)
     hasSongData(formData.winSong)
   )
 })
@@ -392,6 +424,14 @@ function validateTeamName() {
     errors.teamName = 'Team name is required'
   } else {
     errors.teamName = ''
+  }
+}
+
+function validateEventDate() {
+  if (!formData.eventDate || formData.eventDate.trim().length === 0) {
+    errors.eventDate = 'Event date is required'
+  } else {
+    errors.eventDate = ''
   }
 }
 

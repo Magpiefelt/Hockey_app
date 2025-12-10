@@ -24,6 +24,23 @@
       </p>
     </div>
 
+    <!-- Organization/League -->
+    <div>
+      <label for="organization" class="block text-sm font-semibold text-white mb-2">
+        Organization/League
+      </label>
+      <UiInput
+        id="organization"
+        v-model="formData.organization"
+        type="text"
+        placeholder="City Sports League"
+        aria-describedby="organization-help"
+      />
+      <p id="organization-help" class="mt-1 text-sm text-slate-400">
+        The league or organization you're affiliated with
+      </p>
+    </div>
+
     <!-- Event Type -->
     <div>
       <label for="eventType" class="block text-sm font-semibold text-white mb-2">
@@ -183,6 +200,7 @@ const eventTypeOptions = [
 const defaultFormData = {
   packageId: 'event-hosting',
   eventDate: '',
+  organization: '',
   eventType: '',
   eventTypeOther: '',
   expectedAttendance: '',

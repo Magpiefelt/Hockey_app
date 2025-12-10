@@ -113,7 +113,7 @@
           </div>
 
           <!-- Event Hosting Form -->
-          <LazyEventHostingForm
+          <EventHostingForm
             v-else-if="selectedPackageId === 'event-hosting'"
             v-model="formData"
             @submit="handleFormStepComplete"
@@ -121,7 +121,7 @@
           />
 
           <!-- Game Day DJ Form -->
-          <LazyGameDayDJForm
+          <GameDayDJForm
             v-else-if="selectedPackageId === 'game-day-dj'"
             v-model="formData"
             @submit="handleFormStepComplete"
@@ -129,7 +129,7 @@
           />
 
           <!-- Package #1 Form -->
-          <LazyPackage1Form
+          <Package1Form
             v-else-if="selectedPackageId === 'player-intros-basic'"
             v-model="formData"
             @submit="handleFormStepComplete"
@@ -137,7 +137,7 @@
           />
 
           <!-- Package #2 Form -->
-          <LazyPackage2Form
+          <Package2Form
             v-else-if="selectedPackageId === 'player-intros-warmup'"
             v-model="formData"
             @submit="handleFormStepComplete"
@@ -145,7 +145,7 @@
           />
 
           <!-- Package #3 Form -->
-          <LazyPackage3Form
+          <Package3Form
             v-else-if="selectedPackageId === 'player-intros-ultimate'"
             v-model="formData"
             @submit="handleFormStepComplete"
@@ -232,6 +232,11 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watch } from 'vue'
 import { deepMerge } from '~/utils/deepMerge'
+import EventHostingForm from '~/components/forms/EventHostingForm.vue'
+import GameDayDJForm from '~/components/forms/GameDayDJForm.vue'
+import Package1Form from '~/components/forms/Package1Form.vue'
+import Package2Form from '~/components/forms/Package2Form.vue'
+import Package3Form from '~/components/forms/Package3Form.vue'
 
 definePageMeta({
   layout: 'default'
