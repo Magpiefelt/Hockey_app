@@ -139,6 +139,9 @@
 </template>
 
 <script setup lang="ts">
+console.log('🔥🔥🔥 PACKAGE1FORM COMPONENT LOADED - BUILD TIMESTAMP:', new Date().toISOString())
+console.log('🔥🔥🔥 IF YOU SEE THIS, THE NEW CODE IS DEPLOYED!')
+
 import { ref, reactive, computed, watch } from 'vue'
 import { deepMerge } from '~/utils/deepMerge'
 
