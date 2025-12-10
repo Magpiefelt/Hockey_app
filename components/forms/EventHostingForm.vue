@@ -235,13 +235,26 @@ function handleContactValidation(isValid: boolean) {
 const handleSubmit = async () => {
   hasAttemptedSubmit.value = true
   
+  console.log('=== EVENTHOSTINGFORM VALIDATION CHECK ===')
+  console.log('formData.eventDate:', formData.eventDate)
+  console.log('formData.eventType:', formData.eventType)
+  console.log('formData.eventTypeOther:', formData.eventTypeOther)
+  console.log('isContactValid:', isContactValid.value)
+  console.log('isFormValid:', isFormValid.value)
+  
   if (!isFormValid.value) {
+    console.log('❌ VALIDATION FAILED - Form will not submit')
     window.scrollTo({ top: 0, behavior: 'smooth' })
     return
   }
+  
+  console.log('✅ VALIDATION PASSED - Proceeding with submission')
 
   isSubmitting.value = true
   try {
+    console.log('=== EVENTHOSTINGFORM SUBMIT ===')
+    console.log('formData.contactInfo:', formData.contactInfo)
+    
     // Merge contact info into top level for compatibility
     const submitData = {
       ...formData,
@@ -249,6 +262,8 @@ const handleSubmit = async () => {
       contactEmail: formData.contactInfo.email,
       contactPhone: formData.contactInfo.phone
     }
+    
+    console.log('submitData being emitted:', submitData)
     emit('submit', submitData)
   } finally {
     isSubmitting.value = false

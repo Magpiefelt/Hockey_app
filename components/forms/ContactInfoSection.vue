@@ -10,6 +10,7 @@
         :error="errors.name"
         helpText="Your first and last name"
         @blur="validateName"
+        @input="clearNameError"
       />
     </div>
 
@@ -23,6 +24,7 @@
         :error="errors.email"
         helpText="We'll send order updates to this email"
         @blur="validateEmail"
+        @input="clearEmailError"
       />
     </div>
 
@@ -36,6 +38,7 @@
         :error="errors.phone"
         helpText="For urgent order updates"
         @blur="validatePhone"
+        @input="clearPhoneError"
       />
     </div>
 
@@ -53,7 +56,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 
 interface ContactInfo {
   name: string
@@ -82,7 +85,8 @@ const errors = ref({
 // Watch for changes and emit to parent
 watch(localValue, (newValue) => {
   emit('update:modelValue', newValue)
-  validateAll()
+  // Validate silently (don't show errors) to update button state
+  validateAllSilent()
 }, { deep: true })
 
 // Watch for external changes
@@ -90,9 +94,28 @@ watch(() => props.modelValue, (newValue) => {
   localValue.value = { ...newValue }
 }, { deep: true })
 
+// Initialize validation state on mount
+onMounted(() => {
+  // Start with optimistic validation - assume valid if fields have content
+  validateAllSilent()
+})
+
+function clearNameError() {
+  errors.value.name = ''
+}
+
+function clearEmailError() {
+  errors.value.email = ''
+}
+
+function clearPhoneError() {
+  errors.value.phone = ''
+}
+
 function validateName() {
-  if (!localValue.value.name || localValue.value.name.trim().length < 2) {
-    errors.value.name = 'Please enter your full name'
+  // Simplified: just check if not empty
+  if (!localValue.value.name || localValue.value.name.trim().length === 0) {
+    errors.value.name = 'Please enter your name'
     return false
   }
   errors.value.name = ''
@@ -100,9 +123,14 @@ function validateName() {
 }
 
 function validateEmail() {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  if (!localValue.value.email || !emailRegex.test(localValue.value.email)) {
-    errors.value.email = 'Please enter a valid email address'
+  // Simplified: basic check for @ symbol
+  const email = localValue.value.email?.trim() || ''
+  if (email.length === 0) {
+    errors.value.email = 'Please enter your email'
+    return false
+  }
+  if (!email.includes('@')) {
+    errors.value.email = 'Please enter a valid email'
     return false
   }
   errors.value.email = ''
@@ -110,21 +138,49 @@ function validateEmail() {
 }
 
 function validatePhone() {
-  // Remove all non-digit characters for validation
-  const digitsOnly = localValue.value.phone.replace(/\D/g, '')
-  if (!digitsOnly || digitsOnly.length < 10) {
-    errors.value.phone = 'Please enter a valid phone number (at least 10 digits)'
+  // Simplified: just check if not empty
+  const phone = localValue.value.phone?.trim() || ''
+  if (phone.length === 0) {
+    errors.value.phone = 'Please enter your phone number'
     return false
   }
   errors.value.phone = ''
   return true
 }
 
+function validateAllSilent() {
+  // Validate without showing errors (for real-time button state)
+  const name = localValue.value.name?.trim() || ''
+  const email = localValue.value.email?.trim() || ''
+  const phone = localValue.value.phone?.trim() || ''
+  
+  const isValid = name.length > 0 && email.includes('@') && phone.length > 0
+  
+  console.log('ContactInfoSection validation:', {
+    name: name.length > 0,
+    email: email.includes('@'),
+    phone: phone.length > 0,
+    isValid
+  })
+  
+  emit('validation', isValid)
+  return isValid
+}
+
 function validateAll() {
+  // Validate with error display (for explicit validation)
   const nameValid = validateName()
   const emailValid = validateEmail()
   const phoneValid = validatePhone()
   const isValid = nameValid && emailValid && phoneValid
+  
+  console.log('ContactInfoSection explicit validation:', {
+    nameValid,
+    emailValid,
+    phoneValid,
+    isValid
+  })
+  
   emit('validation', isValid)
   return isValid
 }
