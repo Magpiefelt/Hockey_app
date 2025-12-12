@@ -498,10 +498,11 @@ const handleFinalSubmit = async () => {
     console.log('Full formData:', formData)
     
     // Prepare submission data
-    // Extract contact info - prioritize contactInfo object as that's what the form uses
-    const contactName = formData.contactInfo?.name || formData.contactName || ''
-    const contactEmail = formData.contactInfo?.email || formData.contactEmail || ''
-    const contactPhone = formData.contactInfo?.phone || formData.contactPhone || ''
+    // Extract contact info - check both contactInfo object and direct fields
+    // Empty strings are falsy in OR chains, so we need to check for actual content
+    const contactName = (formData.contactInfo?.name && formData.contactInfo.name.trim()) || formData.contactName || ''
+    const contactEmail = (formData.contactInfo?.email && formData.contactInfo.email.trim()) || formData.contactEmail || ''
+    const contactPhone = (formData.contactInfo?.phone && formData.contactInfo.phone.trim()) || formData.contactPhone || ''
     
     console.log('Extracted contact info:')
     console.log('  contactName:', contactName, '(from', formData.contactInfo?.name ? 'contactInfo.name' : formData.contactName ? 'contactName' : 'default', ')')
