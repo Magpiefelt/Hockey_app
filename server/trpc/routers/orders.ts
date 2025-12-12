@@ -21,9 +21,19 @@ export const ordersRouter = router({
       serviceType: z.string().min(1),
       sportType: z.string().optional(),
       eventDate: z.string().optional(),
-      message: z.string().optional(),
+      notes: z.string().optional(),
       packageId: z.string().optional(),
-      requirementsJson: z.any().optional()
+      // Form-specific fields
+      teamName: z.string().optional(),
+      roster: z.any().optional(),
+      introSong: z.any().optional(),
+      warmupSongs: z.any().optional(),
+      goalHorn: z.any().optional(),
+      goalSong: z.any().optional(),
+      winSong: z.any().optional(),
+      sponsors: z.any().optional(),
+      includeSample: z.boolean().optional(),
+      audioFiles: z.array(z.any()).optional()
     }))
     .mutation(async ({ input, ctx }) => {
       const startTime = Date.now()
@@ -35,7 +45,8 @@ export const ordersRouter = router({
       const organization = input.organization ? sanitizeString(input.organization) : null
       const serviceType = sanitizeString(input.serviceType)
       const sportType = input.sportType ? sanitizeString(input.sportType) : null
-      const message = input.message ? sanitizeString(input.message) : null
+      const notes = input.notes ? sanitizeString(input.notes) : null
+      const teamName = input.teamName ? sanitizeString(input.teamName) : null
       
       // Validate inputs
       if (!isValidEmail(email)) {
@@ -73,20 +84,13 @@ export const ordersRouter = router({
         // Get user ID if authenticated
         const userId = ctx.user?.userId || null
         
-        // Create requirements JSON
-        const requirements = {
-          organization,
-          message,
-          ...(input.requirementsJson || {})
-        }
-        
-        // Insert order
+        // Insert order into quote_requests
         const orderResult = await client.query<{ id: number }>(
           `INSERT INTO quote_requests (
             user_id, package_id, contact_name, contact_email, contact_phone,
-            status, event_date, service_type, sport_type, requirements_json
+            organization, status, event_date, service_type, sport_type, notes
           )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
           RETURNING id`,
           [
             userId,
@@ -94,11 +98,12 @@ export const ordersRouter = router({
             name,
             email,
             phone,
+            organization,
             'submitted',
             input.eventDate || null,
             serviceType,
             sportType,
-            JSON.stringify(requirements)
+            notes
           ]
         )
         
@@ -107,6 +112,32 @@ export const ordersRouter = router({
         }
         
         const orderId = orderResult.rows[0].id
+        
+        // Insert form-specific data into form_submissions
+        if (teamName || input.roster || input.introSong) {
+          await client.query(
+            `INSERT INTO form_submissions (
+              quote_id, team_name, roster_method, roster_players,
+              intro_song, warmup_songs, goal_horn, goal_song, win_song,
+              sponsors, include_sample, audio_files
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+            [
+              orderId,
+              teamName,
+              input.roster?.method || null,
+              input.roster?.players ? JSON.stringify(input.roster.players) : null,
+              input.introSong ? JSON.stringify(input.introSong) : null,
+              input.warmupSongs ? JSON.stringify(input.warmupSongs) : null,
+              input.goalHorn ? JSON.stringify(input.goalHorn) : null,
+              input.goalSong ? JSON.stringify(input.goalSong) : null,
+              input.winSong ? JSON.stringify(input.winSong) : null,
+              input.sponsors ? JSON.stringify(input.sponsors) : null,
+              input.includeSample || false,
+              input.audioFiles ? JSON.stringify(input.audioFiles) : null
+            ]
+          )
+        }
         
         // Log status change
         await client.query(
@@ -224,18 +255,19 @@ export const ordersRouter = router({
       
       logger.debug('Fetching order details', { orderId, userId: ctx.user.userId })
       
-      // Get order
+      // Get order with form submission data
       const order = await queryOne<{
         id: number
         user_id: number | null
         name: string
         email: string
         phone: string
+        organization: string | null
         status: string
         event_date: Date | null
         service_type: string
         sport_type: string | null
-        requirements_json: any
+        notes: string | null
         admin_notes: string | null
         quoted_amount: number | null
         total_amount: number | null
@@ -243,15 +275,30 @@ export const ordersRouter = router({
         updated_at: Date | null
         package_id: string | null
         package_name: string | null
+        team_name: string | null
+        roster_method: string | null
+        roster_players: any
+        intro_song: any
+        warmup_songs: any
+        goal_horn: any
+        goal_song: any
+        win_song: any
+        sponsors: any
+        include_sample: boolean | null
+        audio_files: any
       }>(
         `SELECT 
           qr.id, qr.user_id, qr.contact_name as name, qr.contact_email as email,
-          qr.contact_phone as phone, qr.status, qr.event_date, qr.service_type,
-          qr.sport_type, qr.requirements_json, qr.admin_notes,
+          qr.contact_phone as phone, qr.organization, qr.status, qr.event_date, qr.service_type,
+          qr.sport_type, qr.notes, qr.admin_notes,
           qr.quoted_amount, qr.total_amount, qr.created_at, qr.updated_at,
-          p.slug as package_id, p.name as package_name
+          p.slug as package_id, p.name as package_name,
+          fs.team_name, fs.roster_method, fs.roster_players, fs.intro_song,
+          fs.warmup_songs, fs.goal_horn, fs.goal_song, fs.win_song,
+          fs.sponsors, fs.include_sample, fs.audio_files
         FROM quote_requests qr
         LEFT JOIN packages p ON qr.package_id = p.id
+        LEFT JOIN form_submissions fs ON qr.id = fs.quote_id
         WHERE qr.id = $1`,
         [orderId]
       )
@@ -294,16 +341,31 @@ export const ordersRouter = router({
           name: order.name,
           email: order.email,
           phone: order.phone,
+          organization: order.organization,
           packageId: order.package_id,
           serviceType: order.service_type || order.package_name,
           sportType: order.sport_type,
           status: order.status,
           quotedAmount: order.quoted_amount,
           totalAmount: order.total_amount,
-          requirementsText: order.requirements_json ? JSON.stringify(order.requirements_json) : null,
+          notes: order.notes,
           adminNotes: order.admin_notes,
           createdAt: order.created_at.toISOString(),
-          updatedAt: order.updated_at?.toISOString()
+          updatedAt: order.updated_at?.toISOString(),
+          // Form submission data
+          formData: order.team_name ? {
+            teamName: order.team_name,
+            rosterMethod: order.roster_method,
+            rosterPlayers: order.roster_players,
+            introSong: order.intro_song,
+            warmupSongs: order.warmup_songs,
+            goalHorn: order.goal_horn,
+            goalSong: order.goal_song,
+            winSong: order.win_song,
+            sponsors: order.sponsors,
+            includeSample: order.include_sample || false,
+            audioFiles: order.audio_files
+          } : null
         },
         files: files.map(file => ({
           id: file.id.toString(),

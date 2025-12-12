@@ -45,11 +45,12 @@ CREATE TABLE IF NOT EXISTS quote_requests (
   contact_name VARCHAR(100) NOT NULL,
   contact_email VARCHAR(120) NOT NULL,
   contact_phone VARCHAR(30),
+  organization VARCHAR(100),
   status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'submitted', 'in_progress', 'quoted', 'invoiced', 'paid', 'completed', 'cancelled', 'delivered')),
   event_date DATE,
   service_type VARCHAR(50),
   sport_type VARCHAR(50),
-  requirements_json JSONB,
+  notes TEXT,
   admin_notes TEXT,
   quoted_amount INTEGER,
   total_amount INTEGER,
@@ -62,6 +63,27 @@ CREATE INDEX IF NOT EXISTS idx_quote_requests_user_id ON quote_requests(user_id)
 CREATE INDEX IF NOT EXISTS idx_quote_requests_status ON quote_requests(status);
 CREATE INDEX IF NOT EXISTS idx_quote_requests_email ON quote_requests(contact_email);
 CREATE INDEX IF NOT EXISTS idx_quote_requests_created_at ON quote_requests(created_at DESC);
+
+-- Form submissions table (detailed form data for each quote)
+CREATE TABLE IF NOT EXISTS form_submissions (
+  id SERIAL PRIMARY KEY,
+  quote_id INTEGER NOT NULL REFERENCES quote_requests(id) ON DELETE CASCADE,
+  team_name VARCHAR(100),
+  roster_method VARCHAR(20),
+  roster_players JSONB,
+  roster_file_id INTEGER,
+  intro_song JSONB,
+  warmup_songs JSONB,
+  goal_horn JSONB,
+  goal_song JSONB,
+  win_song JSONB,
+  sponsors JSONB,
+  include_sample BOOLEAN DEFAULT FALSE,
+  audio_files JSONB,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_form_submissions_quote_id ON form_submissions(quote_id);
 
 -- Invoices table (Stripe invoice tracking)
 CREATE TABLE IF NOT EXISTS invoices (

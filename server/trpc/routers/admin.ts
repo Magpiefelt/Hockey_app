@@ -107,12 +107,14 @@ export const adminRouter = router({
         let sql = `
           SELECT 
             qr.id, qr.contact_name as name, qr.contact_email as email,
-            qr.contact_phone as phone, qr.status, qr.event_date,
+            qr.contact_phone as phone, qr.organization, qr.status, qr.event_date,
             qr.service_type, qr.sport_type, qr.quoted_amount, qr.total_amount,
-            qr.requirements_json, qr.created_at, qr.updated_at,
-            p.slug as package_id, COALESCE(p.name, qr.service_type) as service_name
+            qr.notes, qr.created_at, qr.updated_at,
+            p.slug as package_id, COALESCE(p.name, qr.service_type) as service_name,
+            fs.team_name
           FROM quote_requests qr
           LEFT JOIN packages p ON qr.package_id = p.id
+          LEFT JOIN form_submissions fs ON qr.id = fs.quote_id
           WHERE 1=1
         `
         
@@ -165,13 +167,15 @@ export const adminRouter = router({
           name: row.name,
           email: row.email,
           phone: row.phone,
+          organization: row.organization,
           packageId: row.package_id,
           serviceType: row.service_name,
           sportType: row.sport_type,
           status: row.status,
           quotedAmount: row.quoted_amount,
           totalAmount: row.total_amount,
-          requirementsJson: row.requirements_json,
+          notes: row.notes,
+          teamName: row.team_name,
           eventDate: row.event_date?.toISOString(),
           createdAt: row.created_at.toISOString(),
           updatedAt: row.updated_at?.toISOString()
@@ -188,16 +192,20 @@ export const adminRouter = router({
       .query(async ({ input }) => {
         const orderId = typeof input.id === 'string' ? parseInt(input.id) : input.id
         
-        // Get order
+        // Get order with form submission data
         const orderResult = await query(
           `SELECT 
             qr.id, qr.user_id, qr.contact_name as name, qr.contact_email as email,
-            qr.contact_phone as phone, qr.status, qr.event_date, qr.service_type,
-            qr.sport_type, qr.requirements_json, qr.admin_notes,
+            qr.contact_phone as phone, qr.organization, qr.status, qr.event_date, qr.service_type,
+            qr.sport_type, qr.notes, qr.admin_notes,
             qr.quoted_amount, qr.total_amount, qr.created_at, qr.updated_at,
-            p.slug as package_id, p.name as package_name
+            p.slug as package_id, p.name as package_name,
+            fs.team_name, fs.roster_method, fs.roster_players, fs.intro_song,
+            fs.warmup_songs, fs.goal_horn, fs.goal_song, fs.win_song,
+            fs.sponsors, fs.include_sample, fs.audio_files
           FROM quote_requests qr
           LEFT JOIN packages p ON qr.package_id = p.id
+          LEFT JOIN form_submissions fs ON qr.id = fs.quote_id
           WHERE qr.id = $1`,
           [orderId]
         )
@@ -226,16 +234,31 @@ export const adminRouter = router({
             name: order.name,
             email: order.email,
             phone: order.phone,
+            organization: order.organization,
             packageId: order.package_id,
             serviceType: order.service_type || order.package_name,
             sportType: order.sport_type,
             status: order.status,
             quotedAmount: order.quoted_amount,
             totalAmount: order.total_amount,
-            requirementsText: order.requirements_json ? JSON.stringify(order.requirements_json) : null,
+            notes: order.notes,
             adminNotes: order.admin_notes,
             createdAt: order.created_at.toISOString(),
-            updatedAt: order.updated_at?.toISOString()
+            updatedAt: order.updated_at?.toISOString(),
+            // Form submission data
+            formData: order.team_name ? {
+              teamName: order.team_name,
+              rosterMethod: order.roster_method,
+              rosterPlayers: order.roster_players,
+              introSong: order.intro_song,
+              warmupSongs: order.warmup_songs,
+              goalHorn: order.goal_horn,
+              goalSong: order.goal_song,
+              winSong: order.win_song,
+              sponsors: order.sponsors,
+              includeSample: order.include_sample || false,
+              audioFiles: order.audio_files
+            } : null
           },
           files: filesResult.rows.map(file => ({
             id: file.id.toString(),
@@ -508,13 +531,13 @@ export const adminRouter = router({
             COALESCE(u.name, qr.contact_name) as name,
             COALESCE(u.email, qr.contact_email) as email,
             qr.contact_phone as phone,
-            (qr.requirements_json->>'organization') as organization,
+            qr.organization,
             COUNT(qr.id) as order_count,
             COALESCE(SUM(qr.total_amount), 0) as total_spent,
             MIN(qr.created_at) as created_at
           FROM quote_requests qr
           LEFT JOIN users u ON qr.user_id = u.id
-          GROUP BY u.id, u.name, u.email, qr.contact_name, qr.contact_email, qr.contact_phone, qr.requirements_json
+          GROUP BY u.id, u.name, u.email, qr.contact_name, qr.contact_email, qr.contact_phone, qr.organization
           ORDER BY total_spent DESC`
         )
         

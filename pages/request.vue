@@ -285,12 +285,7 @@ const formData = reactive<any>({
   winSong: undefined,
   sponsors: undefined,
   includeSample: false,
-  contactInfo: {
-    name: '',
-    email: '',
-    phone: ''
-  },
-  // Keep these for backward compatibility with form components
+  // Contact information (flat structure for consistency)
   contactName: '',
   contactEmail: '',
   contactPhone: '',
@@ -447,7 +442,6 @@ const handleFormStepComplete = (data: any) => {
     return
   }
   
-  console.log('data.contactInfo:', data.contactInfo)
   console.log('data.contactName:', data.contactName)
   console.log('formData BEFORE merge:', formData)
   
@@ -461,7 +455,6 @@ const handleFormStepComplete = (data: any) => {
   })
   
   console.log('formData AFTER merge:', formData)
-  console.log('formData.contactInfo after merge:', formData.contactInfo)
   console.log('formData.contactName after merge:', formData.contactName)
   
   // Move to review step
@@ -491,23 +484,19 @@ const handleFinalSubmit = async () => {
     
     console.log('=== SUBMISSION DEBUG ===')    
     console.log('Form data keys:', Object.keys(formData))
-    console.log('formData.contactInfo:', formData.contactInfo)
     console.log('formData.contactName:', formData.contactName)
     console.log('formData.contactEmail:', formData.contactEmail)
     console.log('formData.contactPhone:', formData.contactPhone)
-    console.log('Full formData:', formData)
     
-    // Prepare submission data
-    // Extract contact info - check both contactInfo object and direct fields
-    // Empty strings are falsy in OR chains, so we need to check for actual content
-    const contactName = (formData.contactInfo?.name && formData.contactInfo.name.trim()) || formData.contactName || ''
-    const contactEmail = (formData.contactInfo?.email && formData.contactInfo.email.trim()) || formData.contactEmail || ''
-    const contactPhone = (formData.contactInfo?.phone && formData.contactInfo.phone.trim()) || formData.contactPhone || ''
+    // Prepare submission data - extract contact info from flat structure
+    const contactName = formData.contactName?.trim() || ''
+    const contactEmail = formData.contactEmail?.trim() || ''
+    const contactPhone = formData.contactPhone?.trim() || ''
     
     console.log('Extracted contact info:')
-    console.log('  contactName:', contactName, '(from', formData.contactInfo?.name ? 'contactInfo.name' : formData.contactName ? 'contactName' : 'default', ')')
-    console.log('  contactEmail:', contactEmail, '(from', formData.contactInfo?.email ? 'contactInfo.email' : formData.contactEmail ? 'contactEmail' : 'default', ')')
-    console.log('  contactPhone:', contactPhone, '(from', formData.contactInfo?.phone ? 'contactInfo.phone' : formData.contactPhone ? 'contactPhone' : 'default', ')')
+    console.log('  contactName:', contactName)
+    console.log('  contactEmail:', contactEmail)
+    console.log('  contactPhone:', contactPhone)
     
     // Validate contact info before submission
     if (!contactName || contactName.trim().length < 1) {
@@ -529,8 +518,22 @@ const handleFinalSubmit = async () => {
       serviceType: selectedPackageId.value,
       packageId: selectedPackageId.value,
       eventDate: formData.eventDate || '',
-      message: formData.notes || '',
-      requirementsJson: formData
+      notes: formData.notes || '',
+      // Form-specific data
+      teamName: formData.teamName || '',
+      roster: formData.roster || null,
+      introSong: formData.introSong || null,
+      warmupSongs: {
+        song1: formData.warmupSong1 || null,
+        song2: formData.warmupSong2 || null,
+        song3: formData.warmupSong3 || null
+      },
+      goalHorn: formData.goalHorn || null,
+      goalSong: formData.goalSong || null,
+      winSong: formData.winSong || null,
+      sponsors: formData.sponsors || null,
+      includeSample: formData.includeSample || false,
+      audioFiles: formData.audioFiles || []
     }
     
     console.log('Submitting order to database:', orderData)

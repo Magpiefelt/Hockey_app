@@ -192,10 +192,10 @@
         </div>
       </div>
 
-      <!-- Requirements -->
-      <div v-if="orderData.order.requirementsText" class="bg-white border border-brand-border rounded-lg p-6">
-        <h2 class="text-2xl font-bold text-text-primary mb-4">Requirements & Details</h2>
-        <p class="text-text-secondary whitespace-pre-wrap">{{ orderData.order.requirementsText }}</p>
+      <!-- Customer Notes -->
+      <div v-if="orderData.order.notes" class="bg-white border border-brand-border rounded-lg p-6">
+        <h2 class="text-2xl font-bold text-text-primary mb-4">Your Notes</h2>
+        <p class="text-text-secondary whitespace-pre-wrap">{{ orderData.order.notes }}</p>
       </div>
 
       <!-- Admin Notes (if quoted) -->

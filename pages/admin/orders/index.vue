@@ -278,31 +278,10 @@ const getPackageName = (packageId) => {
   return pkg ? pkg.name : 'Unknown'
 }
 
+// File count is no longer calculated from requirementsJson
+// This could be enhanced to query actual file_uploads table if needed
 const getFileCount = (order: Order) => {
-  // Parse requirementsJson to count uploaded files
-  if (!order.requirementsJson) return 0
-  
-  try {
-    const requirements = typeof order.requirementsJson === 'string' 
-      ? JSON.parse(order.requirementsJson) 
-      : order.requirementsJson
-    
-    let count = 0
-    
-    // Count audio files
-    if (requirements.audioFiles && Array.isArray(requirements.audioFiles)) {
-      count += requirements.audioFiles.length
-    }
-    
-    // Count roster file
-    if (requirements.rosterFile || requirements.rosterUrl) {
-      count += 1
-    }
-    
-    return count
-  } catch (err) {
-    return 0
-  }
+  return 0 // Placeholder - could be enhanced with actual file count query
 }
 
 // Edit modal state

@@ -82,10 +82,63 @@
         </div>
       </div>
 
-      <!-- Requirements -->
-      <div v-if="orderData.order.requirementsText" class="bg-white border border-brand-border rounded-lg p-6">
-        <h2 class="text-2xl font-bold text-text-primary mb-4">Customer Requirements</h2>
-        <p class="text-text-secondary whitespace-pre-wrap">{{ orderData.order.requirementsText }}</p>
+      <!-- Customer Notes -->
+      <div v-if="orderData.order.notes" class="bg-white border border-brand-border rounded-lg p-6">
+        <h2 class="text-2xl font-bold text-text-primary mb-4">Customer Notes</h2>
+        <p class="text-text-secondary whitespace-pre-wrap">{{ orderData.order.notes }}</p>
+      </div>
+
+      <!-- Form Submission Details -->
+      <div v-if="orderData.order.formData" class="bg-white border border-brand-border rounded-lg p-6">
+        <h2 class="text-2xl font-bold text-text-primary mb-4">Form Details</h2>
+        <div class="space-y-4">
+          <div v-if="orderData.order.formData.teamName">
+            <h3 class="text-lg font-semibold text-text-primary mb-2">Team Information</h3>
+            <p class="text-text-secondary"><strong>Team Name:</strong> {{ orderData.order.formData.teamName }}</p>
+          </div>
+          
+          <div v-if="orderData.order.formData.rosterPlayers">
+            <h3 class="text-lg font-semibold text-text-primary mb-2">Roster</h3>
+            <p class="text-text-secondary mb-2"><strong>Method:</strong> {{ orderData.order.formData.rosterMethod || 'Manual' }}</p>
+            <ul v-if="Array.isArray(orderData.order.formData.rosterPlayers)" class="list-disc list-inside text-text-secondary">
+              <li v-for="(player, idx) in orderData.order.formData.rosterPlayers" :key="idx">{{ player }}</li>
+            </ul>
+          </div>
+          
+          <div v-if="orderData.order.formData.introSong">
+            <h3 class="text-lg font-semibold text-text-primary mb-2">Intro Song</h3>
+            <p class="text-text-secondary">{{ formatSongInfo(orderData.order.formData.introSong) }}</p>
+          </div>
+          
+          <div v-if="orderData.order.formData.warmupSongs">
+            <h3 class="text-lg font-semibold text-text-primary mb-2">Warmup Songs</h3>
+            <p class="text-text-secondary">{{ formatSongInfo(orderData.order.formData.warmupSongs) }}</p>
+          </div>
+          
+          <div v-if="orderData.order.formData.goalHorn">
+            <h3 class="text-lg font-semibold text-text-primary mb-2">Goal Horn</h3>
+            <p class="text-text-secondary">{{ formatSongInfo(orderData.order.formData.goalHorn) }}</p>
+          </div>
+          
+          <div v-if="orderData.order.formData.goalSong">
+            <h3 class="text-lg font-semibold text-text-primary mb-2">Goal Song</h3>
+            <p class="text-text-secondary">{{ formatSongInfo(orderData.order.formData.goalSong) }}</p>
+          </div>
+          
+          <div v-if="orderData.order.formData.winSong">
+            <h3 class="text-lg font-semibold text-text-primary mb-2">Win Song</h3>
+            <p class="text-text-secondary">{{ formatSongInfo(orderData.order.formData.winSong) }}</p>
+          </div>
+          
+          <div v-if="orderData.order.formData.sponsors">
+            <h3 class="text-lg font-semibold text-text-primary mb-2">Sponsors</h3>
+            <p class="text-text-secondary">{{ formatSongInfo(orderData.order.formData.sponsors) }}</p>
+          </div>
+          
+          <div v-if="orderData.order.formData.includeSample">
+            <p class="text-text-secondary"><strong>Sample Requested:</strong> Yes</p>
+          </div>
+        </div>
       </div>
 
       <!-- Quote Form -->
@@ -301,6 +354,15 @@ const packages = computed(() => packagesData.value?.body || [])
 const getPackageName = (packageId: string) => {
   const pkg = packages.value.find((p: any) => p.id === packageId)
   return pkg?.name || packageId
+}
+
+const formatSongInfo = (songData: any) => {
+  if (!songData) return 'N/A'
+  if (typeof songData === 'string') return songData
+  if (songData.url) return songData.url
+  if (songData.title && songData.artist) return `${songData.title} by ${songData.artist}`
+  if (songData.title) return songData.title
+  return JSON.stringify(songData)
 }
 
 const orderData = ref<any>(null)
