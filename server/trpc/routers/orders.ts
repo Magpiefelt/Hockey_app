@@ -126,15 +126,15 @@ export const ordersRouter = router({
               orderId,
               teamName,
               input.roster?.method || null,
-              input.roster?.players ? JSON.stringify(input.roster.players) : null,
-              input.introSong ? JSON.stringify(input.introSong) : null,
-              input.warmupSongs ? JSON.stringify(input.warmupSongs) : null,
-              input.goalHorn ? JSON.stringify(input.goalHorn) : null,
-              input.goalSong ? JSON.stringify(input.goalSong) : null,
-              input.winSong ? JSON.stringify(input.winSong) : null,
-              input.sponsors ? JSON.stringify(input.sponsors) : null,
+              input.roster?.players || null,
+              input.introSong || null,
+              input.warmupSongs || null,
+              input.goalHorn || null,
+              input.goalSong || null,
+              input.winSong || null,
+              input.sponsors || null,
               input.includeSample || false,
-              input.audioFiles ? JSON.stringify(input.audioFiles) : null
+              input.audioFiles || null
             ]
           )
         }
