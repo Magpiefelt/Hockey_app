@@ -126,15 +126,15 @@ export const ordersRouter = router({
               orderId,
               teamName,
               input.roster?.method || null,
-              input.roster?.players || null,
-              input.introSong || null,
-              input.warmupSongs || null,
-              input.goalHorn || null,
-              input.goalSong || null,
-              input.winSong || null,
-              input.sponsors || null,
+              input.roster?.players && input.roster.players.length > 0 ? input.roster.players : null,
+              input.introSong && Object.keys(input.introSong).some(k => input.introSong[k]) ? input.introSong : null,
+              input.warmupSongs && Object.values(input.warmupSongs).some(v => v) ? input.warmupSongs : null,
+              input.goalHorn && Object.keys(input.goalHorn).some(k => input.goalHorn[k]) ? input.goalHorn : null,
+              input.goalSong && Object.keys(input.goalSong).some(k => input.goalSong[k]) ? input.goalSong : null,
+              input.winSong && Object.keys(input.winSong).some(k => input.winSong[k]) ? input.winSong : null,
+              input.sponsors && input.sponsors.length > 0 ? input.sponsors : null,
               input.includeSample || false,
-              input.audioFiles || null
+              input.audioFiles && input.audioFiles.length > 0 ? input.audioFiles : null
             ]
           )
         }
