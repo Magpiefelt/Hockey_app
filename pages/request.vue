@@ -542,14 +542,15 @@ const handleFinalSubmit = async () => {
     // Clear form data from localStorage
     clearFormState()
     
-    // Reset submitting state before navigation
-    isSubmitting.value = false
-    
     // Show success notification
     showSuccess('Request submitted successfully!')
     
-    // Navigate to thank you page
-    await router.push('/thanks')
+    // Navigate to thank you page using navigateTo (Nuxt 3 recommended)
+    // Keep isSubmitting true during navigation to prevent UI flickering
+    await navigateTo('/thanks', { replace: true })
+    
+    // Reset submitting state after navigation (though user won't see this)
+    isSubmitting.value = false
   } catch (error: any) {
     console.error('Order submission error:', error)
     console.error('Error details:', {
