@@ -83,14 +83,14 @@ async function logEmail(
   subject: string,
   template: string,
   metadata: any,
-  status: 'queued' | 'sent' | 'failed',
+  status: 'sent' | 'failed' | 'bounced',
   errorMessage?: string
 ) {
   try {
     await executeQuery(
-      `INSERT INTO email_logs (quote_request_id, to_email, subject, template, metadata_json, status, error_message, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
-      [quoteRequestId, toEmail, subject, template, JSON.stringify(metadata), status, errorMessage || null]
+      `INSERT INTO email_logs (quote_id, recipient_email, subject, email_type, status, error_message, sent_at)
+       VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+      [quoteRequestId, toEmail, subject, template, status, errorMessage || null]
     )
   } catch (error) {
     logger.error('Failed to log email', { error, toEmail, subject })
@@ -113,9 +113,6 @@ async function sendEmail(options: EmailOptions, template: string, metadata: any,
   }
 
   try {
-    // Log as queued
-    await logEmail(quoteRequestId || null, options.to, options.subject, template, metadata, 'queued')
-    
     // Send email
     const info = await transporter.sendMail(mailOptions)
     

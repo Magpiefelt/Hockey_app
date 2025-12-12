@@ -440,6 +440,10 @@ const handleFormStepComplete = (data: any) => {
     console.error('This means the child form emitted submit without payload')
     console.error('Current step:', currentStep.value)
     console.error('Selected package:', selectedPackageId.value)
+    
+    // Show error to user
+    submissionError.value = 'Form data is missing. Please try filling out the form again.'
+    window.scrollTo({ top: 0, behavior: 'smooth' })
     return
   }
   

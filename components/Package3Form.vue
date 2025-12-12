@@ -311,7 +311,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: any): void
-  (e: 'submit'): void
+  (e: 'submit', data: any): void
   (e: 'back'): void
 }>()
 
@@ -390,6 +390,7 @@ const handleSubmit = () => {
     return
   }
   
-  emit('submit')
+  // Emit form data to parent
+  emit('submit', localFormData.value)
 }
 </script>
