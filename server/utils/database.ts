@@ -90,8 +90,23 @@ export async function executeTransaction<T>(
     
     return result
   } catch (error: any) {
-    logger.error('Transaction failed', error)
-    throw new DatabaseError('Transaction failed', error)
+    const duration = Date.now() - startTime
+    logger.error('Transaction failed', {
+      error: error.message,
+      code: error.code,
+      detail: error.detail,
+      hint: error.hint,
+      position: error.position,
+      constraint: error.constraint,
+      table: error.table,
+      column: error.column,
+      dataType: error.dataType,
+      stack: error.stack,
+      duration
+    })
+    // Throw with more detailed error message
+    const errorMessage = error.detail || error.message || 'Transaction failed'
+    throw new DatabaseError(errorMessage, error)
   }
 }
 
