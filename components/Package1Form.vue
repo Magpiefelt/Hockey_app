@@ -42,108 +42,37 @@
           <label class="block text-sm font-medium text-slate-300 mb-2">
             Event Date <span class="text-red-400">*</span>
           </label>
-          <input
+          <UiDatePicker
             v-model="localFormData.eventDate"
-            type="date"
-            required
-            class="w-full px-4 py-3 rounded-lg bg-dark-secondary border border-white/10 text-white focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/20"
+            placeholder="Select event date"
+            :required="true"
           />
         </div>
       </div>
 
-      <!-- Player Roster -->
+      <!-- Player Roster - REPLACED WITH COMPONENT -->
       <div class="space-y-4">
         <h3 class="text-xl font-bold text-white flex items-center gap-2">
           <Icon name="mdi:account-group" class="w-5 h-5 text-cyan-400" />
           Player Roster (Up to 20 Players)
         </h3>
         
-        <div class="space-y-3">
-          <div v-for="(player, index) in localFormData.roster.players" :key="index" class="flex gap-2">
-            <input
-              v-model="localFormData.roster.players[index]"
-              type="text"
-              :placeholder="`Player ${index + 1} name`"
-              class="flex-1 px-4 py-3 rounded-lg bg-dark-secondary border border-white/10 text-white placeholder-slate-500 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/20"
-            />
-            <button
-              v-if="localFormData.roster.players.length > 1"
-              @click="removePlayer(index)"
-              type="button"
-              class="px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 transition-colors"
-            >
-              <Icon name="mdi:close" class="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-
-        <button
-          v-if="localFormData.roster.players.length < 20"
-          @click="addPlayer"
-          type="button"
-          class="flex items-center gap-2 px-4 py-2 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/20 transition-colors"
-        >
-          <Icon name="mdi:plus" class="w-5 h-5" />
-          Add Player
-        </button>
+        <FormsRosterInput v-model="localFormData.roster" />
       </div>
 
-      <!-- Intro Song Selection -->
+      <!-- Intro Song Selection - REPLACED WITH COMPONENT -->
       <div class="space-y-4">
         <h3 class="text-xl font-bold text-white flex items-center gap-2">
           <Icon name="mdi:music" class="w-5 h-5 text-cyan-400" />
           Team Intro Song
         </h3>
         
-        <div>
-          <label class="block text-sm font-medium text-slate-300 mb-2">
-            Song Selection Method
-          </label>
-          <select
-            v-model="localFormData.introSong.method"
-            class="w-full px-4 py-3 rounded-lg bg-dark-secondary border border-white/10 text-white focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/20"
-          >
-            <option value="youtube">YouTube Link</option>
-            <option value="spotify">Spotify Link</option>
-            <option value="text">Song Name/Artist</option>
-          </select>
-        </div>
-
-        <div v-if="localFormData.introSong.method === 'youtube'">
-          <label class="block text-sm font-medium text-slate-300 mb-2">
-            YouTube URL
-          </label>
-          <input
-            v-model="localFormData.introSong.youtube"
-            type="url"
-            placeholder="https://youtube.com/watch?v=..."
-            class="w-full px-4 py-3 rounded-lg bg-dark-secondary border border-white/10 text-white placeholder-slate-500 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/20"
-          />
-        </div>
-
-        <div v-else-if="localFormData.introSong.method === 'spotify'">
-          <label class="block text-sm font-medium text-slate-300 mb-2">
-            Spotify URL
-          </label>
-          <input
-            v-model="localFormData.introSong.spotify"
-            type="url"
-            placeholder="https://open.spotify.com/track/..."
-            class="w-full px-4 py-3 rounded-lg bg-dark-secondary border border-white/10 text-white placeholder-slate-500 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/20"
-          />
-        </div>
-
-        <div v-else>
-          <label class="block text-sm font-medium text-slate-300 mb-2">
-            Song Name and Artist
-          </label>
-          <input
-            v-model="localFormData.introSong.text"
-            type="text"
-            placeholder="Song Name - Artist Name"
-            class="w-full px-4 py-3 rounded-lg bg-dark-secondary border border-white/10 text-white placeholder-slate-500 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/20"
-          />
-        </div>
+        <FormsSongInput 
+          v-model="localFormData.introSong"
+          label="Team Intro Song"
+          :required="true"
+          hint="Choose how you'd like to provide your team's intro song"
+        />
       </div>
 
       <!-- Contact Information -->
@@ -246,30 +175,6 @@ const localFormData = computed({
   }
 })
 
-const addPlayer = () => {
-  if (localFormData.value.roster.players.length < 20) {
-    const updatedPlayers = [...localFormData.value.roster.players, '']
-    emit('update:modelValue', {
-      ...localFormData.value,
-      roster: {
-        ...localFormData.value.roster,
-        players: updatedPlayers
-      }
-    })
-  }
-}
-
-const removePlayer = (index: number) => {
-  const updatedPlayers = localFormData.value.roster.players.filter((_: any, i: number) => i !== index)
-  emit('update:modelValue', {
-    ...localFormData.value,
-    roster: {
-      ...localFormData.value.roster,
-      players: updatedPlayers
-    }
-  })
-}
-
 const handleSubmit = () => {
   // Validate required fields before submission
   if (!localFormData.value.teamName || !localFormData.value.teamName.trim()) {
@@ -282,23 +187,42 @@ const handleSubmit = () => {
     return
   }
   
-  // Validate at least one player
-  const hasPlayers = localFormData.value.roster.players.some((p: string) => p && p.trim())
-  if (!hasPlayers) {
-    alert('Please add at least one player')
+  // Validate roster - check based on method
+  if (localFormData.value.roster.method === 'manual') {
+    const hasPlayers = localFormData.value.roster.players?.some((p: string) => p && p.trim())
+    if (!hasPlayers) {
+      alert('Please add at least one player')
+      return
+    }
+  } else if (localFormData.value.roster.method === 'pdf') {
+    if (!localFormData.value.roster.pdfFile) {
+      alert('Please upload a roster PDF file')
+      return
+    }
+  } else if (localFormData.value.roster.method === 'weblink') {
+    if (!localFormData.value.roster.webLink || !localFormData.value.roster.webLink.trim()) {
+      alert('Please provide a web link to your roster')
+      return
+    }
+  }
+  
+  // Validate intro song - SongInput component handles its own validation
+  // But we still check if data exists
+  if (!localFormData.value.introSong || !localFormData.value.introSong.method) {
+    alert('Please select your intro song')
     return
   }
   
-  // Validate intro song
-  if (localFormData.value.introSong.method === 'youtube' && !localFormData.value.introSong.youtube) {
+  const method = localFormData.value.introSong.method
+  if (method === 'youtube' && !localFormData.value.introSong.youtube) {
     alert('Please provide a YouTube link for your intro song')
     return
   }
-  if (localFormData.value.introSong.method === 'spotify' && !localFormData.value.introSong.spotify) {
+  if (method === 'spotify' && !localFormData.value.introSong.spotify) {
     alert('Please provide a Spotify link for your intro song')
     return
   }
-  if (localFormData.value.introSong.method === 'text' && !localFormData.value.introSong.text) {
+  if (method === 'text' && !localFormData.value.introSong.text) {
     alert('Please describe your intro song')
     return
   }

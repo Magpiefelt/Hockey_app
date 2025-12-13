@@ -293,12 +293,16 @@ export const ordersRouter = router({
         updated_at: Date | null
         package_id: string | null
         service_name: string
+        deliverable_url: string | null
       }>(
         `SELECT 
           qr.id, qr.contact_name as name, qr.contact_email as email,
           qr.status, qr.event_date, qr.service_type, qr.sport_type,
           qr.quoted_amount, qr.total_amount, qr.created_at, qr.updated_at,
-          p.slug as package_id, COALESCE(p.name, qr.service_type) as service_name
+          p.slug as package_id, COALESCE(p.name, qr.service_type) as service_name,
+          (SELECT storage_url FROM file_uploads 
+           WHERE quote_id = qr.id AND kind = 'deliverable' 
+           ORDER BY created_at DESC LIMIT 1) as deliverable_url
         FROM quote_requests qr
         LEFT JOIN packages p ON qr.package_id = p.id
         WHERE qr.user_id = $1
@@ -316,6 +320,8 @@ export const ordersRouter = router({
         status: row.status,
         quotedAmount: row.quoted_amount,
         totalAmount: row.total_amount,
+        eventDate: row.event_date ? new Date(row.event_date).toISOString().split('T')[0] : null,
+        deliverableUrl: row.deliverable_url || null,
         createdAt: row.created_at.toISOString(),
         updatedAt: row.updated_at?.toISOString()
       }))

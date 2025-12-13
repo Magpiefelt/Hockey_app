@@ -84,7 +84,6 @@ const errors = ref({
 
 // Watch for changes and emit to parent
 watch(localValue, (newValue) => {
-  console.log('👁️ ContactInfoSection: localValue changed:', newValue)
   emit('update:modelValue', newValue)
   // Validate silently (don't show errors) to update button state
   validateAllSilent()
@@ -97,10 +96,8 @@ watch(() => props.modelValue, (newValue) => {
 
 // Initialize validation state on mount
 onMounted(() => {
-  console.log('🚀 ContactInfoSection: Component mounted, localValue:', localValue.value)
   // Start with optimistic validation - assume valid if fields have content
   validateAllSilent()
-  console.log('🚀 ContactInfoSection: Initial validation complete')
 })
 
 function clearNameError() {
@@ -159,14 +156,6 @@ function validateAllSilent() {
   
   const isValid = name.length > 0 && email.includes('@') && phone.length > 0
   
-  console.log('✅ ContactInfoSection validateAllSilent:', {
-    name: { value: name, valid: name.length > 0 },
-    email: { value: email, valid: email.includes('@') },
-    phone: { value: phone, valid: phone.length > 0 },
-    isValid
-  })
-  
-  console.log('📤 ContactInfoSection: Emitting validation event with:', isValid)
   emit('validation', isValid)
   return isValid
 }
@@ -177,13 +166,6 @@ function validateAll() {
   const emailValid = validateEmail()
   const phoneValid = validatePhone()
   const isValid = nameValid && emailValid && phoneValid
-  
-  console.log('ContactInfoSection explicit validation:', {
-    nameValid,
-    emailValid,
-    phoneValid,
-    isValid
-  })
   
   emit('validation', isValid)
   return isValid

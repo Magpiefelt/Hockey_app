@@ -24,31 +24,31 @@
           
           <!-- Package Info -->
           <div class="space-y-1 text-sm">
-            <p v-if="order.service_name || order.packageId" class="text-slate-700">
+            <p v-if="order.serviceType || order.packageId" class="text-slate-700">
               <Icon name="mdi:package-variant" class="w-4 h-4 inline-block mr-1 text-cyan-500" />
               <span class="font-medium">Package:</span> 
-              {{ order.service_name || getPackageName(order.packageId) }}
+              {{ order.serviceType || getPackageName(order.packageId) }}
             </p>
             <p class="text-slate-600">
               <Icon name="mdi:calendar" class="w-4 h-4 inline-block mr-1 text-slate-400" />
               <span class="font-medium">Submitted:</span> 
-              {{ formatDate(order.created_at || order.createdAt) }}
+              {{ formatDate(order.createdAt) }}
             </p>
-            <p v-if="order.event_date" class="text-slate-600">
+            <p v-if="order.eventDate" class="text-slate-600">
               <Icon name="mdi:calendar-star" class="w-4 h-4 inline-block mr-1 text-slate-400" />
               <span class="font-medium">Event Date:</span> 
-              {{ formatDate(order.event_date) }}
+              {{ formatDate(order.eventDate) }}
             </p>
           </div>
         </div>
 
         <!-- Price Display -->
-        <div v-if="order.quoted_amount || order.quotedAmount" class="text-right flex-shrink-0">
+        <div v-if="order.quotedAmount" class="text-right flex-shrink-0">
           <p class="text-sm text-slate-500 mb-1">
             {{ order.status === 'paid' || order.status === 'completed' ? 'Paid' : 'Quote' }}
           </p>
           <p class="text-2xl font-bold text-cyan-600">
-            {{ formatPrice(order.quoted_amount || order.quotedAmount) }}
+            {{ formatPrice(order.quotedAmount) }}
           </p>
         </div>
       </div>
@@ -97,7 +97,7 @@
           </button>
           
           <button
-            v-if="order.status === 'completed' && order.deliverable_url"
+            v-if="order.status === 'completed' && order.deliverableUrl"
             @click.stop="downloadDeliverable(order)"
             class="px-4 py-2 bg-green-500 hover:bg-green-600 text-white text-sm font-semibold rounded-lg transition-colors"
             aria-label="Download deliverable"
@@ -121,16 +121,15 @@
 
 <script setup lang="ts">
 interface Order {
-  id: number
+  id: string
   status: string
   packageId?: string
-  service_name?: string
-  quoted_amount?: number
+  serviceType?: string
   quotedAmount?: number
-  created_at?: string
-  createdAt?: string
-  event_date?: string
-  deliverable_url?: string
+  totalAmount?: number
+  createdAt: string
+  eventDate?: string | null
+  deliverableUrl?: string | null
 }
 
 interface Props {
@@ -232,8 +231,8 @@ function formatDate(dateString: string): string {
 }
 
 function downloadDeliverable(order: Order) {
-  if (order.deliverable_url) {
-    window.open(order.deliverable_url, '_blank')
+  if (order.deliverableUrl) {
+    window.open(order.deliverableUrl, '_blank')
   }
 }
 </script>

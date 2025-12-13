@@ -46,11 +46,10 @@
             <label class="block text-sm font-medium text-slate-300 mb-2">
               Event Date <span class="text-red-400">*</span>
             </label>
-            <input
+            <UiDatePicker
               v-model="localFormData.eventDate"
-              type="date"
-              required
-              class="w-full px-4 py-3 rounded-lg bg-dark-secondary border border-white/10 text-white focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-colors"
+              placeholder="Select event date"
+              :required="true"
             />
           </div>
 
