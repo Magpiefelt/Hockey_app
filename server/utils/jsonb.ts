@@ -128,14 +128,21 @@ export function cleanWarmupSongs(warmupSongs: any, sanitize: boolean = true): an
     
     if (!song) continue
     
-    // If it's a string, wrap it in an object
-    if (typeof song === 'string' && song.trim()) {
+    // CRITICAL FIX: Handle plain strings FIRST before calling cleanSongObject
+    // Frontend sends plain strings like "Song Name - Artist"
+    // We need to wrap them in {text: "..."} objects before processing
+    if (typeof song === 'string') {
       const trimmed = song.trim()
-      cleaned[key] = { text: sanitize ? sanitizeString(trimmed) : trimmed }
-      hasValidSongs = true
+      if (trimmed) {
+        cleaned[key] = { text: sanitize ? sanitizeString(trimmed) : trimmed }
+        hasValidSongs = true
+      }
+      // Skip to next iteration if string is empty
+      continue
     }
-    // If it's already an object, clean it
-    else if (typeof song === 'object') {
+    
+    // If it's already an object, clean it with cleanSongObject
+    if (typeof song === 'object') {
       const cleanedSong = cleanSongObject(song, sanitize)
       if (cleanedSong) {
         cleaned[key] = cleanedSong

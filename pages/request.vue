@@ -230,7 +230,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, watch } from 'vue'
+import { ref, reactive, shallowReactive, computed, watch } from 'vue'
 import { deepMerge } from '~/utils/deepMerge'
 
 definePageMeta({
@@ -259,7 +259,8 @@ const isLoadingForm = ref(false)
 const isSubmitting = ref(false)
 
 // Centralized form data
-const formData = reactive<any>({
+// Using shallowReactive to avoid const assignment warnings with v-model
+const formData = shallowReactive<any>({
   packageId: '',
   teamName: '',
   organization: '',
@@ -498,15 +499,44 @@ const handleFinalSubmit = async () => {
     console.log('  contactEmail:', contactEmail)
     console.log('  contactPhone:', contactPhone)
     
-    // Validate contact info before submission
+    // Comprehensive validation before submission
+    const validationErrors: string[] = []
+    
+    // Contact info validation
     if (!contactName || contactName.trim().length < 1) {
-      throw new Error('Name is required. Please go back and fill in your contact information.')
+      validationErrors.push('Name is required')
     }
     if (!contactEmail || !contactEmail.includes('@')) {
-      throw new Error('Valid email is required. Please go back and fill in your contact information.')
+      validationErrors.push('Valid email is required')
     }
     if (!contactPhone || contactPhone.replace(/\D/g, '').length < 10) {
-      throw new Error('Valid phone number is required. Please go back and fill in your contact information.')
+      validationErrors.push('Valid phone number (10+ digits) is required')
+    }
+    
+    // Package-specific validation
+    if (selectedPackageId.value.includes('player-intros')) {
+      if (!formData.teamName || !formData.teamName.trim()) {
+        validationErrors.push('Team name is required')
+      }
+      if (!formData.eventDate) {
+        validationErrors.push('Event date is required')
+      }
+    }
+    
+    // Data type validation for warmup songs
+    if (formData.warmupSong1 && typeof formData.warmupSong1 !== 'string') {
+      validationErrors.push('Warmup song 1 must be text')
+    }
+    if (formData.warmupSong2 && typeof formData.warmupSong2 !== 'string') {
+      validationErrors.push('Warmup song 2 must be text')
+    }
+    if (formData.warmupSong3 && typeof formData.warmupSong3 !== 'string') {
+      validationErrors.push('Warmup song 3 must be text')
+    }
+    
+    // Throw error if validation fails
+    if (validationErrors.length > 0) {
+      throw new Error(validationErrors.join('. ') + '. Please go back and correct the form.')
     }
     
     // Prepare order data

@@ -11,11 +11,11 @@ import {
   cleanRosterPlayers,
   cleanSongObject,
   validateJsonbSize,
-  validateArrayLength,
   isValidYouTubeUrl,
   isValidSpotifyUrl,
   validateSongObject
 } from '../jsonb'
+// validateArrayLength is in validation-extended module, tested separately
 
 describe('cleanJsonbObject', () => {
   it('should remove empty strings from objects', () => {
@@ -235,20 +235,7 @@ describe('validateJsonbSize', () => {
   })
 })
 
-describe('validateArrayLength', () => {
-  it('should accept arrays within limit', () => {
-    expect(validateArrayLength([1, 2, 3], 5)).toBe(true)
-  })
-  
-  it('should reject arrays exceeding limit', () => {
-    expect(validateArrayLength([1, 2, 3, 4, 5, 6], 5)).toBe(false)
-  })
-  
-  it('should accept non-arrays', () => {
-    expect(validateArrayLength(null, 5)).toBe(true)
-    expect(validateArrayLength('not array' as any, 5)).toBe(true)
-  })
-})
+// validateArrayLength tests moved to validation-extended.test.ts
 
 describe('isValidYouTubeUrl', () => {
   it('should accept valid YouTube URLs', () => {
@@ -340,6 +327,86 @@ describe('validateSongObject', () => {
     const result = validateSongObject(song)
     expect(result.isValid).toBe(false)
     expect(result.error).toContain('200 characters')
+  })
+})
+
+describe('cleanWarmupSongs - Critical Fix Verification', () => {
+  it('should handle plain strings from Package 2 frontend', () => {
+    // This is exactly what the frontend sends
+    const input = {
+      song1: 'Thunderstruck - AC/DC',
+      song2: 'Eye of the Tiger - Survivor',
+      song3: 'Seven Nation Army - The White Stripes'
+    }
+    
+    const result = cleanWarmupSongs(input)
+    
+    // Should wrap each string in {text: ...}
+    expect(result).toEqual({
+      song1: { text: 'Thunderstruck - AC/DC' },
+      song2: { text: 'Eye of the Tiger - Survivor' },
+      song3: { text: 'Seven Nation Army - The White Stripes' }
+    })
+  })
+  
+  it('should handle mixed plain strings and empty values', () => {
+    const input = {
+      song1: 'Song 1 - Artist',
+      song2: '',
+      song3: 'Song 3 - Artist'
+    }
+    
+    const result = cleanWarmupSongs(input)
+    
+    expect(result).toEqual({
+      song1: { text: 'Song 1 - Artist' },
+      song3: { text: 'Song 3 - Artist' }
+    })
+    expect(result).not.toHaveProperty('song2')
+  })
+  
+  it('should handle whitespace-only strings', () => {
+    const input = {
+      song1: 'Valid Song',
+      song2: '   ',
+      song3: '\t\n'
+    }
+    
+    const result = cleanWarmupSongs(input)
+    
+    expect(result).toEqual({
+      song1: { text: 'Valid Song' }
+    })
+  })
+  
+  it('should still handle structured objects correctly', () => {
+    const input = {
+      song1: { method: 'youtube', youtube: 'https://youtube.com/watch?v=123' },
+      song2: 'Plain String Song',
+      song3: { method: 'text', text: 'Structured Text Song' }
+    }
+    
+    const result = cleanWarmupSongs(input)
+    
+    expect(result).toEqual({
+      song1: { method: 'youtube', youtube: 'https://youtube.com/watch?v=123' },
+      song2: { text: 'Plain String Song' },
+      song3: { method: 'text', text: 'Structured Text Song' }
+    })
+  })
+  
+  it('should handle only song1 and song2 (song3 optional)', () => {
+    const input = {
+      song1: 'Required Song 1',
+      song2: 'Required Song 2'
+    }
+    
+    const result = cleanWarmupSongs(input)
+    
+    expect(result).toEqual({
+      song1: { text: 'Required Song 1' },
+      song2: { text: 'Required Song 2' }
+    })
   })
 })
 
