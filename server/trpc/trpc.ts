@@ -12,7 +12,22 @@ const t = initTRPC.context<Context>().create({
  * Export reusable router and procedure helpers
  */
 export const router = t.router
-export const publicProcedure = t.procedure
+
+/**
+ * Public procedure - with error handling
+ */
+export const publicProcedure = t.procedure.use(async ({ ctx, next, path, type }) => {
+  try {
+    return await next({ ctx })
+  } catch (error) {
+    logger.error('Public procedure error', error as Error, { 
+      path, 
+      type,
+      ip: ctx.event?.context?.ip 
+    })
+    throw toTRPCError(error)
+  }
+})
 
 /**
  * Protected procedure - requires authentication

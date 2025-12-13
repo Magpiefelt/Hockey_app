@@ -7,12 +7,22 @@ import { NotFoundError, AuthorizationError, ValidationError } from '../../utils/
 import { logOrderEvent, AuditAction } from '../../utils/audit'
 import { logger } from '../../utils/logger'
 import { sendOrderConfirmation } from '../../utils/email'
+import { cleanJsonbObject, cleanWarmupSongs, cleanRosterPlayers, cleanSongObject } from '../../utils/jsonb'
+import { validateOrderInputLengths, validateJsonbFields, validateNoXSS } from '../../utils/validation-extended'
+import { logFailedSubmission } from '../../utils/failed-submissions'
+import { rateLimit } from '../middleware/rateLimit'
 
 export const ordersRouter = router({
   /**
    * Create a new order/quote request
    */
   create: publicProcedure
+    .use(rateLimit({
+      maxRequests: 5,
+      windowMs: 60 * 60 * 1000, // 1 hour
+      identifier: (ctx) => ctx.event?.context?.ip || 'unknown',
+      message: 'Too many submission attempts'
+    }))
     .input(z.object({
       name: z.string().min(1).max(100),
       email: z.string().email(),
@@ -61,26 +71,40 @@ export const ordersRouter = router({
         throw new ValidationError('Invalid event date', 'eventDate')
       }
       
+      // Validate input lengths
+      validateOrderInputLengths(input)
+      
+      // Validate JSONB fields
+      const jsonbValidation = validateJsonbFields(input)
+      if (!jsonbValidation.isValid) {
+        throw new ValidationError(jsonbValidation.errors.join(', '), 'jsonb')
+      }
+      
+      // Check for XSS attempts
+      validateNoXSS(input)
+      
       logger.info('Order creation attempt', { 
         email, 
         serviceType,
         userId: ctx.user?.userId 
       })
       
-      // Use transaction for atomic operation
-      const result = await executeTransaction(async (client) => {
-        // Get package ID from slug if provided
-        let dbPackageId = null
-        if (input.packageId) {
-          const pkgResult = await client.query<{ id: number }>(
-            'SELECT id FROM packages WHERE slug = $1',
-            [input.packageId]
-          )
-          if (pkgResult.rows.length > 0) {
-            dbPackageId = pkgResult.rows[0].id
-          }
+      // Get package ID for failed submission logging
+      let dbPackageId: number | null = null
+      if (input.packageId) {
+        const pkgResult = await executeQuery<{ id: number }>(
+          'SELECT id FROM packages WHERE slug = $1',
+          [input.packageId]
+        )
+        if (pkgResult.rows.length > 0) {
+          dbPackageId = pkgResult.rows[0].id
         }
-        
+      }
+      
+      // Use transaction for atomic operation
+      let result: number
+      try {
+        result = await executeTransaction(async (client) => {
         // Get user ID if authenticated
         const userId = ctx.user?.userId || null
         
@@ -126,15 +150,15 @@ export const ordersRouter = router({
               orderId,
               teamName,
               input.roster?.method || null,
-              input.roster?.players && input.roster.players.length > 0 ? input.roster.players : null,
-              input.introSong && Object.keys(input.introSong).some(k => input.introSong[k]) ? input.introSong : null,
-              input.warmupSongs && Object.values(input.warmupSongs).some(v => v) ? input.warmupSongs : null,
-              input.goalHorn && Object.keys(input.goalHorn).some(k => input.goalHorn[k]) ? input.goalHorn : null,
-              input.goalSong && Object.keys(input.goalSong).some(k => input.goalSong[k]) ? input.goalSong : null,
-              input.winSong && Object.keys(input.winSong).some(k => input.winSong[k]) ? input.winSong : null,
-              input.sponsors && input.sponsors.length > 0 ? input.sponsors : null,
+              cleanRosterPlayers(input.roster?.players),
+              cleanSongObject(input.introSong),
+              cleanWarmupSongs(input.warmupSongs),
+              cleanJsonbObject(input.goalHorn),
+              cleanJsonbObject(input.goalSong),
+              cleanJsonbObject(input.winSong),
+              cleanJsonbObject(input.sponsors),
               input.includeSample || false,
-              input.audioFiles && input.audioFiles.length > 0 ? input.audioFiles : null
+              cleanJsonbObject(input.audioFiles)
             ]
           )
         }
@@ -148,6 +172,23 @@ export const ordersRouter = router({
         
         return orderId
       })
+      } catch (transactionError: any) {
+        // Log failed submission for follow-up
+        await logFailedSubmission({
+          contactEmail: email,
+          contactName: name,
+          contactPhone: phone,
+          packageId: dbPackageId,
+          formData: input,
+          error: transactionError,
+          errorCode: transactionError.code,
+          ipAddress: ctx.event?.context?.ip,
+          userAgent: ctx.event?.context?.userAgent
+        })
+        
+        // Re-throw the error to be handled by error middleware
+        throw transactionError
+      }
       
       const duration = Date.now() - startTime
       logger.info('Order created successfully', { 
@@ -165,8 +206,8 @@ export const ordersRouter = router({
         {
           email,
           serviceType,
-          ip: ctx.event.context.ip,
-          userAgent: ctx.event.context.userAgent
+          ip: ctx.event?.context?.ip,
+          userAgent: ctx.event?.context?.userAgent
         }
       )
       

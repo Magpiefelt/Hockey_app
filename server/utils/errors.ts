@@ -99,11 +99,27 @@ export function toTRPCError(error: any): TRPCError {
   
   if (error instanceof DatabaseError) {
     console.error('Database error:', error.originalError)
+    
+    // Check if it's a JSON/JSONB parsing error
+    const isJsonError = error.message && (
+      error.message.includes('json') || 
+      error.message.includes('JSON') ||
+      error.message.includes('Expected') ||
+      error.message.includes('invalid input syntax')
+    )
+    
+    // Provide user-friendly messages for common errors
+    let userMessage = 'A database error occurred'
+    
+    if (isJsonError) {
+      userMessage = 'There was a problem processing your submission. Please check your information and try again.'
+    }
+    
     return new TRPCError({
       code: 'INTERNAL_SERVER_ERROR',
       message: process.env.NODE_ENV === 'production' 
-        ? 'A database error occurred' 
-        : error.message,
+        ? userMessage
+        : `${userMessage} (Dev: ${error.message})`,
       cause: error
     })
   }
