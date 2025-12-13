@@ -160,15 +160,31 @@ const validateSpotifyUrl = () => {
 }
 
 const emitUpdate = () => {
-  emit('update:modelValue', {
-    method: inputMethod.value,
-    youtube: songData.youtube,
-    spotify: songData.spotify,
-    text: songData.text
-  })
+  // Only emit the relevant field based on the selected method
+  // This prevents data pollution with unused fields
+  const cleanData: any = { method: inputMethod.value }
+  
+  switch (inputMethod.value) {
+    case 'youtube':
+      if (songData.youtube) cleanData.youtube = songData.youtube
+      break
+    case 'spotify':
+      if (songData.spotify) cleanData.spotify = songData.spotify
+      break
+    case 'text':
+      if (songData.text) cleanData.text = songData.text
+      break
+  }
+  
+  emit('update:modelValue', cleanData)
 }
 
-watch(inputMethod, () => {
+watch(inputMethod, (newMethod, oldMethod) => {
+  // Clear the old method's data when switching methods
+  if (oldMethod === 'youtube') songData.youtube = ''
+  if (oldMethod === 'spotify') songData.spotify = ''
+  if (oldMethod === 'text') songData.text = ''
+  
   emitUpdate()
 })
 </script>
