@@ -248,23 +248,23 @@ export const ordersRouter = router({
         }
       )
       
-      // Send order confirmation email
-      try {
-        await sendOrderConfirmation({
-          to: email,
-          name: name,
-          serviceType: serviceType,
-          orderId: result
-        })
+      // Send order confirmation email asynchronously (non-blocking)
+      // This prevents the 2-minute delay issue when SMTP is slow
+      sendOrderConfirmation({
+        to: email,
+        name: name,
+        serviceType: serviceType,
+        orderId: result
+      }).then(() => {
         logger.info('Order confirmation email sent', { orderId: result, email })
-      } catch (emailError: any) {
+      }).catch((emailError: any) => {
         // Don't fail the order creation if email fails
         logger.error('Failed to send order confirmation email', { 
           orderId: result, 
           email, 
           error: emailError.message 
         })
-      }
+      })
       
       return {
         id: result.toString(),
