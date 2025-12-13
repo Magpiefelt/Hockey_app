@@ -138,7 +138,13 @@ export const ordersRouter = router({
         const orderId = orderResult.rows[0].id
         
         // Insert form-specific data into form_submissions
-        if (teamName || input.roster || input.introSong) {
+        // Check if ANY form data is provided (not just teamName/roster/introSong)
+        const hasAnyFormData = teamName || input.roster || input.introSong || 
+                               input.warmupSongs || input.goalHorn || input.goalSong || 
+                               input.winSong || input.sponsors || 
+                               (input.audioFiles && input.audioFiles.length > 0)
+        
+        if (hasAnyFormData) {
           // Log the cleaned data for debugging
           const cleanedData = {
             introSong: cleanSongObject(input.introSong),
@@ -161,7 +167,8 @@ export const ordersRouter = router({
               orderId,
               teamName,
               input.roster?.method || null,
-              cleanRosterPlayers(input.roster?.players),
+              // Arrays must be JSON.stringify'd for JSONB columns (pg library limitation)
+              cleanRosterPlayers(input.roster?.players) ? JSON.stringify(cleanRosterPlayers(input.roster?.players)) : null,
               cleanSongObject(input.introSong),
               cleanWarmupSongs(input.warmupSongs),
               cleanJsonbObject(input.goalHorn),
@@ -169,7 +176,11 @@ export const ordersRouter = router({
               cleanJsonbObject(input.winSong),
               cleanJsonbObject(input.sponsors),
               input.includeSample || false,
-              cleanJsonbObject(input.audioFiles)
+              // Arrays must be JSON.stringify'd for JSONB columns (pg library limitation)
+              (() => {
+                const cleaned = cleanJsonbObject(input.audioFiles)
+                return cleaned && Array.isArray(cleaned) ? JSON.stringify(cleaned) : cleaned
+              })()
             ]
           )
           } catch (dbError: any) {
