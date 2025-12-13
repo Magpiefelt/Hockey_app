@@ -248,7 +248,7 @@
       >
         <Icon v-if="isSubmitting" name="mdi:loading" class="w-5 h-5 mr-2 animate-spin" />
         <Icon v-else name="mdi:check-circle" class="w-5 h-5 mr-2" />
-        {{ isSubmitting ? 'Submitting...' : 'Confirm & Submit' }}
+        {{ isSubmitting ? 'Submitting Your Request...' : 'Confirm & Submit' }}
       </UiButton>
     </div>
   </div>

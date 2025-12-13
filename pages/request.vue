@@ -579,18 +579,10 @@ const handleFinalSubmit = async () => {
     // Clear form data from localStorage
     clearFormState()
     
-    // Navigate to thank you page
+    // Navigate to thank you page immediately
     // IMPORTANT: Do NOT show notifications before navigation as they can interfere
     // The thank you page itself serves as the success confirmation
-    try {
-      await navigateTo('/thanks', { replace: true })
-    } catch (navError) {
-      // If navigateTo fails, use window.location as fallback
-      console.error('navigateTo failed, using window.location fallback:', navError)
-      if (process.client) {
-        window.location.href = '/thanks'
-      }
-    }
+    await router.push('/thanks')
     
     // Reset submitting state after navigation (though user won't see this)
     isSubmitting.value = false
