@@ -551,7 +551,10 @@ const handleFinalSubmit = async () => {
       notes: formData.notes || '',
       // Form-specific data
       teamName: formData.teamName || '',
-      roster: formData.roster || null,
+      roster: formData.roster ? {
+        ...formData.roster,
+        players: formData.roster.players?.filter((p: string) => p && p.trim()) || []
+      } : null,
       introSong: formData.introSong || null,
       warmupSongs: {
         song1: formData.warmupSong1 || null,
@@ -576,12 +579,18 @@ const handleFinalSubmit = async () => {
     // Clear form data from localStorage
     clearFormState()
     
-    // Show success notification
-    showSuccess('Request submitted successfully!')
-    
-    // Navigate to thank you page using navigateTo (Nuxt 3 recommended)
-    // Keep isSubmitting true during navigation to prevent UI flickering
-    await navigateTo('/thanks', { replace: true })
+    // Navigate to thank you page
+    // IMPORTANT: Do NOT show notifications before navigation as they can interfere
+    // The thank you page itself serves as the success confirmation
+    try {
+      await navigateTo('/thanks', { replace: true })
+    } catch (navError) {
+      // If navigateTo fails, use window.location as fallback
+      console.error('navigateTo failed, using window.location fallback:', navError)
+      if (process.client) {
+        window.location.href = '/thanks'
+      }
+    }
     
     // Reset submitting state after navigation (though user won't see this)
     isSubmitting.value = false
