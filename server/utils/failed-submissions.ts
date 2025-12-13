@@ -205,7 +205,9 @@ export async function deleteOldFailedSubmissions(daysOld: number = 90): Promise<
        AND (retry_successful = TRUE OR retry_attempted = FALSE)
        RETURNING id`,
       [daysOld]
-    )const deletedCount = result.rows.length
+    )
+    
+    const deletedCount = result.rows.length
     
     if (deletedCount > 0) {
       logger.info('Deleted old failed submissions', { 
