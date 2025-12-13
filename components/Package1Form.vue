@@ -240,26 +240,34 @@ const emit = defineEmits<{
 }>()
 
 const localFormData = computed({
-  get: () => {
-    return {
-...props.modelValue
-    }
-  },
+  get: () => props.modelValue,
   set: (value) => {
     emit('update:modelValue', value)
   }
 })
 
-
-
 const addPlayer = () => {
   if (localFormData.value.roster.players.length < 20) {
-    localFormData.value.roster.players.push('')
+    const updatedPlayers = [...localFormData.value.roster.players, '']
+    emit('update:modelValue', {
+      ...localFormData.value,
+      roster: {
+        ...localFormData.value.roster,
+        players: updatedPlayers
+      }
+    })
   }
 }
 
 const removePlayer = (index: number) => {
-  localFormData.value.roster.players.splice(index, 1)
+  const updatedPlayers = localFormData.value.roster.players.filter((_: any, i: number) => i !== index)
+  emit('update:modelValue', {
+    ...localFormData.value,
+    roster: {
+      ...localFormData.value.roster,
+      players: updatedPlayers
+    }
+  })
 }
 
 const handleSubmit = () => {

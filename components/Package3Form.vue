@@ -303,7 +303,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 
 const props = defineProps<{
   modelValue: any
@@ -316,27 +316,57 @@ const emit = defineEmits<{
 }>()
 
 const localFormData = computed({
-  get: () => {
-    return {
-...props.modelValue
-    }
-  },
+  get: () => props.modelValue,
   set: (value) => {
     emit('update:modelValue', value)
   }
 })
 
-
-
 const addPlayer = () => {
   if (localFormData.value.roster.players.length < 20) {
-    localFormData.value.roster.players.push('')
+    const updatedPlayers = [...localFormData.value.roster.players, '']
+    emit('update:modelValue', {
+      ...localFormData.value,
+      roster: {
+        ...localFormData.value.roster,
+        players: updatedPlayers
+      }
+    })
   }
 }
 
 const removePlayer = (index: number) => {
-  localFormData.value.roster.players.splice(index, 1)
+  const updatedPlayers = localFormData.value.roster.players.filter((_: any, i: number) => i !== index)
+  emit('update:modelValue', {
+    ...localFormData.value,
+    roster: {
+      ...localFormData.value.roster,
+      players: updatedPlayers
+    }
+  })
 }
+
+// Watch for changes to introSong method and clear unused fields
+watch(
+  () => localFormData.value.introSong?.method,
+  (newMethod, oldMethod) => {
+    if (oldMethod && newMethod !== oldMethod) {
+      // Create a clean introSong object with only the method field
+      // This ensures all old data (youtube, spotify, text) is cleared
+      const cleanedIntroSong: any = { 
+        method: newMethod,
+        youtube: '',
+        spotify: '',
+        text: ''
+      }
+      
+      emit('update:modelValue', {
+        ...localFormData.value,
+        introSong: cleanedIntroSong
+      })
+    }
+  }
+)
 
 const handleSubmit = () => {
   // Validate required fields
