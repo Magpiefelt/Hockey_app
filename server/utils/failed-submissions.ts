@@ -37,7 +37,24 @@ export async function logFailedSubmission(data: {
         data.contactName || null,
         data.contactPhone || null,
         data.packageId || null,
-        JSON.stringify(data.formData),
+        (() => {
+          try {
+            return JSON.stringify(data.formData)
+          } catch (stringifyError) {
+            // If stringify fails (circular reference, etc), use a safe fallback
+            try {
+              return JSON.stringify(data.formData, (key, value) => {
+                if (typeof value === 'object' && value !== null) {
+                  // Simple circular reference detection
+                  return '[Object]'
+                }
+                return value
+              })
+            } catch {
+              return JSON.stringify({ error: 'Could not stringify form data' })
+            }
+          }
+        })(),
         data.error.message,
         data.error.stack || null,
         data.errorCode || null,

@@ -139,8 +139,19 @@ export const ordersRouter = router({
         
         // Insert form-specific data into form_submissions
         if (teamName || input.roster || input.introSong) {
-          await client.query(
-            `INSERT INTO form_submissions (
+          // Log the cleaned data for debugging
+          const cleanedData = {
+            introSong: cleanSongObject(input.introSong),
+            warmupSongs: cleanWarmupSongs(input.warmupSongs),
+            goalHorn: cleanJsonbObject(input.goalHorn),
+            goalSong: cleanJsonbObject(input.goalSong),
+            winSong: cleanJsonbObject(input.winSong)
+          }
+          logger.info('Cleaned JSONB data', { cleanedData, orderId })
+          
+          try {
+            await client.query(
+              `INSERT INTO form_submissions (
               quote_id, team_name, roster_method, roster_players,
               intro_song, warmup_songs, goal_horn, goal_song, win_song,
               sponsors, include_sample, audio_files
@@ -161,6 +172,21 @@ export const ordersRouter = router({
               cleanJsonbObject(input.audioFiles)
             ]
           )
+          } catch (dbError: any) {
+            logger.error('Database JSONB insertion error', {
+              error: dbError.message,
+              code: dbError.code,
+              detail: dbError.detail,
+              hint: dbError.hint,
+              cleanedData,
+              rawInput: {
+                introSong: input.introSong,
+                warmupSongs: input.warmupSongs,
+                goalHorn: input.goalHorn
+              }
+            })
+            throw new Error(`Database error: ${dbError.message}. Please check that all song fields are properly formatted.`)
+          }
         }
         
         // Log status change
