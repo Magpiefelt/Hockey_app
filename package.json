@@ -22,6 +22,7 @@
     "migrate:up": "tsx scripts/migrate.ts up",
     "migrate:status": "tsx scripts/migrate.ts status",
     "migrate:rollback": "tsx scripts/migrate.ts rollback",
+    "fix:passwords": "tsx scripts/fix-password-hashes.ts",
     "test": "vitest",
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
