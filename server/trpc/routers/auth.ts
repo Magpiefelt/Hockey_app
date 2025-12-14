@@ -115,32 +115,86 @@ export const authRouter = router({
       const email = sanitizeEmail(input.email)
       const password = input.password
       
-      logger.info('Login attempt', { email })
+      logger.info('Login attempt started', { email, timestamp: new Date().toISOString() })
       
-      // Find user
-      const user = await queryOne<{
-        id: number
-        name: string
-        email: string
-        password_hash: string
-        role: string
-      }>(
-        'SELECT id, name, email, password_hash, role FROM users WHERE email = $1',
-        [email]
-      )
+      // Find user with enhanced error handling
+      let user
+      try {
+        logger.debug('Executing user lookup query', { email })
+        
+        user = await queryOne<{
+          id: number
+          name: string
+          email: string
+          password_hash: string
+          role: string
+        }>(
+          'SELECT id, name, email, password_hash, role FROM users WHERE email = $1',
+          [email]
+        )
+        
+        logger.info('User lookup query completed', { 
+          email, 
+          userFound: !!user,
+          userId: user?.id,
+          userRole: user?.role
+        })
+        
+      } catch (queryError: any) {
+        // This is the critical error path
+        logger.error('CRITICAL: User lookup query threw an exception', {
+          email,
+          errorMessage: queryError.message,
+          errorName: queryError.name,
+          errorType: queryError.constructor.name,
+          stack: queryError.stack,
+          originalError: queryError.originalError || queryError.cause
+        })
+        
+        // Log to audit trail
+        await logAuthEvent(AuditAction.LOGIN, undefined, false, {
+          email,
+          reason: 'database_query_failed',
+          error: queryError.message,
+          ip: ctx.event.context.ip
+        })
+        
+        // Throw a clear error for debugging
+        throw new Error(`Database query failed during login: ${queryError.message}`)
+      }
       
+      // User not found
       if (!user) {
-        logger.warn('Login failed - user not found', { email })
+        logger.warn('Login failed - user not found in database', { 
+          email,
+          searchedEmail: email,
+          timestamp: new Date().toISOString()
+        })
+        
         await logAuthEvent(AuditAction.LOGIN, undefined, false, {
           email,
           reason: 'user_not_found',
           ip: ctx.event.context.ip
         })
+        
+        // Return 401 Unauthorized, not 500
         throw new AuthenticationError('Invalid email or password')
       }
       
+      logger.debug('Verifying password', { userId: user.id })
+      
       // Verify password
-      const isValid = await verifyPassword(password, user.password_hash)
+      let isValid
+      try {
+        isValid = await verifyPassword(password, user.password_hash)
+        logger.debug('Password verification completed', { userId: user.id, isValid })
+      } catch (verifyError: any) {
+        logger.error('Password verification threw an exception', {
+          userId: user.id,
+          error: verifyError.message
+        })
+        throw new Error('Password verification failed')
+      }
       
       if (!isValid) {
         logger.warn('Login failed - invalid password', { 
@@ -155,15 +209,29 @@ export const authRouter = router({
         throw new AuthenticationError('Invalid email or password')
       }
       
+      logger.debug('Generating authentication token', { userId: user.id })
+      
       // Generate token and set cookie
-      const token = generateToken(user.id, user.role)
-      setAuthCookie(ctx.event, token)
+      let token
+      try {
+        token = generateToken(user.id, user.role)
+        setAuthCookie(ctx.event, token)
+        logger.debug('Auth cookie set successfully', { userId: user.id })
+      } catch (tokenError: any) {
+        logger.error('Token generation or cookie setting failed', {
+          userId: user.id,
+          error: tokenError.message,
+          stack: tokenError.stack
+        })
+        throw new Error('Failed to create authentication session')
+      }
       
       // Log successful login
       const duration = Date.now() - startTime
       logger.info('User logged in successfully', { 
         userId: user.id, 
         email: user.email,
+        role: user.role,
         duration 
       })
       
