@@ -54,8 +54,8 @@
       </div>
       
       <!-- Split-Screen Content Container -->
-      <div class="container relative z-10 flex min-h-screen items-center px-4 py-20">
-        <div class="grid w-full grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-0">
+      <div class="container relative z-10 flex min-h-screen items-center px-4 py-12 md:py-16 lg:py-20">
+        <div class="grid w-full grid-cols-1 gap-8 md:gap-12 lg:grid-cols-12 lg:gap-8 xl:gap-12">
           
           <!-- LEFT COLUMN: Branding & Text (55%) -->
           <div class="flex items-center justify-center lg:col-span-6">
@@ -77,7 +77,7 @@
                   <img 
                     src="/logo.png" 
                     alt="Elite Sports DJ" 
-                    class="h-40 w-auto object-contain sm:h-56 md:h-64 lg:h-72 xl:h-80 hero-logo-animate" 
+                    class="h-32 w-auto object-contain sm:h-40 md:h-48 lg:h-56 xl:h-64 2xl:h-72 hero-logo-animate" 
                   />
                 </div>
                 
@@ -93,7 +93,7 @@
                 </div>
                 
                 <!-- Main Headline -->
-                <h1 class="hero-headline mb-8 text-3xl font-black leading-tight text-white sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl">
+                <h1 class="hero-headline mb-6 md:mb-8 text-3xl font-black leading-tight text-white sm:text-4xl md:text-5xl lg:text-5xl xl:text-6xl 2xl:text-7xl">
                   <span class="block mb-2">ELEVATE YOUR</span>
                   <span class="block bg-gradient-to-r from-blue-400 via-cyan-300 to-blue-400 bg-clip-text text-transparent animate-gradient">
                     GAME DAY
@@ -102,7 +102,7 @@
                 </h1>
                 
                 <!-- Subheadline -->
-                <p class="mb-12 max-w-3xl text-base sm:text-lg md:text-xl lg:text-2xl leading-relaxed text-slate-200 font-medium mx-auto lg:mx-0">
+                <p class="mb-8 md:mb-10 lg:mb-12 max-w-3xl text-base sm:text-lg md:text-xl lg:text-lg xl:text-xl 2xl:text-2xl leading-relaxed text-slate-200 font-medium mx-auto lg:mx-0">
                   Professional DJ services, player introductions, and event hosting for 
                   <span class="text-cyan-300 font-bold">hockey</span>, 
                   <span class="text-blue-300 font-bold">lacrosse</span>, 
@@ -139,9 +139,9 @@
           </div>
           
           <!-- RIGHT COLUMN: Video Carousel (45%) -->
-          <div class="flex items-start justify-end lg:col-span-6 lg:pt-0 lg:pl-16">
+          <div class="flex items-center justify-center lg:justify-end lg:col-span-6 lg:pt-0 lg:pl-8 xl:pl-12 2xl:pl-16">
             <RevealOnScroll animation="fade-left">
-              <div class="w-full max-w-sm">
+              <div class="w-full max-w-xs md:max-w-sm lg:max-w-md xl:max-w-lg">
                 <HeroVideoCarousel 
                   :videos="heroVideos"
                   :scroll-speed="25"
@@ -190,45 +190,45 @@
         </RevealOnScroll>
 
         <RevealOnScroll animation="fade-up">
-          <div class="mx-auto grid max-w-6xl grid-cols-2 gap-6 md:grid-cols-4">
-            <div class="stat-card group rounded-xl border-2 border-blue-500/30 bg-gradient-to-br from-slate-900 to-slate-800 p-8 text-center transition-all duration-300 hover:border-cyan-400 hover:scale-105 hover:shadow-2xl hover:shadow-cyan-500/20">
+          <div class="mx-auto grid max-w-6xl grid-cols-2 gap-4 md:gap-6 lg:grid-cols-4">
+            <div class="stat-card group rounded-xl border-2 border-blue-500/30 bg-gradient-to-br from-slate-900 to-slate-800 p-4 md:p-6 lg:p-8 text-center transition-all duration-300 hover:border-cyan-400 hover:scale-105 hover:shadow-2xl hover:shadow-cyan-500/20">
               <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-cyan-600 shadow-lg transition-transform group-hover:scale-110">
                 <Icon name="mdi:calendar-check" class="h-8 w-8 text-white" />
               </div>
-              <div class="mb-2 text-5xl font-black text-white">
+              <div class="mb-2 text-3xl md:text-4xl lg:text-5xl font-black text-white">
                 <AnimatedCounter :end-value="500" suffix="+" />
               </div>
               <div class="mb-1 text-base font-bold text-cyan-300 uppercase tracking-wide">Events Covered</div>
               <p class="text-xs text-slate-400">Across all major sports</p>
             </div>
             
-            <div class="stat-card group rounded-xl border-2 border-blue-500/30 bg-gradient-to-br from-slate-900 to-slate-800 p-8 text-center transition-all duration-300 hover:border-cyan-400 hover:scale-105 hover:shadow-2xl hover:shadow-cyan-500/20">
+            <div class="stat-card group rounded-xl border-2 border-blue-500/30 bg-gradient-to-br from-slate-900 to-slate-800 p-4 md:p-6 lg:p-8 text-center transition-all duration-300 hover:border-cyan-400 hover:scale-105 hover:shadow-2xl hover:shadow-cyan-500/20">
               <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-cyan-600 shadow-lg transition-transform group-hover:scale-110">
                 <Icon name="mdi:account-group" class="h-8 w-8 text-white" />
               </div>
-              <div class="mb-2 text-5xl font-black text-white">
+              <div class="mb-2 text-3xl md:text-4xl lg:text-5xl font-black text-white">
                 <AnimatedCounter :end-value="50" suffix="+" />
               </div>
               <div class="mb-1 text-base font-bold text-cyan-300 uppercase tracking-wide">Teams Served</div>
               <p class="text-xs text-slate-400">Professional & amateur</p>
             </div>
             
-            <div class="stat-card group rounded-xl border-2 border-blue-500/30 bg-gradient-to-br from-slate-900 to-slate-800 p-8 text-center transition-all duration-300 hover:border-cyan-400 hover:scale-105 hover:shadow-2xl hover:shadow-cyan-500/20">
+            <div class="stat-card group rounded-xl border-2 border-blue-500/30 bg-gradient-to-br from-slate-900 to-slate-800 p-4 md:p-6 lg:p-8 text-center transition-all duration-300 hover:border-cyan-400 hover:scale-105 hover:shadow-2xl hover:shadow-cyan-500/20">
               <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-cyan-600 shadow-lg transition-transform group-hover:scale-110">
                 <Icon name="mdi:clock-outline" class="h-8 w-8 text-white" />
               </div>
-              <div class="mb-2 text-5xl font-black text-white">
+              <div class="mb-2 text-3xl md:text-4xl lg:text-5xl font-black text-white">
                 <AnimatedCounter :end-value="10" suffix="+" />
               </div>
               <div class="mb-1 text-base font-bold text-cyan-300 uppercase tracking-wide">Years Experience</div>
               <p class="text-xs text-slate-400">Industry veterans</p>
             </div>
             
-            <div class="stat-card group rounded-xl border-2 border-blue-500/30 bg-gradient-to-br from-slate-900 to-slate-800 p-8 text-center transition-all duration-300 hover:border-cyan-400 hover:scale-105 hover:shadow-2xl hover:shadow-cyan-500/20">
+            <div class="stat-card group rounded-xl border-2 border-blue-500/30 bg-gradient-to-br from-slate-900 to-slate-800 p-4 md:p-6 lg:p-8 text-center transition-all duration-300 hover:border-cyan-400 hover:scale-105 hover:shadow-2xl hover:shadow-cyan-500/20">
               <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-cyan-600 shadow-lg transition-transform group-hover:scale-110">
                 <Icon name="mdi:star" class="h-8 w-8 text-white" />
               </div>
-              <div class="mb-2 text-5xl font-black text-white">
+              <div class="mb-2 text-3xl md:text-4xl lg:text-5xl font-black text-white">
                 <AnimatedCounter :end-value="100" suffix="%" />
               </div>
               <div class="mb-1 text-base font-bold text-cyan-300 uppercase tracking-wide">Satisfaction</div>
@@ -333,7 +333,7 @@
           </div>
         </RevealOnScroll>
 
-        <div class="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+        <div class="grid gap-6 md:gap-8 md:grid-cols-2 lg:grid-cols-3 max-w-7xl mx-auto">
           <RevealOnScroll animation="fade-up" :delay="0">
             <div class="service-card group rounded-2xl border-2 border-blue-500/30 bg-gradient-to-br from-slate-900 to-slate-800 p-8 transition-all duration-300 hover:border-cyan-400 hover:scale-105 hover:shadow-2xl hover:shadow-cyan-500/20">
               <div class="mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-600 shadow-lg transition-transform group-hover:scale-110 group-hover:rotate-3">
@@ -456,17 +456,17 @@
           </div>
         </RevealOnScroll>
 
-        <div class="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+        <div class="grid gap-6 md:gap-8 md:grid-cols-2 lg:grid-cols-3 max-w-7xl mx-auto">
           <RevealOnScroll animation="fade-up" :delay="0">
-            <div class="package-card group relative overflow-hidden rounded-2xl border-2 border-blue-500/30 bg-gradient-to-br from-slate-900 to-slate-800 p-8 transition-all duration-300 hover:border-cyan-400 hover:scale-105 hover:shadow-2xl hover:shadow-cyan-500/20">
+            <div class="package-card group relative overflow-hidden rounded-2xl border-2 border-blue-500/30 bg-gradient-to-br from-slate-900 to-slate-800 p-6 lg:p-8 transition-all duration-300 hover:border-cyan-400 hover:scale-105 hover:shadow-2xl hover:shadow-cyan-500/20">
               <!-- Best For Badge -->
               <div class="absolute left-4 top-4 rounded-full bg-slate-800/80 px-3 py-1 text-xs font-bold text-slate-300 backdrop-blur-sm">
                 BEST FOR SMALL TEAMS
               </div>
               <div class="mb-6 mt-8">
-                <h3 class="mb-2 text-3xl font-black text-white">Package #1 - Basic</h3>
+                <h3 class="mb-2 text-2xl lg:text-3xl font-black text-white">Package #1 - Basic</h3>
                 <div class="mb-4 flex items-baseline gap-2">
-                  <span class="text-5xl font-black text-cyan-400">$80</span>
+                  <span class="text-4xl lg:text-5xl font-black text-cyan-400">$80</span>
                   <span class="text-slate-400">/game</span>
                 </div>
                 <p class="text-slate-300">Professional player introductions</p>
@@ -495,14 +495,14 @@
           </RevealOnScroll>
 
           <RevealOnScroll animation="fade-up" :delay="100">
-            <div class="package-card group relative overflow-hidden rounded-2xl border-2 border-cyan-400 bg-gradient-to-br from-slate-900 to-slate-800 p-8 transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-cyan-500/30">
+            <div class="package-card group relative overflow-hidden rounded-2xl border-2 border-cyan-400 bg-gradient-to-br from-slate-900 to-slate-800 p-6 lg:p-8 transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-cyan-500/30">
               <div class="absolute right-4 top-4 rounded-full bg-gradient-to-r from-blue-600 to-cyan-600 px-4 py-1 text-sm font-bold text-white">
                 MOST POPULAR
               </div>
               <div class="mb-6 mt-8">
-                <h3 class="mb-2 text-3xl font-black text-white">Package #2 - Warmup</h3>
+                <h3 class="mb-2 text-2xl lg:text-3xl font-black text-white">Package #2 - Warmup</h3>
                 <div class="mb-4 flex items-baseline gap-2">
-                  <span class="text-5xl font-black text-cyan-400">$110</span>
+                  <span class="text-4xl lg:text-5xl font-black text-cyan-400">$110</span>
                   <span class="text-slate-400">/game</span>
                 </div>
                 <p class="text-slate-300">Intros + custom warmup mix</p>
@@ -535,15 +535,15 @@
           </RevealOnScroll>
 
           <RevealOnScroll animation="fade-up" :delay="200">
-            <div class="package-card group relative overflow-hidden rounded-2xl border-2 border-blue-500/30 bg-gradient-to-br from-slate-900 to-slate-800 p-8 transition-all duration-300 hover:border-cyan-400 hover:scale-105 hover:shadow-2xl hover:shadow-cyan-500/20">
+            <div class="package-card group relative overflow-hidden rounded-2xl border-2 border-blue-500/30 bg-gradient-to-br from-slate-900 to-slate-800 p-6 lg:p-8 transition-all duration-300 hover:border-cyan-400 hover:scale-105 hover:shadow-2xl hover:shadow-cyan-500/20">
               <!-- Best For Badge -->
               <div class="absolute left-4 top-4 rounded-full bg-slate-800/80 px-3 py-1 text-xs font-bold text-slate-300 backdrop-blur-sm">
                 BEST VALUE
               </div>
               <div class="mb-6 mt-8">
-                <h3 class="mb-2 text-3xl font-black text-white">Package #3 - Ultimate</h3>
+                <h3 class="mb-2 text-2xl lg:text-3xl font-black text-white">Package #3 - Ultimate</h3>
                 <div class="mb-4 flex items-baseline gap-2">
-                  <span class="text-5xl font-black text-cyan-400">$190</span>
+                  <span class="text-4xl lg:text-5xl font-black text-cyan-400">$190</span>
                   <span class="text-slate-400">/game</span>
                 </div>
                 <p class="text-slate-300">Complete game-day audio</p>
@@ -602,7 +602,7 @@
           </div>
         </RevealOnScroll>
 
-        <div class="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+        <div class="grid gap-6 md:gap-8 md:grid-cols-2 lg:grid-cols-3 max-w-7xl mx-auto">
           <RevealOnScroll animation="fade-up" :delay="0">
             <div class="rounded-2xl border-2 border-blue-500/30 bg-gradient-to-br from-slate-900 to-slate-800 p-8 backdrop-filter backdrop-blur-10">
               <div class="mb-4 flex gap-1">
