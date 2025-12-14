@@ -2,6 +2,7 @@
   <div 
     class="video-carousel-item relative overflow-hidden rounded-lg border-2 border-cyan-400/30 bg-slate-900/50 backdrop-blur-sm transition-all duration-300 hover:border-cyan-400 hover:scale-105"
     :class="itemClass"
+    ref="itemRef"
   >
     <!-- Video Container -->
     <div class="relative aspect-video w-full overflow-hidden">
@@ -15,9 +16,18 @@
         <p class="text-xs text-slate-500 mt-1">{{ category || 'Content' }}</p>
       </div>
       
+      <!-- Poster Image (shown before video loads) -->
+      <img
+        v-if="posterSrc && !shouldLoadVideo"
+        :src="posterSrc"
+        :alt="title || 'Video thumbnail'"
+        class="h-full w-full object-cover"
+        loading="lazy"
+      />
+      
       <!-- Loading State -->
       <div
-        v-if="!videoLoaded && !videoError"
+        v-if="shouldLoadVideo && !videoLoaded && !videoError"
         class="absolute inset-0 flex items-center justify-center bg-slate-800"
       >
         <div class="flex flex-col items-center gap-2">
@@ -26,17 +36,17 @@
         </div>
       </div>
       
+      <!-- Video Element (only loads when in viewport) -->
       <video
-        :src="videoSrc"
+        v-if="shouldLoadVideo"
+        ref="videoRef"
         :poster="posterSrc"
         class="h-full w-full object-cover"
         :class="videoClass"
-        autoplay
         loop
         muted
         playsinline
-        preload="metadata"
-        loading="lazy"
+        preload="none"
         @loadeddata="onVideoLoaded"
         @error="onVideoError"
         @canplay="onVideoCanPlay"
@@ -67,7 +77,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 
 interface Props {
   videoSrc: string
@@ -88,10 +98,14 @@ const props = withDefaults(defineProps<Props>(), {
   showInfo: true
 })
 
+const itemRef = ref<HTMLElement | null>(null)
+const videoRef = ref<HTMLVideoElement | null>(null)
 const videoLoaded = ref(false)
 const videoError = ref(false)
+const shouldLoadVideo = ref(false)
 const retryCount = ref(0)
 const maxRetries = 2
+const observer = ref<IntersectionObserver | null>(null)
 
 const isPortrait = computed(() => {
   return props.orientation === 'portrait'
@@ -99,8 +113,8 @@ const isPortrait = computed(() => {
 
 const itemClass = computed(() => {
   return {
-    'opacity-100': videoLoaded.value,
-    'opacity-50': !videoLoaded.value || videoError.value
+    'opacity-100': videoLoaded.value || !shouldLoadVideo.value,
+    'opacity-50': shouldLoadVideo.value && (!videoLoaded.value || videoError.value)
   }
 })
 
@@ -116,26 +130,68 @@ const onVideoLoaded = () => {
 }
 
 const onVideoCanPlay = () => {
-  // Mark as loaded when video can start playing
   videoLoaded.value = true
+  // Start playing once loaded
+  if (videoRef.value) {
+    videoRef.value.play().catch(() => {
+      // Autoplay failed, video will show paused
+    })
+  }
 }
 
 const onVideoError = (error: Event) => {
-  // Attempt retry if under max retries
   if (retryCount.value < maxRetries) {
     retryCount.value++
-    
-    // Force reload by updating src
     const videoElement = (error.target as HTMLVideoElement)
     if (videoElement) {
       setTimeout(() => {
         videoElement.load()
-      }, 1000 * retryCount.value) // Exponential backoff
+      }, 1000 * retryCount.value)
     }
   } else {
     videoError.value = true
   }
 }
+
+onMounted(() => {
+  // Use Intersection Observer to lazy load videos
+  if (itemRef.value) {
+    observer.value = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && !shouldLoadVideo.value) {
+            // Video is in viewport, start loading
+            shouldLoadVideo.value = true
+            
+            // Set video source after DOM update
+            setTimeout(() => {
+              if (videoRef.value) {
+                videoRef.value.src = props.videoSrc
+                videoRef.value.load()
+              }
+            }, 0)
+            
+            // Disconnect observer after loading starts
+            if (observer.value) {
+              observer.value.disconnect()
+            }
+          }
+        })
+      },
+      { 
+        rootMargin: '100px', // Start loading 100px before entering viewport
+        threshold: 0.1 
+      }
+    )
+    observer.value.observe(itemRef.value)
+  }
+})
+
+onUnmounted(() => {
+  if (observer.value) {
+    observer.value.disconnect()
+  }
+})
 </script>
 
 <style scoped>
