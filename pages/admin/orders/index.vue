@@ -67,14 +67,14 @@
           <table class="w-full">
             <thead>
               <tr class="border-b border-white/10">
-                <th class="text-left py-4 px-6 text-slate-400 font-semibold text-xs uppercase">Order ID</th>
-                <th class="text-left py-4 px-6 text-slate-400 font-semibold text-xs uppercase">Customer</th>
-                <th class="text-left py-4 px-6 text-slate-400 font-semibold text-xs uppercase">Email</th>
-                <th class="text-left py-4 px-6 text-slate-400 font-semibold text-xs uppercase">Package</th>
-                <th class="text-left py-4 px-6 text-slate-400 font-semibold text-xs uppercase">Status</th>
-                <th class="text-left py-4 px-6 text-slate-400 font-semibold text-xs uppercase">Files</th>
-                <th class="text-left py-4 px-6 text-slate-400 font-semibold text-xs uppercase">Date</th>
-                <th class="text-left py-4 px-6 text-slate-400 font-semibold text-xs uppercase">Actions</th>
+                <th class="text-left py-4 px-6 text-slate-200 font-semibold text-xs uppercase">Order ID</th>
+                <th class="text-left py-4 px-6 text-slate-200 font-semibold text-xs uppercase">Customer</th>
+                <th class="text-left py-4 px-6 text-slate-200 font-semibold text-xs uppercase">Email</th>
+                <th class="text-left py-4 px-6 text-slate-200 font-semibold text-xs uppercase">Package</th>
+                <th class="text-left py-4 px-6 text-slate-200 font-semibold text-xs uppercase">Status</th>
+                <th class="text-left py-4 px-6 text-slate-200 font-semibold text-xs uppercase">Files</th>
+                <th class="text-left py-4 px-6 text-slate-200 font-semibold text-xs uppercase">Date</th>
+                <th class="text-left py-4 px-6 text-slate-200 font-semibold text-xs uppercase">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -107,7 +107,7 @@
                     <span class="text-sm">{{ getFileCount(order) || 'None' }}</span>
                   </div>
                 </td>
-                <td class="py-4 px-6 text-slate-400">{{ formatDate(order.createdAt) }}</td>
+                <td class="py-4 px-6 text-slate-300">{{ formatDate(order.createdAt) }}</td>
                 <td class="py-4 px-6" @click.stop>
                   <div class="flex items-center gap-2">
                     <button
@@ -211,11 +211,16 @@ const packageOptions = computed(() => [
 ])
 
 const getStatusVariant = (status: string) => {
-  const variants: Record<string, 'brand' | 'warning' | 'success' | 'neutral'> = {
+  const variants: Record<string, 'brand' | 'warning' | 'success' | 'error' | 'neutral'> = {
+    submitted: 'brand',
     pending: 'brand',
+    quoted: 'warning',
     in_progress: 'warning',
-    ready: 'success',
-    completed: 'neutral'
+    paid: 'success',
+    completed: 'success',
+    delivered: 'success',
+    cancelled: 'error',
+    refunded: 'error'
   }
   return variants[status] || 'neutral'
 }
@@ -278,10 +283,9 @@ const getPackageName = (packageId) => {
   return pkg ? pkg.name : 'Unknown'
 }
 
-// File count is no longer calculated from requirementsJson
-// This could be enhanced to query actual file_uploads table if needed
-const getFileCount = (order: Order) => {
-  return 0 // Placeholder - could be enhanced with actual file count query
+// Get file count from order data (now provided by backend)
+const getFileCount = (order: any) => {
+  return order.fileCount || 0
 }
 
 // Edit modal state

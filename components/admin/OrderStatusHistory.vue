@@ -57,7 +57,7 @@
                   {{ formatStatus(item.new_status) }}
                 </span>
               </div>
-              <time class="text-xs text-slate-400" :datetime="item.created_at">
+              <time class="text-xs text-slate-300" :datetime="item.created_at">
                 {{ formatDate(item.created_at) }}
               </time>
             </div>

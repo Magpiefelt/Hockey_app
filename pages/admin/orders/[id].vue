@@ -2,19 +2,19 @@
   <div class="container mx-auto px-4 py-12 max-w-6xl">
     <!-- Breadcrumbs -->
     <nav class="flex items-center gap-2 text-sm mb-6">
-      <NuxtLink to="/admin" class="text-text-tertiary hover:text-text-primary transition-colors">
+      <NuxtLink to="/admin" class="text-slate-400 hover:text-white transition-colors">
         Dashboard
       </NuxtLink>
-      <svg class="w-4 h-4 text-text-tertiary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
       </svg>
-      <NuxtLink to="/admin/orders" class="text-text-tertiary hover:text-text-primary transition-colors">
+      <NuxtLink to="/admin/orders" class="text-slate-400 hover:text-white transition-colors">
         Orders
       </NuxtLink>
-      <svg class="w-4 h-4 text-text-tertiary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
       </svg>
-      <span class="text-text-primary font-medium">Order #{{ orderId }}</span>
+      <span class="text-white font-medium">Order #{{ orderId }}</span>
     </nav>
 
     <!-- Loading State -->
@@ -50,30 +50,30 @@
       </div>
 
       <!-- Customer Information -->
-      <div class="bg-white border border-brand-border rounded-lg p-6">
-        <h2 class="text-2xl font-bold text-text-primary mb-4">Customer Information</h2>
+      <div class="bg-dark-secondary border border-white/10 rounded-lg p-6">
+        <h2 class="text-2xl font-bold text-white mb-4">Customer Information</h2>
         <div class="grid md:grid-cols-2 gap-4">
           <div>
-            <p class="text-sm text-text-tertiary mb-1">Name</p>
-            <p class="text-text-primary font-medium">{{ orderData.order.name }}</p>
+            <p class="text-sm text-slate-400 mb-1">Name</p>
+            <p class="text-white font-medium">{{ orderData.order.name }}</p>
           </div>
           <div>
-            <p class="text-sm text-text-tertiary mb-1">Email</p>
-            <p class="text-text-primary font-medium">{{ orderData.order.emailSnapshot }}</p>
+            <p class="text-sm text-slate-400 mb-1">Email</p>
+            <p class="text-white font-medium">{{ orderData.order.emailSnapshot }}</p>
           </div>
           <div>
-            <p class="text-sm text-text-tertiary mb-1">Package</p>
-            <p class="text-text-primary font-medium">
+            <p class="text-sm text-slate-400 mb-1">Package</p>
+            <p class="text-white font-medium">
               {{ orderData.order.packageId ? getPackageName(orderData.order.packageId) : 'Custom' }}
             </p>
           </div>
           <div>
-            <p class="text-sm text-text-tertiary mb-1">Status</p>
+            <p class="text-sm text-slate-400 mb-1">Status</p>
             <span 
               :class="[
                 'inline-block px-3 py-1 text-xs font-semibold rounded-full',
                 getStatusColor(orderData.order.status),
-                'text-text-primary'
+                'text-white'
               ]"
             >
               {{ getStatusLabel(orderData.order.status) }}
@@ -83,67 +83,67 @@
       </div>
 
       <!-- Customer Notes -->
-      <div v-if="orderData.order.notes" class="bg-white border border-brand-border rounded-lg p-6">
-        <h2 class="text-2xl font-bold text-text-primary mb-4">Customer Notes</h2>
-        <p class="text-text-secondary whitespace-pre-wrap">{{ orderData.order.notes }}</p>
+      <div v-if="orderData.order.notes" class="bg-dark-secondary border border-white/10 rounded-lg p-6">
+        <h2 class="text-2xl font-bold text-white mb-4">Customer Notes</h2>
+        <p class="text-slate-200 whitespace-pre-wrap">{{ orderData.order.notes }}</p>
       </div>
 
       <!-- Form Submission Details -->
-      <div v-if="orderData.order.formData" class="bg-white border border-brand-border rounded-lg p-6">
-        <h2 class="text-2xl font-bold text-text-primary mb-4">Form Details</h2>
+      <div v-if="orderData.order.formData" class="bg-dark-secondary border border-white/10 rounded-lg p-6">
+        <h2 class="text-2xl font-bold text-white mb-4">Form Details</h2>
         <div class="space-y-4">
           <div v-if="orderData.order.formData.teamName">
-            <h3 class="text-lg font-semibold text-text-primary mb-2">Team Information</h3>
-            <p class="text-text-secondary"><strong>Team Name:</strong> {{ orderData.order.formData.teamName }}</p>
+            <h3 class="text-lg font-semibold text-white mb-2">Team Information</h3>
+            <p class="text-slate-200"><strong>Team Name:</strong> {{ orderData.order.formData.teamName }}</p>
           </div>
           
           <div v-if="orderData.order.formData.rosterPlayers">
-            <h3 class="text-lg font-semibold text-text-primary mb-2">Roster</h3>
-            <p class="text-text-secondary mb-2"><strong>Method:</strong> {{ orderData.order.formData.rosterMethod || 'Manual' }}</p>
-            <ul v-if="Array.isArray(orderData.order.formData.rosterPlayers)" class="list-disc list-inside text-text-secondary">
+            <h3 class="text-lg font-semibold text-white mb-2">Roster</h3>
+            <p class="text-slate-200 mb-2"><strong>Method:</strong> {{ orderData.order.formData.rosterMethod || 'Manual' }}</p>
+            <ul v-if="Array.isArray(orderData.order.formData.rosterPlayers)" class="list-disc list-inside text-slate-200">
               <li v-for="(player, idx) in orderData.order.formData.rosterPlayers" :key="idx">{{ player }}</li>
             </ul>
           </div>
           
           <div v-if="orderData.order.formData.introSong">
-            <h3 class="text-lg font-semibold text-text-primary mb-2">Intro Song</h3>
-            <p class="text-text-secondary">{{ formatSongInfo(orderData.order.formData.introSong) }}</p>
+            <h3 class="text-lg font-semibold text-white mb-2">Intro Song</h3>
+            <p class="text-slate-200">{{ formatSongInfo(orderData.order.formData.introSong) }}</p>
           </div>
           
           <div v-if="orderData.order.formData.warmupSongs">
-            <h3 class="text-lg font-semibold text-text-primary mb-2">Warmup Songs</h3>
-            <p class="text-text-secondary">{{ formatSongInfo(orderData.order.formData.warmupSongs) }}</p>
+            <h3 class="text-lg font-semibold text-white mb-2">Warmup Songs</h3>
+            <p class="text-slate-200">{{ formatSongInfo(orderData.order.formData.warmupSongs) }}</p>
           </div>
           
           <div v-if="orderData.order.formData.goalHorn">
-            <h3 class="text-lg font-semibold text-text-primary mb-2">Goal Horn</h3>
-            <p class="text-text-secondary">{{ formatSongInfo(orderData.order.formData.goalHorn) }}</p>
+            <h3 class="text-lg font-semibold text-white mb-2">Goal Horn</h3>
+            <p class="text-slate-200">{{ formatSongInfo(orderData.order.formData.goalHorn) }}</p>
           </div>
           
           <div v-if="orderData.order.formData.goalSong">
-            <h3 class="text-lg font-semibold text-text-primary mb-2">Goal Song</h3>
-            <p class="text-text-secondary">{{ formatSongInfo(orderData.order.formData.goalSong) }}</p>
+            <h3 class="text-lg font-semibold text-white mb-2">Goal Song</h3>
+            <p class="text-slate-200">{{ formatSongInfo(orderData.order.formData.goalSong) }}</p>
           </div>
           
           <div v-if="orderData.order.formData.winSong">
-            <h3 class="text-lg font-semibold text-text-primary mb-2">Win Song</h3>
-            <p class="text-text-secondary">{{ formatSongInfo(orderData.order.formData.winSong) }}</p>
+            <h3 class="text-lg font-semibold text-white mb-2">Win Song</h3>
+            <p class="text-slate-200">{{ formatSongInfo(orderData.order.formData.winSong) }}</p>
           </div>
           
           <div v-if="orderData.order.formData.sponsors">
-            <h3 class="text-lg font-semibold text-text-primary mb-2">Sponsors</h3>
-            <p class="text-text-secondary">{{ formatSongInfo(orderData.order.formData.sponsors) }}</p>
+            <h3 class="text-lg font-semibold text-white mb-2">Sponsors</h3>
+            <p class="text-slate-200">{{ formatSongInfo(orderData.order.formData.sponsors) }}</p>
           </div>
           
           <div v-if="orderData.order.formData.includeSample">
-            <p class="text-text-secondary"><strong>Sample Requested:</strong> Yes</p>
+            <p class="text-slate-200"><strong>Sample Requested:</strong> Yes</p>
           </div>
         </div>
       </div>
 
       <!-- Quote Form -->
       <div class="bg-gradient-to-br from-[#5BA3D0]/10 to-[#4A90BA]/10 border border-brand-primary/50 rounded-lg p-6">
-        <h2 class="text-2xl font-bold text-text-primary mb-4">Quote Management</h2>
+        <h2 class="text-2xl font-bold text-white mb-4">Quote Management</h2>
         <div class="space-y-4">
           <div>
             <label class="block text-sm font-medium text-slate-700 mb-2">Quote Amount ($)</label>
@@ -152,10 +152,10 @@
               type="number"
               step="0.01"
               min="0"
-              class="w-full px-4 py-3 bg-white border border-brand-border rounded-md text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+              class="w-full px-4 py-3 bg-dark-secondary border border-white/10 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
               placeholder="0.00"
             />
-            <p class="text-text-tertiary text-sm mt-1">
+            <p class="text-slate-400 text-sm mt-1">
               Current quote: {{ orderData.order.quotedAmount ? formatPrice(orderData.order.quotedAmount) : 'Not set' }}
             </p>
           </div>
@@ -164,7 +164,7 @@
             <textarea
               v-model="quoteForm.notes"
               rows="4"
-              class="w-full px-4 py-3 bg-white border border-brand-border rounded-md text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+              class="w-full px-4 py-3 bg-dark-secondary border border-white/10 rounded-md text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
               placeholder="Add any notes or details about the quote..."
             />
           </div>
@@ -180,19 +180,19 @@
 
       <!-- Payment Status -->
       <div v-if="orderData.payment" class="bg-green-500/10 border border-green-500/30 rounded-lg p-6">
-        <h2 class="text-2xl font-bold text-text-primary mb-4">Payment Received</h2>
+        <h2 class="text-2xl font-bold text-white mb-4">Payment Received</h2>
         <div class="grid md:grid-cols-3 gap-4">
           <div>
-            <p class="text-sm text-text-tertiary mb-1">Amount</p>
-            <p class="text-text-primary font-medium">{{ formatPrice(orderData.payment.amount) }}</p>
+            <p class="text-sm text-slate-400 mb-1">Amount</p>
+            <p class="text-white font-medium">{{ formatPrice(orderData.payment.amount) }}</p>
           </div>
           <div>
-            <p class="text-sm text-text-tertiary mb-1">Stripe Payment ID</p>
-            <p class="text-text-primary font-medium text-sm">{{ orderData.payment.stripePaymentId }}</p>
+            <p class="text-sm text-slate-400 mb-1">Stripe Payment ID</p>
+            <p class="text-white font-medium text-sm">{{ orderData.payment.stripePaymentId }}</p>
           </div>
           <div>
-            <p class="text-sm text-text-tertiary mb-1">Date</p>
-            <p class="text-text-primary font-medium">{{ formatDateTime(orderData.payment.createdAt) }}</p>
+            <p class="text-sm text-slate-400 mb-1">Date</p>
+            <p class="text-white font-medium">{{ formatDateTime(orderData.payment.createdAt) }}</p>
           </div>
         </div>
       </div>
@@ -204,9 +204,9 @@
       </div>
 
       <!-- File Upload for Deliverables -->
-      <div class="bg-white border border-brand-border rounded-lg p-6">
-        <h2 class="text-2xl font-bold text-text-primary mb-4">Upload Deliverables</h2>
-        <div class="border-2 border-dashed border-brand-border rounded-md p-6 text-center hover:border-brand-primary transition-colors mb-4">
+      <div class="bg-dark-secondary border border-white/10 rounded-lg p-6">
+        <h2 class="text-2xl font-bold text-white mb-4">Upload Deliverables</h2>
+        <div class="border-2 border-dashed border-white/10 rounded-md p-6 text-center hover:border-brand-primary transition-colors mb-4">
           <input
             ref="deliverableInputRef"
             type="file"
@@ -224,7 +224,7 @@
             </svg>
             Choose Files to Upload
           </button>
-          <p class="text-text-tertiary text-sm mt-2">Upload completed work for the customer</p>
+          <p class="text-slate-400 text-sm mt-2">Upload completed work for the customer</p>
         </div>
 
         <!-- Deliverable Upload Queue -->
@@ -232,7 +232,7 @@
           <div
             v-for="(file, index) in deliverableQueue"
             :key="index"
-            class="flex items-center justify-between p-3 bg-slate-50 border border-brand-border rounded-md"
+            class="flex items-center justify-between p-3 bg-slate-50 border border-white/10 rounded-md"
           >
             <div class="flex items-center gap-3 flex-1 min-w-0">
               <div v-if="file.uploading" class="animate-spin h-5 w-5 text-brand-primary">
@@ -244,19 +244,19 @@
               <svg v-else-if="file.uploaded" class="h-5 w-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <svg v-else class="h-5 w-5 text-text-tertiary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg v-else class="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
               </svg>
               <div class="flex-1 min-w-0">
-                <p class="text-text-primary text-sm truncate">{{ file.file.name }}</p>
-                <p class="text-text-tertiary text-xs">{{ formatFileSize(file.file.size) }}</p>
+                <p class="text-white text-sm truncate">{{ file.file.name }}</p>
+                <p class="text-slate-400 text-xs">{{ formatFileSize(file.file.size) }}</p>
               </div>
             </div>
             <button
               v-if="!file.uploading && !file.uploaded"
               type="button"
               @click="removeDeliverable(index)"
-              class="ml-2 p-1 text-text-tertiary hover:text-red-500 transition-colors"
+              class="ml-2 p-1 text-slate-400 hover:text-red-500 transition-colors"
             >
               <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -275,25 +275,25 @@
       </div>
 
       <!-- Files List -->
-      <div class="bg-white border border-brand-border rounded-lg p-6">
-        <h2 class="text-2xl font-bold text-text-primary mb-4">Files</h2>
+      <div class="bg-dark-secondary border border-white/10 rounded-lg p-6">
+        <h2 class="text-2xl font-bold text-white mb-4">Files</h2>
         
         <!-- Customer Uploads -->
         <div v-if="uploadedFiles.length > 0" class="mb-6">
-          <h3 class="text-lg font-semibold text-text-primary mb-3">Customer Uploads</h3>
+          <h3 class="text-lg font-semibold text-white mb-3">Customer Uploads</h3>
           <div class="space-y-2">
             <div
               v-for="file in uploadedFiles"
               :key="file.id"
-              class="flex items-center justify-between p-3 bg-slate-50 border border-brand-border rounded-md"
+              class="flex items-center justify-between p-3 bg-slate-50 border border-white/10 rounded-md"
             >
               <div class="flex items-center gap-3 flex-1 min-w-0">
-                <svg class="h-5 w-5 text-text-tertiary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="h-5 w-5 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                 </svg>
                 <div class="flex-1 min-w-0">
-                  <p class="text-text-primary text-sm truncate">{{ file.filename }}</p>
-                  <p class="text-text-tertiary text-xs">{{ formatFileSize(file.fileSize) }}</p>
+                  <p class="text-white text-sm truncate">{{ file.filename }}</p>
+                  <p class="text-slate-400 text-xs">{{ formatFileSize(file.fileSize) }}</p>
                 </div>
               </div>
             </div>
@@ -302,20 +302,20 @@
 
         <!-- Deliverables -->
         <div v-if="deliverableFiles.length > 0">
-          <h3 class="text-lg font-semibold text-text-primary mb-3">Deliverables</h3>
+          <h3 class="text-lg font-semibold text-white mb-3">Deliverables</h3>
           <div class="space-y-2">
             <div
               v-for="file in deliverableFiles"
               :key="file.id"
-              class="flex items-center justify-between p-3 bg-slate-50 border border-brand-border rounded-md"
+              class="flex items-center justify-between p-3 bg-slate-50 border border-white/10 rounded-md"
             >
               <div class="flex items-center gap-3 flex-1 min-w-0">
                 <svg class="h-5 w-5 text-brand-primary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                 </svg>
                 <div class="flex-1 min-w-0">
-                  <p class="text-text-primary text-sm truncate">{{ file.filename }}</p>
-                  <p class="text-text-tertiary text-xs">{{ formatFileSize(file.fileSize) }} • {{ formatDateTime(file.createdAt) }}</p>
+                  <p class="text-white text-sm truncate">{{ file.filename }}</p>
+                  <p class="text-slate-400 text-xs">{{ formatFileSize(file.fileSize) }} • {{ formatDateTime(file.createdAt) }}</p>
                 </div>
               </div>
             </div>
@@ -323,7 +323,7 @@
         </div>
 
         <!-- No Files -->
-        <div v-if="uploadedFiles.length === 0 && deliverableFiles.length === 0" class="text-center py-8 text-text-tertiary">
+        <div v-if="uploadedFiles.length === 0 && deliverableFiles.length === 0" class="text-center py-8 text-slate-400">
           <p>No files attached to this order</p>
         </div>
       </div>

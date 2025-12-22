@@ -111,10 +111,22 @@ export const adminRouter = router({
             qr.service_type, qr.sport_type, qr.quoted_amount, qr.total_amount,
             qr.notes, qr.created_at, qr.updated_at,
             p.slug as package_id, COALESCE(p.name, qr.service_type) as service_name,
-            fs.team_name
+            fs.team_name,
+            COALESCE(file_counts.total_files, 0) as file_count,
+            COALESCE(file_counts.upload_count, 0) as upload_count,
+            COALESCE(file_counts.deliverable_count, 0) as deliverable_count
           FROM quote_requests qr
           LEFT JOIN packages p ON qr.package_id = p.id
           LEFT JOIN form_submissions fs ON qr.id = fs.quote_id
+          LEFT JOIN (
+            SELECT 
+              quote_id,
+              COUNT(*) as total_files,
+              COUNT(*) FILTER (WHERE kind = 'upload') as upload_count,
+              COUNT(*) FILTER (WHERE kind = 'deliverable') as deliverable_count
+            FROM file_uploads
+            GROUP BY quote_id
+          ) file_counts ON qr.id = file_counts.quote_id
           WHERE 1=1
         `
         
@@ -178,7 +190,10 @@ export const adminRouter = router({
           teamName: row.team_name,
           eventDate: row.event_date?.toISOString(),
           createdAt: row.created_at.toISOString(),
-          updatedAt: row.updated_at?.toISOString()
+          updatedAt: row.updated_at?.toISOString(),
+          fileCount: parseInt(row.file_count) || 0,
+          uploadCount: parseInt(row.upload_count) || 0,
+          deliverableCount: parseInt(row.deliverable_count) || 0
         }))
       }),
 
