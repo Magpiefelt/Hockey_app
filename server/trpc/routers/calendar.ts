@@ -65,6 +65,15 @@ export const calendarRouter = router({
       }
 
       try {
+        console.log('Adding override with data:', {
+          dateFrom: input.dateFrom,
+          dateTo: input.dateTo || input.dateFrom,
+          reason: input.reason,
+          description: input.description,
+          userId: user.userId,
+          userRole: user.role
+        })
+
         // Using actual production column names: start_date, end_date, is_available, notes
         const result = await query<{
           id: number
@@ -92,6 +101,8 @@ export const calendarRouter = router({
           user.userId
         ])
         
+        console.log('Override added successfully:', result.rows[0])
+        
         // Map to expected frontend format
         const row = result.rows[0]
         return {
@@ -102,8 +113,45 @@ export const calendarRouter = router({
           description: row.notes,
           created_at: row.created_at
         }
-      } catch (error) {
-        console.error('Error adding override:', error)
+      } catch (error: any) {
+        console.error('Error adding override - Full error:', {
+          message: error.message,
+          code: error.code,
+          detail: error.detail,
+          hint: error.hint,
+          constraint: error.constraint,
+          table: error.table,
+          column: error.column,
+          stack: error.stack
+        })
+        
+        // Provide more specific error messages
+        if (error.code === '23503') {
+          // Foreign key violation
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'Invalid user reference. Please try logging out and back in.'
+          })
+        } else if (error.code === '23505') {
+          // Unique violation
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'This date range is already blocked.'
+          })
+        } else if (error.code === '22007' || error.code === '22008') {
+          // Invalid date format
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'Invalid date format. Please try again.'
+          })
+        } else if (error.code === '42703') {
+          // Undefined column
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: 'Database schema error. Please contact support.'
+          })
+        }
+        
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
           message: 'Failed to add date override'
