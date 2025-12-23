@@ -98,7 +98,7 @@
         </div>
 
         <!-- Quick Actions -->
-        <div class="grid md:grid-cols-3 gap-6">
+        <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
           <NuxtLink to="/admin/orders" class="card p-6 hover:border-brand-500/30 transition-colors">
             <Icon name="mdi:file-document-multiple" class="w-8 h-8 text-brand-500 mb-3" />
             <h3 class="text-lg font-bold text-white mb-1">Manage Orders</h3>
@@ -115,6 +115,12 @@
             <Icon name="mdi:chart-line" class="w-8 h-8 text-success-500 mb-3" />
             <h3 class="text-lg font-bold text-white mb-1">Finance Reports</h3>
             <p class="text-sm text-slate-400">View revenue and analytics</p>
+          </NuxtLink>
+
+          <NuxtLink to="/admin/calendar" class="card p-6 hover:border-cyan-500/30 transition-colors">
+            <Icon name="mdi:calendar-edit" class="w-8 h-8 text-cyan-500 mb-3" />
+            <h3 class="text-lg font-bold text-white mb-1">Manage Calendar</h3>
+            <p class="text-sm text-slate-400">Block dates and manage availability</p>
           </NuxtLink>
         </div>
       </div>
@@ -164,7 +170,7 @@ const fetchDashboardData = async () => {
     recentOrders.value = ordersData
     
   } catch (error) {
-    // Error logged: 'Failed to fetch dashboard data:', error)
+    console.error('Failed to fetch dashboard data:', error)
   } finally {
     loading.value = false
   }

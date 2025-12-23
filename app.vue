@@ -3,6 +3,7 @@
     <AppHeader />
     <NuxtPage />
     <Footer />
+    <UiToastContainer />
   </div>
 </template>
 

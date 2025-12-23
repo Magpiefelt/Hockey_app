@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { publicProcedure, protectedProcedure, router } from '../trpc'
+import { publicProcedure, protectedProcedure, adminProcedure, router } from '../trpc'
 import { TRPCError } from '@trpc/server'
 
 export const calendarRouter = router({
@@ -10,14 +10,19 @@ export const calendarRouter = router({
       
       try {
         // Get all active overrides and confirmed quote dates
+        // For overrides, we need to generate all dates in the range
         const result = await db.query(`
           SELECT DISTINCT date 
           FROM (
-            -- Manual overrides
-            SELECT date_from as date
+            -- Manual overrides (generate all dates in range)
+            SELECT generate_series(
+              date_from,
+              date_to,
+              '1 day'::interval
+            )::date as date
             FROM availability_overrides
             WHERE is_active = true
-              AND date_from >= CURRENT_DATE
+              AND date_to >= CURRENT_DATE
             
             UNION
             
@@ -42,7 +47,7 @@ export const calendarRouter = router({
     }),
 
   // Admin: Add date override
-  addOverride: protectedProcedure
+  addOverride: adminProcedure
     .input(z.object({
       dateFrom: z.string(),
       dateTo: z.string().optional(),
@@ -89,7 +94,7 @@ export const calendarRouter = router({
     }),
 
   // Admin: Remove date override
-  removeOverride: protectedProcedure
+  removeOverride: adminProcedure
     .input(z.object({
       id: z.number()
     }))
@@ -122,7 +127,7 @@ export const calendarRouter = router({
     }),
 
   // Admin: Get all overrides
-  getOverrides: protectedProcedure
+  getOverrides: adminProcedure
     .query(async ({ ctx }) => {
       const { db, user } = ctx
       
