@@ -18,7 +18,58 @@
 
       <!-- Dashboard Content -->
       <div v-else class="space-y-6">
-        <!-- Stats Cards -->
+        <!-- Financial Summary -->
+        <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <!-- Total Revenue -->
+          <div class="card p-6 bg-gradient-to-br from-brand-500/10 to-brand-600/5 border-brand-500/20">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-sm font-medium text-slate-400 uppercase">Total Revenue</h3>
+              <svg class="w-6 h-6 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <p class="text-3xl font-bold text-white">{{ formatPrice(financeStats.totalRevenue) }}</p>
+            <p class="text-sm text-brand-400 mt-1">All time</p>
+          </div>
+
+          <!-- MTD Revenue -->
+          <div class="card p-6 bg-gradient-to-br from-green-500/10 to-green-600/5 border-green-500/20">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-sm font-medium text-slate-400 uppercase">MTD Revenue</h3>
+              <svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              </svg>
+            </div>
+            <p class="text-3xl font-bold text-white">{{ formatPrice(financeStats.monthlyRevenue) }}</p>
+            <p class="text-sm text-green-400 mt-1">This month</p>
+          </div>
+
+          <!-- Pending Payments -->
+          <div class="card p-6 bg-gradient-to-br from-yellow-500/10 to-yellow-600/5 border-yellow-500/20">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-sm font-medium text-slate-400 uppercase">Pending Payments</h3>
+              <svg class="w-6 h-6 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <p class="text-3xl font-bold text-white">{{ formatPrice(financeStats.pendingPayments) }}</p>
+            <p class="text-sm text-yellow-400 mt-1">Awaiting payment</p>
+          </div>
+
+          <!-- Avg Order Value -->
+          <div class="card p-6 bg-gradient-to-br from-purple-500/10 to-purple-600/5 border-purple-500/20">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-sm font-medium text-slate-400 uppercase">Avg Order Value</h3>
+              <svg class="w-6 h-6 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <p class="text-3xl font-bold text-white">{{ formatPrice(avgOrderValue) }}</p>
+            <p class="text-sm text-purple-400 mt-1">Per order</p>
+          </div>
+        </div>
+
+        <!-- Order Stats Cards -->
         <div class="grid md:grid-cols-4 gap-6">
           <!-- Total Orders -->
           <div class="card p-6">
@@ -143,7 +194,29 @@ const stats = ref({
   inProgressOrders: 0,
   completedOrders: 0
 })
+const financeStats = ref({
+  totalRevenue: 0,
+  monthlyRevenue: 0,
+  pendingPayments: 0,
+  paidOrderCount: 0
+})
 const recentOrders = ref<any[]>([])
+
+const avgOrderValue = computed(() => {
+  if (financeStats.value.paidOrderCount > 0) {
+    return Math.round(financeStats.value.totalRevenue / financeStats.value.paidOrderCount)
+  }
+  return 0
+})
+
+const formatPrice = (amount: number | null) => {
+  if (amount === null || amount === undefined) return '$0'
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0
+  }).format(amount)
+}
 
 const getStatusVariant = (status: string) => {
   const variants: Record<string, 'brand' | 'warning' | 'success' | 'neutral'> = {
@@ -164,6 +237,20 @@ const fetchDashboardData = async () => {
     // Fetch stats
     const statsData = await trpc.admin.orders.stats.query()
     stats.value = statsData
+    
+    // Fetch finance stats
+    try {
+      const financeData = await trpc.admin.finance.stats.query()
+      financeStats.value = {
+        totalRevenue: financeData.totalRevenue,
+        monthlyRevenue: financeData.monthlyRevenue,
+        pendingPayments: financeData.pendingPayments,
+        paidOrderCount: financeData.paidOrderCount
+      }
+    } catch (financeError) {
+      console.error('Failed to fetch finance data:', financeError)
+      // Continue without finance data - don't block the dashboard
+    }
     
     // Fetch recent orders (limit 5)
     const ordersData = await trpc.admin.orders.list.query({ limit: 5 })

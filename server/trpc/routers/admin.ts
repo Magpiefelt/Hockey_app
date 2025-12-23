@@ -243,11 +243,42 @@ export const adminRouter = router({
           [orderId]
         )
         
+        // Get payment information
+        const paymentResult = await query(
+          `SELECT 
+            pay.id,
+            pay.stripe_payment_id,
+            pay.amount_cents,
+            pay.status,
+            pay.paid_at,
+            pay.created_at,
+            inv.invoice_url,
+            inv.status as invoice_status
+           FROM invoices inv
+           LEFT JOIN payments pay ON inv.id = pay.invoice_id
+           WHERE inv.quote_id = $1
+           ORDER BY inv.created_at DESC
+           LIMIT 1`,
+          [orderId]
+        )
+        
+        const paymentData = paymentResult.rows.length > 0 && paymentResult.rows[0].id ? {
+          id: paymentResult.rows[0].id,
+          stripePaymentId: paymentResult.rows[0].stripe_payment_id,
+          amount: paymentResult.rows[0].amount_cents,
+          status: paymentResult.rows[0].status,
+          paidAt: paymentResult.rows[0].paid_at?.toISOString(),
+          createdAt: paymentResult.rows[0].created_at?.toISOString(),
+          invoiceUrl: paymentResult.rows[0].invoice_url,
+          invoiceStatus: paymentResult.rows[0].invoice_status
+        } : null
+        
         return {
           order: {
             id: order.id.toString(),
             name: order.name,
             email: order.email,
+            emailSnapshot: order.email,
             phone: order.phone,
             organization: order.organization,
             packageId: order.package_id,
@@ -275,6 +306,7 @@ export const adminRouter = router({
               audioFiles: order.audio_files
             } : null
           },
+          payment: paymentData,
           files: filesResult.rows.map(file => ({
             id: file.id.toString(),
             filename: file.file_name,
