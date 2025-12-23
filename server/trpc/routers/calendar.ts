@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { publicProcedure, adminProcedure, router } from '../trpc'
 import { TRPCError } from '@trpc/server'
-import { queryMany, executeQuery } from '../../utils/database'
+import { query } from '../../db/connection'
 
 export const calendarRouter = router({
   // Public: Get all unavailable dates
@@ -10,7 +10,7 @@ export const calendarRouter = router({
       try {
         // Get all active overrides and confirmed quote dates
         // For overrides, we need to generate all dates in the range
-        const unavailable = await queryMany<{ date: string }>(`
+        const result = await query<{ date: string }>(`
           SELECT DISTINCT date 
           FROM (
             -- Manual overrides (generate all dates in range)
@@ -35,7 +35,7 @@ export const calendarRouter = router({
           ORDER BY date ASC
         `)
         
-        return unavailable.map((row) => row.date)
+        return result.rows.map((row) => row.date)
       } catch (error) {
         console.error('Error fetching unavailable dates:', error)
         throw new TRPCError({
@@ -64,7 +64,7 @@ export const calendarRouter = router({
       }
 
       try {
-        const result = await executeQuery<{
+        const result = await query<{
           id: number
           date_from: string
           date_to: string
@@ -115,7 +115,7 @@ export const calendarRouter = router({
       }
 
       try {
-        await executeQuery(`
+        await query(`
           UPDATE availability_overrides
           SET is_active = false,
               updated_at = CURRENT_TIMESTAMP
@@ -145,7 +145,7 @@ export const calendarRouter = router({
       }
 
       try {
-        const overrides = await queryMany<{
+        const result = await query<{
           id: number
           date_from: string
           date_to: string
@@ -170,7 +170,7 @@ export const calendarRouter = router({
           ORDER BY ao.date_from ASC
         `)
         
-        return overrides
+        return result.rows
       } catch (error) {
         console.error('Error fetching overrides:', error)
         throw new TRPCError({

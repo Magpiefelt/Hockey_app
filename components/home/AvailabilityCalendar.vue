@@ -77,14 +77,14 @@ import { ref, onMounted } from 'vue'
 import { VueDatePicker } from '@vuepic/vue-datepicker'
 import '@vuepic/vue-datepicker/dist/main.css'
 
+const trpc = useTrpc()
 const selectedDate = ref<Date | null>(null)
 const unavailableDates = ref<Date[]>([])
 
 // Fetch unavailable dates from API
 onMounted(async () => {
   try {
-    const { $trpc } = useNuxtApp()
-    const dates = await $trpc.calendar.getUnavailableDates.query()
+    const dates = await trpc.calendar.getUnavailableDates.query()
     unavailableDates.value = dates.map((dateStr: string) => new Date(dateStr))
   } catch (error) {
     console.error('Failed to load unavailable dates:', error)
