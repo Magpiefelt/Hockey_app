@@ -170,6 +170,9 @@ interface Emits {
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
+// Move tRPC composable to top level (FIX: was inside handleSubmit function)
+const trpc = useTrpc()
+
 const formData = reactive({
   quotedAmount: props.order.quotedAmount || null,
   totalAmount: props.order.totalAmount || null,
@@ -212,8 +215,6 @@ async function handleSubmit() {
   error.value = ''
 
   try {
-    const trpc = useTrpc()
-    
     await trpc.admin.orders.update.mutate({
       id: props.order.id,
       quotedAmount: formData.quotedAmount,

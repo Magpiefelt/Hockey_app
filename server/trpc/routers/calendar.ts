@@ -1,17 +1,16 @@
 import { z } from 'zod'
-import { publicProcedure, protectedProcedure, adminProcedure, router } from '../trpc'
+import { publicProcedure, adminProcedure, router } from '../trpc'
 import { TRPCError } from '@trpc/server'
+import { queryMany, executeQuery } from '../../utils/database'
 
 export const calendarRouter = router({
   // Public: Get all unavailable dates
   getUnavailableDates: publicProcedure
     .query(async ({ ctx }) => {
-      const { db } = ctx
-      
       try {
         // Get all active overrides and confirmed quote dates
         // For overrides, we need to generate all dates in the range
-        const result = await db.query(`
+        const unavailable = await queryMany<{ date: string }>(`
           SELECT DISTINCT date 
           FROM (
             -- Manual overrides (generate all dates in range)
@@ -36,7 +35,7 @@ export const calendarRouter = router({
           ORDER BY date ASC
         `)
         
-        return result.rows.map((row: any) => row.date)
+        return unavailable.map((row) => row.date)
       } catch (error) {
         console.error('Error fetching unavailable dates:', error)
         throw new TRPCError({
@@ -55,7 +54,7 @@ export const calendarRouter = router({
       description: z.string().optional()
     }))
     .mutation(async ({ ctx, input }) => {
-      const { db, user } = ctx
+      const { user } = ctx
       
       if (!user) {
         throw new TRPCError({
@@ -65,7 +64,14 @@ export const calendarRouter = router({
       }
 
       try {
-        const result = await db.query(`
+        const result = await executeQuery<{
+          id: number
+          date_from: string
+          date_to: string
+          reason: string
+          description: string | null
+          created_at: string
+        }>(`
           INSERT INTO availability_overrides (
             date_from,
             date_to,
@@ -80,7 +86,7 @@ export const calendarRouter = router({
           input.dateTo || input.dateFrom,
           input.reason,
           input.description || null,
-          user.id
+          user.userId
         ])
         
         return result.rows[0]
@@ -99,7 +105,7 @@ export const calendarRouter = router({
       id: z.number()
     }))
     .mutation(async ({ ctx, input }) => {
-      const { db, user } = ctx
+      const { user } = ctx
       
       if (!user) {
         throw new TRPCError({
@@ -109,7 +115,7 @@ export const calendarRouter = router({
       }
 
       try {
-        await db.query(`
+        await executeQuery(`
           UPDATE availability_overrides
           SET is_active = false,
               updated_at = CURRENT_TIMESTAMP
@@ -129,7 +135,7 @@ export const calendarRouter = router({
   // Admin: Get all overrides
   getOverrides: adminProcedure
     .query(async ({ ctx }) => {
-      const { db, user } = ctx
+      const { user } = ctx
       
       if (!user) {
         throw new TRPCError({
@@ -139,7 +145,16 @@ export const calendarRouter = router({
       }
 
       try {
-        const result = await db.query(`
+        const overrides = await queryMany<{
+          id: number
+          date_from: string
+          date_to: string
+          reason: string
+          description: string | null
+          is_active: boolean
+          created_at: string
+          created_by_name: string | null
+        }>(`
           SELECT 
             ao.id,
             ao.date_from,
@@ -155,7 +170,7 @@ export const calendarRouter = router({
           ORDER BY ao.date_from ASC
         `)
         
-        return result.rows
+        return overrides
       } catch (error) {
         console.error('Error fetching overrides:', error)
         throw new TRPCError({

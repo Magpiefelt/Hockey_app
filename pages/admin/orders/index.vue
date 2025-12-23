@@ -161,7 +161,7 @@
     </div>
 
     <!-- Edit Modal -->
-    <OrderEditModal
+    <AdminOrderEditModal
       v-if="editingOrder"
       v-model="showEditModal"
       :order="editingOrder"
@@ -247,6 +247,16 @@ const filteredOrders = computed(() => {
   return result
 })
 
+const fetchPackages = async () => {
+  try {
+    const response = await trpc.packages.getAll.query()
+    packages.value = response
+  } catch (err: any) {
+    console.error('Failed to load packages:', err)
+    // Don't show error to user, just log it - packages are not critical
+  }
+}
+
 const fetchOrders = async () => {
   loading.value = true
   error.value = null
@@ -264,7 +274,6 @@ const fetchOrders = async () => {
     const { handleTrpcError } = await import('~/composables/useTrpc')
     error.value = handleTrpcError(err)
     showError('Failed to load orders')
-    // Error logged: 'Error loading orders:', err)
   } finally {
     loading.value = false
   }
@@ -279,6 +288,7 @@ const resetFilters = () => {
 }
 
 const getPackageName = (packageId) => {
+  if (!packageId) return 'No Package'
   const pkg = packages.value.find(p => p.id === packageId)
   return pkg ? pkg.name : 'Unknown'
 }
@@ -311,8 +321,12 @@ function handleOrderSaved(data: any) {
   fetchOrders()
 }
 
-onMounted(() => {
-  fetchOrders()
+onMounted(async () => {
+  // Fetch both packages and orders in parallel
+  await Promise.all([
+    fetchPackages(),
+    fetchOrders()
+  ])
 })
 
 useHead({
