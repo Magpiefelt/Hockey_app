@@ -37,8 +37,19 @@ export const calendarRouter = router({
         `)
         
         return result.rows.map((row) => row.date)
-      } catch (error) {
-        console.error('Error fetching unavailable dates:', error)
+      } catch (error: any) {
+        console.error('Error fetching unavailable dates:', {
+          message: error.message,
+          code: error.code,
+          detail: error.detail
+        })
+        
+        // If table doesn't exist or columns are wrong, return empty array instead of crashing
+        if (error.code === '42P01' || error.code === '42703') {
+          console.warn('availability_overrides table or columns not found, returning empty unavailable dates')
+          return []
+        }
+        
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
           message: 'Failed to fetch unavailable dates'
