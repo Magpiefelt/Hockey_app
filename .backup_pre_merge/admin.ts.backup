@@ -604,14 +604,6 @@ export const adminRouter = router({
         )
         const pendingPayments = parseInt(pendingResult.rows[0].revenue)
         
-        // Paid order count (for average order value calculation)
-        const orderCountResult = await query(
-          `SELECT COUNT(*) as count 
-           FROM quote_requests 
-           WHERE status IN ('paid', 'completed', 'delivered')`
-        )
-        const paidOrderCount = parseInt(orderCountResult.rows[0].count)
-        
         // Revenue by service
         const serviceResult = await query(
           `SELECT 
@@ -624,42 +616,13 @@ export const adminRouter = router({
           ORDER BY revenue DESC`
         )
         
-        // Recent transactions (last 10 successful payments)
-        const transactionsResult = await query(
-          `SELECT 
-            p.id,
-            p.paid_at as date,
-            qr.contact_name as customer_name,
-            COALESCE(pkg.name, qr.service_type, 'Other') as package_name,
-            p.amount_cents as amount,
-            p.status,
-            qr.id as order_id
-          FROM payments p
-          INNER JOIN invoices i ON p.invoice_id = i.id
-          INNER JOIN quote_requests qr ON i.quote_id = qr.id
-          LEFT JOIN packages pkg ON qr.package_id = pkg.id
-          WHERE p.status = 'succeeded'
-          ORDER BY p.paid_at DESC
-          LIMIT 10`
-        )
-        
         return {
           totalRevenue,
           monthlyRevenue,
           pendingPayments,
-          paidOrderCount,
           revenueByService: serviceResult.rows.map(row => ({
             service: row.service,
             revenue: parseInt(row.revenue)
-          })),
-          recentTransactions: transactionsResult.rows.map(row => ({
-            id: row.id,
-            date: row.date,
-            customerName: row.customer_name,
-            packageName: row.package_name,
-            amount: row.amount,
-            status: row.status,
-            orderId: row.order_id
           }))
         }
       })

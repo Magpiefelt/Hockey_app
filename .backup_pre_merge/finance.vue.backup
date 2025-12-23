@@ -113,11 +113,7 @@
         <div class="card p-8">
           <div class="flex items-center justify-between mb-6">
             <h2 class="text-2xl font-bold text-white">Recent Transactions</h2>
-            <button 
-              v-if="metrics.recentTransactions.length > 0"
-              @click="navigateToOrders"
-              class="text-brand-400 hover:text-brand-300 font-medium transition-colors"
-            >
+            <button class="text-brand-400 hover:text-brand-300 font-medium transition-colors">
               View all →
             </button>
           </div>
@@ -135,7 +131,6 @@
                   <th class="text-left py-3 px-4 text-slate-200 font-semibold text-sm uppercase">Package</th>
                   <th class="text-left py-3 px-4 text-slate-200 font-semibold text-sm uppercase">Amount</th>
                   <th class="text-left py-3 px-4 text-slate-200 font-semibold text-sm uppercase">Status</th>
-                  <th class="text-left py-3 px-4 text-slate-200 font-semibold text-sm uppercase">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -147,26 +142,18 @@
                   <td class="py-4 px-4 text-slate-400">{{ formatDate(transaction.date) }}</td>
                   <td class="py-4 px-4 text-white">{{ transaction.customerName }}</td>
                   <td class="py-4 px-4 text-slate-300">{{ transaction.packageName }}</td>
-                  <td class="py-4 px-4 text-white font-semibold">{{ formatCurrency(transaction.amount) }}</td>
+                  <td class="py-4 px-4 text-white font-semibold">{{ formatPrice(transaction.amount) }}</td>
                   <td class="py-4 px-4">
                     <span 
                       class="px-3 py-1 rounded-full text-xs font-semibold"
                       :class="{
-                        'bg-green-500/20 text-green-400': transaction.status === 'succeeded',
+                        'bg-green-500/20 text-green-400': transaction.status === 'paid',
                         'bg-yellow-500/20 text-yellow-400': transaction.status === 'pending',
                         'bg-red-500/20 text-red-400': transaction.status === 'failed'
                       }"
                     >
                       {{ transaction.status.toUpperCase() }}
                     </span>
-                  </td>
-                  <td class="py-4 px-4">
-                    <NuxtLink 
-                      :to="`/admin/orders/${transaction.orderId}`"
-                      class="text-brand-400 hover:text-brand-300 text-sm font-medium transition-colors"
-                    >
-                      View Order →
-                    </NuxtLink>
                   </td>
                 </tr>
               </tbody>
@@ -186,9 +173,7 @@ definePageMeta({
 })
 
 const { showError } = useNotification()
-const { formatDate } = useUtils()
 const trpc = useTrpc()
-const router = useRouter()
 
 const loading = ref(true)
 const error = ref<string | null>(null)
@@ -200,14 +185,14 @@ const metrics = computed(() => {
   return {
     totalRevenue: financeData.value.totalRevenue,
     mtdRevenue: financeData.value.monthlyRevenue,
-    avgOrderValue: financeData.value.paidOrderCount > 0 ? Math.round(financeData.value.totalRevenue / financeData.value.paidOrderCount) : 0,
+    avgOrderValue: financeData.value.totalRevenue > 0 ? Math.round(financeData.value.totalRevenue / 10) : 0,
     pendingPayments: financeData.value.pendingPayments,
     revenueByPackage: financeData.value.revenueByService.map((item, idx) => ({
       name: item.service,
       revenue: item.revenue,
       color: ['bg-brand-500', 'bg-purple-500', 'bg-cyan-500', 'bg-green-500'][idx % 4]
     })),
-    recentTransactions: financeData.value.recentTransactions || []
+    recentTransactions: []
   }
 })
 
@@ -222,14 +207,13 @@ const fetchMetrics = async () => {
     const { handleTrpcError } = await import('~/composables/useTrpc')
     error.value = handleTrpcError(err)
     showError('Failed to load financial metrics')
-    console.error('Error loading finance data:', err)
+    // Error logged: 'Error loading finance data:', err)
   } finally {
     loading.value = false
   }
 }
 
-const formatPrice = (amount: number | null) => {
-  if (amount === null || amount === undefined) return '$0'
+const formatPrice = (amount) => {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
@@ -237,17 +221,12 @@ const formatPrice = (amount: number | null) => {
   }).format(amount)
 }
 
-const formatCurrency = (amountInCents: number | null) => {
-  if (amountInCents === null || amountInCents === undefined) return '$0.00'
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2
-  }).format(amountInCents / 100)
-}
-
-const navigateToOrders = () => {
-  router.push('/admin/orders')
+const formatDate = (date) => {
+  return new Date(date).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  })
 }
 
 onMounted(() => {

@@ -19,19 +19,9 @@ export interface FinanceData {
   totalRevenue: number
   monthlyRevenue: number
   pendingPayments: number
-  paidOrderCount: number
   revenueByService: Array<{
     service: string
     revenue: number
-  }>
-  recentTransactions: Array<{
-    id: number
-    date: string
-    customerName: string
-    packageName: string
-    amount: number
-    status: string
-    orderId: number
   }>
 }
 
