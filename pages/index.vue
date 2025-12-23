@@ -239,6 +239,9 @@
       </div>
     </section>
 
+    <!-- Availability Calendar Section -->
+    <HomeAvailabilityCalendar />
+
     <!-- How It Works Section - NEW -->
     <section class="section relative bg-dark-primary overflow-hidden">
       <div class="absolute inset-0 opacity-5">
