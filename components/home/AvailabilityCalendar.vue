@@ -22,9 +22,9 @@
 
       <RevealOnScroll animation="fade-up">
         <div class="mx-auto max-w-2xl">
-          <div class="rounded-2xl border-2 border-blue-500/30 bg-gradient-to-br from-slate-900/95 to-slate-800/95 p-4 sm:p-6 md:p-8 backdrop-blur-sm shadow-2xl shadow-blue-500/10">
+          <div class="calendar-card rounded-2xl border-2 border-blue-500/30 bg-gradient-to-br from-slate-900/95 to-slate-800/95 p-4 sm:p-6 md:p-8 backdrop-blur-sm shadow-2xl shadow-blue-500/10">
             <!-- Calendar -->
-            <div class="calendar-wrapper">
+            <div class="calendar-container">
               <VueDatePicker 
                 v-model="selectedDate"
                 :dark="true"
@@ -34,7 +34,8 @@
                 :disabled-dates="unavailableDates"
                 :min-date="new Date()"
                 :six-weeks="true"
-                month-change-on-scroll
+                :month-change-on-scroll="false"
+                month-name-format="long"
                 @update:model-value="handleDateSelect"
               />
             </div>
@@ -60,25 +61,12 @@
               <p class="text-slate-300">
                 Selected: <span class="font-semibold text-white">{{ formatDate(selectedDate) }}</span>
               </p>
-              <div v-if="isDateAvailable(selectedDate)" class="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-500/20 border border-green-500/30">
-                <Icon name="mdi:check-circle" class="w-5 h-5 text-green-400" />
-                <span class="text-green-400 font-medium">This date is available</span>
-              </div>
-              <div v-else class="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-red-500/20 border border-red-500/30">
-                <Icon name="mdi:close-circle" class="w-5 h-5 text-red-400" />
-                <span class="text-red-400 font-medium">This date is unavailable</span>
-              </div>
-            </div>
-
-            <!-- CTA when date selected -->
-            <div v-if="selectedDate && isDateAvailable(selectedDate)" class="mt-6 text-center">
-              <NuxtLink 
-                to="/quote" 
-                class="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-semibold hover:from-cyan-400 hover:to-blue-400 transition-all duration-300 shadow-lg shadow-cyan-500/25"
-              >
-                <Icon name="mdi:calendar-check" class="w-5 h-5" />
-                Book This Date
-              </NuxtLink>
+              <p v-if="isDateAvailable(selectedDate)" class="mt-2 text-green-400">
+                ✓ This date is available
+              </p>
+              <p v-else class="mt-2 text-red-400">
+                ✗ This date is unavailable
+              </p>
             </div>
           </div>
         </div>
@@ -133,63 +121,63 @@ const formatDateISO = (date: Date): string => {
 </script>
 
 <style scoped>
-.calendar-wrapper {
-  display: flex;
-  justify-content: center;
+.calendar-container {
   width: 100%;
 }
 
-/* Override vue-datepicker styles to match dark theme and improve sizing */
-:deep(.dp__theme_dark) {
-  --dp-background-color: transparent;
-  --dp-text-color: #ffffff;
-  --dp-hover-color: #334155;
-  --dp-hover-text-color: #ffffff;
-  --dp-hover-icon-color: #ffffff;
-  --dp-primary-color: #06b6d4;
-  --dp-primary-text-color: #ffffff;
-  --dp-secondary-color: #475569;
-  --dp-border-color: transparent;
-  --dp-menu-border-color: transparent;
-  --dp-border-color-hover: #06b6d4;
-  --dp-disabled-color: #334155;
-  --dp-disabled-color-text: #64748b;
-  --dp-scroll-bar-background: #334155;
-  --dp-scroll-bar-color: #64748b;
-  --dp-icon-color: #94a3b8;
-  --dp-highlight-color: rgba(6, 182, 212, 0.1);
-  --dp-font-family: inherit;
-  --dp-cell-size: 48px;
-  --dp-cell-padding: 8px;
-}
-
-/* Main calendar container */
+/* Force the datepicker to fill container width */
 :deep(.dp__main) {
-  width: 100%;
+  width: 100% !important;
 }
 
 :deep(.dp__menu) {
-  border: none;
-  background: transparent;
-  width: 100%;
+  width: 100% !important;
+  border: none !important;
+  background: transparent !important;
 }
 
 :deep(.dp__menu_inner) {
-  padding: 0;
+  padding: 0 !important;
 }
 
-/* Calendar instance - make it fill container */
+/* Make the calendar instance fill the width */
 :deep(.dp__instance_calendar) {
-  width: 100%;
+  width: 100% !important;
 }
 
+:deep(.dp__flex_display) {
+  width: 100% !important;
+}
+
+:deep(.dp__flex_display > div) {
+  width: 100% !important;
+}
+
+/* Calendar grid should fill available space */
 :deep(.dp__calendar) {
+  width: 100% !important;
   font-family: inherit;
-  width: 100%;
 }
 
-/* Calendar header with month/year */
+/* Calendar rows should use flexbox properly */
+:deep(.dp__calendar_row) {
+  display: flex !important;
+  width: 100% !important;
+  margin: 0 !important;
+}
+
+/* Each calendar item takes equal space */
+:deep(.dp__calendar_item) {
+  flex: 1 !important;
+  padding: 2px !important;
+  display: flex !important;
+  justify-content: center !important;
+}
+
+/* Calendar header row */
 :deep(.dp__calendar_header) {
+  display: flex !important;
+  width: 100% !important;
   font-weight: 600;
   font-size: 0.875rem;
   color: #94a3b8;
@@ -198,14 +186,28 @@ const formatDateISO = (date: Date): string => {
 }
 
 :deep(.dp__calendar_header_item) {
-  padding: 0.75rem 0;
-  flex: 1;
-  text-align: center;
+  flex: 1 !important;
+  padding: 0.75rem 0 !important;
+  text-align: center !important;
+}
+
+/* Cell styling */
+:deep(.dp__cell_inner) {
+  width: 100% !important;
+  height: 48px !important;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
 /* Month/Year header */
 :deep(.dp__month_year_row) {
   margin-bottom: 1rem;
+  width: 100%;
 }
 
 :deep(.dp__month_year_select) {
@@ -236,37 +238,38 @@ const formatDateISO = (date: Date): string => {
   height: 24px;
 }
 
-/* Calendar row */
-:deep(.dp__calendar_row) {
-  margin: 0;
-}
-
-/* Calendar cells */
-:deep(.dp__cell_inner) {
-  width: 100%;
-  height: 48px;
-  border-radius: 0.5rem;
-  font-size: 1rem;
-  font-weight: 500;
-  transition: all 0.2s ease;
-}
-
-:deep(.dp__calendar_item) {
-  flex: 1;
-  padding: 2px;
+/* Dark theme overrides */
+:deep(.dp__theme_dark) {
+  --dp-background-color: transparent;
+  --dp-text-color: #ffffff;
+  --dp-hover-color: #334155;
+  --dp-hover-text-color: #ffffff;
+  --dp-hover-icon-color: #ffffff;
+  --dp-primary-color: #06b6d4;
+  --dp-primary-text-color: #ffffff;
+  --dp-secondary-color: #475569;
+  --dp-border-color: transparent;
+  --dp-menu-border-color: transparent;
+  --dp-border-color-hover: #06b6d4;
+  --dp-disabled-color: #334155;
+  --dp-disabled-color-text: #64748b;
+  --dp-scroll-bar-background: #334155;
+  --dp-scroll-bar-color: #64748b;
+  --dp-icon-color: #94a3b8;
+  --dp-highlight-color: rgba(6, 182, 212, 0.1);
+  --dp-font-family: inherit;
 }
 
 /* Today styling */
 :deep(.dp__today) {
-  border: 2px solid #06b6d4;
-  background-color: rgba(6, 182, 212, 0.1);
+  border: 2px solid #06b6d4 !important;
+  background-color: rgba(6, 182, 212, 0.1) !important;
 }
 
 /* Active/Selected date */
 :deep(.dp__active_date) {
-  background-color: #06b6d4;
-  color: #ffffff;
-  box-shadow: 0 4px 12px rgba(6, 182, 212, 0.4);
+  background-color: #06b6d4 !important;
+  color: #ffffff !important;
 }
 
 /* Disabled dates */
@@ -279,24 +282,26 @@ const formatDateISO = (date: Date): string => {
 /* Hover state */
 :deep(.dp__cell_inner:hover:not(.dp__cell_disabled)) {
   background-color: #334155;
-  transform: scale(1.05);
 }
 
-/* Hide the time picker completely */
+/* COMPLETELY HIDE TIME PICKER ELEMENTS */
 :deep(.dp__action_row),
 :deep(.dp__selection_preview),
-:deep(.dp__action_buttons) {
+:deep(.dp__action_buttons),
+:deep(.dp--tp-wrap),
+:deep(.dp__time_display),
+:deep(.dp__button),
+:deep(.dp__overlay_action) {
   display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  overflow: hidden !important;
 }
 
 /* Responsive adjustments */
-@media (max-width: 640px) {
-  :deep(.dp__theme_dark) {
-    --dp-cell-size: 40px;
-  }
-  
+@media (max-width: 480px) {
   :deep(.dp__cell_inner) {
-    height: 40px;
+    height: 40px !important;
     font-size: 0.875rem;
   }
   
@@ -312,27 +317,19 @@ const formatDateISO = (date: Date): string => {
   
   :deep(.dp__calendar_header_item) {
     font-size: 0.75rem;
-    padding: 0.5rem 0;
+    padding: 0.5rem 0 !important;
   }
 }
 
 @media (min-width: 640px) {
-  :deep(.dp__theme_dark) {
-    --dp-cell-size: 52px;
-  }
-  
   :deep(.dp__cell_inner) {
-    height: 52px;
+    height: 52px !important;
   }
 }
 
 @media (min-width: 768px) {
-  :deep(.dp__theme_dark) {
-    --dp-cell-size: 56px;
-  }
-  
   :deep(.dp__cell_inner) {
-    height: 56px;
+    height: 56px !important;
     font-size: 1.125rem;
   }
 }
