@@ -2,18 +2,18 @@
   <div class="container mx-auto px-4 py-12 max-w-4xl">
     <!-- Breadcrumbs -->
     <nav class="flex items-center gap-2 text-sm mb-6">
-      <NuxtLink to="/orders" class="text-text-tertiary hover:text-text-primary transition-colors">
+      <NuxtLink to="/orders" class="text-slate-500 hover:text-slate-900 transition-colors">
         My Orders
       </NuxtLink>
-      <svg class="w-4 h-4 text-text-tertiary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
       </svg>
-      <span class="text-text-primary font-medium">Order #{{ orderId }}</span>
+      <span class="text-slate-900 font-medium">Order #{{ orderId }}</span>
     </nav>
 
     <!-- Loading State -->
     <div v-if="loading" class="flex justify-center items-center py-20">
-      <div class="animate-spin h-12 w-12 text-brand-primary">
+      <div class="animate-spin h-12 w-12 text-cyan-600">
         <svg fill="none" viewBox="0 0 24 24">
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -53,8 +53,8 @@
                 {{ getStatusLabel(orderData.order.status) }}
               </span>
             </div>
-            <h1 class="text-2xl font-bold text-text-primary mb-2">Order #{{ orderData.order.id }}</h1>
-            <p class="text-text-secondary">
+            <h1 class="text-2xl font-bold text-slate-900 mb-2">Order #{{ orderData.order.id }}</h1>
+            <p class="text-slate-600">
               <span v-if="orderData.order.status === 'pending'">Your order has been received and is awaiting review. We'll send you a quote within 24 hours.</span>
               <span v-else-if="orderData.order.status === 'in_progress'">Your order is being prepared. We'll notify you when it's ready.</span>
               <span v-else-if="orderData.order.status === 'ready'">Your order is complete! Download your files below.</span>
@@ -62,34 +62,34 @@
             </p>
           </div>
           <div v-if="orderData.order.quotedAmount" class="text-right">
-            <p class="text-sm text-text-tertiary mb-1">Quote Amount</p>
-            <p class="text-3xl font-bold text-brand-primary">{{ formatPrice(orderData.order.quotedAmount) }}</p>
+            <p class="text-sm text-slate-500 mb-1">Quote Amount</p>
+            <p class="text-3xl font-bold text-cyan-600">{{ formatPrice(orderData.order.quotedAmount) }}</p>
           </div>
         </div>
       </div>
 
       <!-- Order Progress Timeline -->
-      <div class="bg-white border border-brand-border rounded-lg p-6 md:p-8">
-        <h2 class="text-xl font-bold text-text-primary mb-6">Order Progress</h2>
+      <div class="bg-white border border-slate-200 rounded-lg p-6 md:p-8">
+        <h2 class="text-xl font-bold text-slate-900 mb-6">Order Progress</h2>
         <div class="relative">
           <!-- Progress Line -->
           <div class="absolute left-6 top-6 bottom-6 w-0.5 bg-slate-200"></div>
           <div 
-            class="absolute left-6 top-6 w-0.5 bg-brand-primary transition-all duration-500"
+            class="absolute left-6 top-6 w-0.5 bg-cyan-500 transition-all duration-500"
             :style="{ height: getProgressHeight(orderData.order.status) }"
           ></div>
           
           <div class="space-y-6 relative">
             <!-- Step 1: Submitted -->
             <div class="flex items-start gap-4">
-              <div class="relative z-10 flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center bg-brand-primary text-white">
+              <div class="relative z-10 flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center bg-cyan-500 text-white">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                 </svg>
               </div>
               <div class="flex-1 pt-2">
-                <h3 class="font-bold text-text-primary">Order Submitted</h3>
-                <p class="text-sm text-text-secondary">{{ formatDateTime(orderData.order.createdAt) }}</p>
+                <h3 class="font-bold text-slate-900">Order Submitted</h3>
+                <p class="text-sm text-slate-600">{{ formatDateTime(orderData.order.createdAt) }}</p>
               </div>
             </div>
 
@@ -98,7 +98,7 @@
               <div 
                 :class="[
                   'relative z-10 flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center',
-                  orderData.order.status !== 'pending' ? 'bg-brand-primary text-white' : 'bg-slate-200 text-slate-500'
+                  orderData.order.status !== 'pending' ? 'bg-cyan-500 text-white' : 'bg-slate-200 text-slate-500'
                 ]"
               >
                 <svg v-if="orderData.order.status !== 'pending'" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -109,8 +109,8 @@
                 </svg>
               </div>
               <div class="flex-1 pt-2">
-                <h3 :class="['font-bold', orderData.order.status !== 'pending' ? 'text-text-primary' : 'text-text-tertiary']">Quote Prepared</h3>
-                <p class="text-sm text-text-secondary">
+                <h3 :class="['font-bold', orderData.order.status !== 'pending' ? 'text-slate-900' : 'text-slate-500']">Quote Prepared</h3>
+                <p class="text-sm text-slate-600">
                   <span v-if="orderData.order.status === 'pending'">We're reviewing your request...</span>
                   <span v-else>Quote sent</span>
                 </p>
@@ -122,7 +122,7 @@
               <div 
                 :class="[
                   'relative z-10 flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center',
-                  orderData.order.status === 'in_progress' || orderData.order.status === 'ready' || orderData.order.status === 'completed' ? 'bg-brand-primary text-white' : 'bg-slate-200 text-slate-500'
+                  orderData.order.status === 'in_progress' || orderData.order.status === 'ready' || orderData.order.status === 'completed' ? 'bg-cyan-500 text-white' : 'bg-slate-200 text-slate-500'
                 ]"
               >
                 <svg v-if="orderData.order.status === 'in_progress' || orderData.order.status === 'ready' || orderData.order.status === 'completed'" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -133,8 +133,8 @@
                 </svg>
               </div>
               <div class="flex-1 pt-2">
-                <h3 :class="['font-bold', orderData.order.status === 'in_progress' || orderData.order.status === 'ready' || orderData.order.status === 'completed' ? 'text-text-primary' : 'text-text-tertiary']">In Production</h3>
-                <p class="text-sm text-text-secondary">
+                <h3 :class="['font-bold', orderData.order.status === 'in_progress' || orderData.order.status === 'ready' || orderData.order.status === 'completed' ? 'text-slate-900' : 'text-slate-500']">In Production</h3>
+                <p class="text-sm text-slate-600">
                   <span v-if="orderData.order.status === 'in_progress'">We're preparing your order...</span>
                   <span v-else-if="orderData.order.status === 'ready' || orderData.order.status === 'completed'">Production complete</span>
                   <span v-else>Awaiting payment</span>
@@ -158,8 +158,8 @@
                 </svg>
               </div>
               <div class="flex-1 pt-2">
-                <h3 :class="['font-bold', orderData.order.status === 'ready' || orderData.order.status === 'completed' ? 'text-text-primary' : 'text-text-tertiary']">Ready for Download</h3>
-                <p class="text-sm text-text-secondary">
+                <h3 :class="['font-bold', orderData.order.status === 'ready' || orderData.order.status === 'completed' ? 'text-slate-900' : 'text-slate-500']">Ready for Download</h3>
+                <p class="text-sm text-slate-600">
                   <span v-if="orderData.order.status === 'ready' || orderData.order.status === 'completed'">Your files are ready!</span>
                   <span v-else>Files will be available here</span>
                 </p>
@@ -170,53 +170,53 @@
       </div>
 
       <!-- Order Information -->
-      <div class="bg-white border border-brand-border rounded-lg p-6">
-        <h2 class="text-2xl font-bold text-text-primary mb-4">Order Information</h2>
+      <div class="bg-white border border-slate-200 rounded-lg p-6">
+        <h2 class="text-2xl font-bold text-slate-900 mb-4">Order Information</h2>
         <div class="grid md:grid-cols-2 gap-4">
           <div>
-            <p class="text-sm text-text-tertiary mb-1">Customer Name</p>
-            <p class="text-text-primary font-medium">{{ orderData.order.name }}</p>
+            <p class="text-sm text-slate-500 mb-1">Customer Name</p>
+            <p class="text-slate-900 font-medium">{{ orderData.order.name }}</p>
           </div>
           <div>
-            <p class="text-sm text-text-tertiary mb-1">Email</p>
-            <p class="text-text-primary font-medium">{{ orderData.order.emailSnapshot }}</p>
+            <p class="text-sm text-slate-500 mb-1">Email</p>
+            <p class="text-slate-900 font-medium">{{ orderData.order.emailSnapshot }}</p>
           </div>
           <div v-if="orderData.order.packageId">
-            <p class="text-sm text-text-tertiary mb-1">Package</p>
-            <p class="text-text-primary font-medium">{{ getPackageName(orderData.order.packageId) }}</p>
+            <p class="text-sm text-slate-500 mb-1">Package</p>
+            <p class="text-slate-900 font-medium">{{ getPackageName(orderData.order.packageId) }}</p>
           </div>
           <div>
-            <p class="text-sm text-text-tertiary mb-1">Submitted</p>
-            <p class="text-text-primary font-medium">{{ formatDate(orderData.order.createdAt) }}</p>
+            <p class="text-sm text-slate-500 mb-1">Submitted</p>
+            <p class="text-slate-900 font-medium">{{ formatDate(orderData.order.createdAt) }}</p>
           </div>
         </div>
       </div>
 
       <!-- Customer Notes -->
-      <div v-if="orderData.order.notes" class="bg-white border border-brand-border rounded-lg p-6">
-        <h2 class="text-2xl font-bold text-text-primary mb-4">Your Notes</h2>
-        <p class="text-text-secondary whitespace-pre-wrap">{{ orderData.order.notes }}</p>
+      <div v-if="orderData.order.notes" class="bg-white border border-slate-200 rounded-lg p-6">
+        <h2 class="text-2xl font-bold text-slate-900 mb-4">Your Notes</h2>
+        <p class="text-slate-600 whitespace-pre-wrap">{{ orderData.order.notes }}</p>
       </div>
 
       <!-- Admin Notes (if quoted) -->
-      <div v-if="orderData.order.adminNotes" class="bg-brand-primary/5 border border-brand-primary/50 rounded-lg p-6">
-        <h2 class="text-2xl font-bold text-text-primary mb-4">Quote Notes</h2>
-        <p class="text-text-secondary whitespace-pre-wrap">{{ orderData.order.adminNotes }}</p>
+      <div v-if="orderData.order.adminNotes" class="bg-cyan-500/5 border border-cyan-500/50 rounded-lg p-6">
+        <h2 class="text-2xl font-bold text-slate-900 mb-4">Quote Notes</h2>
+        <p class="text-slate-600 whitespace-pre-wrap">{{ orderData.order.adminNotes }}</p>
       </div>
 
       <!-- Payment Section -->
-      <div v-if="orderData.order.quotedAmount && !orderData.payment" class="bg-brand-primary/5 border border-brand-primary/50 rounded-lg p-6">
+      <div v-if="orderData.order.quotedAmount && !orderData.payment" class="bg-cyan-500/5 border border-cyan-500/50 rounded-lg p-6">
         <div class="flex items-start gap-4">
-          <svg class="h-6 w-6 text-brand-primary flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="h-6 w-6 text-cyan-600 flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <div class="flex-1">
-            <h3 class="text-xl font-bold text-text-primary mb-2">Payment Required</h3>
-            <p class="text-text-secondary mb-4">Your quote is ready. Complete payment to proceed with your order.</p>
+            <h3 class="text-xl font-bold text-slate-900 mb-2">Payment Required</h3>
+            <p class="text-slate-600 mb-4">Your quote is ready. Complete payment to proceed with your order.</p>
             <button
               @click="handlePayment"
               :disabled="paymentLoading"
-              class="px-8 py-3 bg-brand-primary hover:bg-brand-primary-600 text-white font-bold rounded-md shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              class="px-8 py-3 bg-cyan-500 hover:bg-cyan-500-600 text-white font-bold rounded-md shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               <span v-if="!paymentLoading">Pay Now - {{ formatPrice(orderData.order.quotedAmount) }}</span>
               <span v-else class="flex items-center gap-2">
@@ -238,33 +238,33 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <div>
-            <h3 class="text-xl font-bold text-text-primary mb-2">Payment Received</h3>
-            <p class="text-text-secondary">Amount: {{ formatPrice(orderData.payment.amount) }}</p>
-            <p class="text-text-tertiary text-sm">Paid on {{ formatDateTime(orderData.payment.createdAt) }}</p>
+            <h3 class="text-xl font-bold text-slate-900 mb-2">Payment Received</h3>
+            <p class="text-slate-600">Amount: {{ formatPrice(orderData.payment.amount) }}</p>
+            <p class="text-slate-500 text-sm">Paid on {{ formatDateTime(orderData.payment.createdAt) }}</p>
           </div>
         </div>
       </div>
 
       <!-- Files Section -->
-      <div class="bg-white border border-brand-border rounded-lg p-6">
-        <h2 class="text-2xl font-bold text-text-primary mb-4">Files</h2>
+      <div class="bg-white border border-slate-200 rounded-lg p-6">
+        <h2 class="text-2xl font-bold text-slate-900 mb-4">Files</h2>
         
         <!-- Uploaded Files -->
         <div v-if="uploadedFiles.length > 0" class="mb-6">
-          <h3 class="text-lg font-semibold text-text-primary mb-3">Your Uploads</h3>
+          <h3 class="text-lg font-semibold text-slate-900 mb-3">Your Uploads</h3>
           <div class="space-y-2">
             <div
               v-for="file in uploadedFiles"
               :key="file.id"
-              class="flex items-center justify-between p-3 bg-slate-50 border border-brand-border rounded-md"
+              class="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-md"
             >
               <div class="flex items-center gap-3 flex-1 min-w-0">
-                <svg class="h-5 w-5 text-text-tertiary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="h-5 w-5 text-slate-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                 </svg>
                 <div class="flex-1 min-w-0">
-                  <p class="text-text-primary text-sm truncate">{{ file.filename }}</p>
-                  <p class="text-text-tertiary text-xs">{{ formatFileSize(file.fileSize) }}</p>
+                  <p class="text-slate-900 text-sm truncate">{{ file.filename }}</p>
+                  <p class="text-slate-500 text-xs">{{ formatFileSize(file.fileSize) }}</p>
                 </div>
               </div>
             </div>
@@ -273,25 +273,25 @@
 
         <!-- Deliverable Files -->
         <div v-if="deliverableFiles.length > 0">
-          <h3 class="text-lg font-semibold text-text-primary mb-3">Deliverables</h3>
+          <h3 class="text-lg font-semibold text-slate-900 mb-3">Deliverables</h3>
           <div class="space-y-2">
             <div
               v-for="file in deliverableFiles"
               :key="file.id"
-              class="flex items-center justify-between p-3 bg-slate-50 border border-brand-border rounded-md hover:border-brand-primary transition-colors"
+              class="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-md hover:border-cyan-500 transition-colors"
             >
               <div class="flex items-center gap-3 flex-1 min-w-0">
-                <svg class="h-5 w-5 text-brand-primary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="h-5 w-5 text-cyan-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                 </svg>
                 <div class="flex-1 min-w-0">
-                  <p class="text-text-primary text-sm truncate">{{ file.filename }}</p>
-                  <p class="text-text-tertiary text-xs">{{ formatFileSize(file.fileSize) }}</p>
+                  <p class="text-slate-900 text-sm truncate">{{ file.filename }}</p>
+                  <p class="text-slate-500 text-xs">{{ formatFileSize(file.fileSize) }}</p>
                 </div>
               </div>
               <button
                 @click="downloadFile(file.id, file.filename)"
-                class="ml-2 px-4 py-2 bg-brand-primary text-white hover:bg-brand-primary-600 rounded-md transition-colors flex items-center gap-2 font-medium"
+                class="ml-2 px-4 py-2 bg-cyan-500 text-white hover:bg-cyan-500-600 rounded-md transition-colors flex items-center gap-2 font-medium"
               >
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -303,7 +303,7 @@
         </div>
 
         <!-- No Files -->
-        <div v-if="uploadedFiles.length === 0 && deliverableFiles.length === 0" class="text-center py-8 text-text-tertiary">
+        <div v-if="uploadedFiles.length === 0 && deliverableFiles.length === 0" class="text-center py-8 text-slate-500">
           <p>No files attached to this order</p>
         </div>
       </div>
