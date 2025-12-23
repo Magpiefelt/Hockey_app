@@ -21,10 +21,10 @@
       </RevealOnScroll>
 
       <RevealOnScroll animation="fade-up">
-        <div class="mx-auto max-w-2xl">
-          <div class="calendar-card rounded-2xl border-2 border-blue-500/30 bg-gradient-to-br from-slate-900/95 to-slate-800/95 p-4 sm:p-6 md:p-8 backdrop-blur-sm shadow-2xl shadow-blue-500/10">
+        <div class="calendar-outer-container">
+          <div class="calendar-card">
             <!-- Calendar -->
-            <div class="calendar-container">
+            <div class="calendar-wrapper">
               <VueDatePicker 
                 v-model="selectedDate"
                 :dark="true"
@@ -36,28 +36,29 @@
                 :six-weeks="true"
                 :month-change-on-scroll="false"
                 month-name-format="long"
+                :action-row="{ showNow: false, showPreview: false, showSelect: false, showCancel: false }"
                 @update:model-value="handleDateSelect"
               />
             </div>
 
             <!-- Legend -->
-            <div class="flex flex-wrap items-center justify-center gap-4 sm:gap-8 mt-6 pt-6 border-t border-white/10">
-              <div class="flex items-center gap-2">
-                <div class="h-4 w-4 rounded-md bg-cyan-500 shadow-sm shadow-cyan-500/50"></div>
-                <span class="text-sm text-slate-300">Today</span>
+            <div class="calendar-legend">
+              <div class="legend-item">
+                <div class="legend-dot legend-today"></div>
+                <span>Today</span>
               </div>
-              <div class="flex items-center gap-2">
-                <div class="h-4 w-4 rounded-md bg-slate-600"></div>
-                <span class="text-sm text-slate-300">Available</span>
+              <div class="legend-item">
+                <div class="legend-dot legend-available"></div>
+                <span>Available</span>
               </div>
-              <div class="flex items-center gap-2">
-                <div class="h-4 w-4 rounded-md bg-slate-800/80 border border-slate-700"></div>
-                <span class="text-sm text-slate-300">Unavailable</span>
+              <div class="legend-item">
+                <div class="legend-dot legend-unavailable"></div>
+                <span>Unavailable</span>
               </div>
             </div>
 
             <!-- Selected Date Info -->
-            <div v-if="selectedDate" class="mt-6 pt-6 border-t border-white/10 text-center">
+            <div v-if="selectedDate" class="selected-date-info">
               <p class="text-slate-300">
                 Selected: <span class="font-semibold text-white">{{ formatDate(selectedDate) }}</span>
               </p>
@@ -99,11 +100,17 @@ const handleDateSelect = (date: Date | null) => {
 }
 
 const isDateAvailable = (date: Date): boolean => {
+  if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+    return false
+  }
   const dateStr = formatDateISO(date)
   return !unavailableDates.value.some(d => formatDateISO(d) === dateStr)
 }
 
 const formatDate = (date: Date): string => {
+  if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+    return 'Invalid date'
+  }
   return new Intl.DateTimeFormat('en-US', {
     weekday: 'long',
     year: 'numeric',
@@ -113,6 +120,9 @@ const formatDate = (date: Date): string => {
 }
 
 const formatDateISO = (date: Date): string => {
+  if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+    return ''
+  }
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
@@ -121,30 +131,133 @@ const formatDateISO = (date: Date): string => {
 </script>
 
 <style scoped>
-.calendar-container {
+/* Outer container - centers and constrains max width */
+.calendar-outer-container {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+/* Calendar card styling */
+.calendar-card {
+  width: 100%;
+  border-radius: 1rem;
+  border: 2px solid rgba(59, 130, 246, 0.3);
+  background: linear-gradient(to bottom right, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.95));
+  padding: 1.5rem;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 25px 50px -12px rgba(59, 130, 246, 0.1);
+}
+
+@media (min-width: 640px) {
+  .calendar-card {
+    padding: 2rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .calendar-card {
+    padding: 2.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .calendar-card {
+    padding: 3rem;
+  }
+}
+
+/* Calendar wrapper - ensures calendar fills width */
+.calendar-wrapper {
   width: 100%;
 }
 
-/* Force the datepicker to fill container width */
-:deep(.dp__main) {
-  width: 100% !important;
+/* Legend styling */
+.calendar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+@media (min-width: 640px) {
+  .calendar-legend {
+    gap: 2rem;
+  }
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: #cbd5e1;
+}
+
+.legend-dot {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 0.375rem;
+}
+
+.legend-today {
+  background-color: #06b6d4;
+  box-shadow: 0 0 8px rgba(6, 182, 212, 0.5);
+}
+
+.legend-available {
+  background-color: #475569;
+}
+
+.legend-unavailable {
+  background-color: rgba(30, 41, 59, 0.8);
+  border: 1px solid #475569;
+}
+
+/* Selected date info */
+.selected-date-info {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  text-align: center;
+}
+
+/* ========================================
+   VUE DATEPICKER OVERRIDES
+   ======================================== */
+
+/* Main container - MUST fill width */
+:deep(.dp__main) {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* Menu container */
 :deep(.dp__menu) {
   width: 100% !important;
+  max-width: 100% !important;
   border: none !important;
   background: transparent !important;
+  box-shadow: none !important;
 }
 
 :deep(.dp__menu_inner) {
+  width: 100% !important;
   padding: 0 !important;
 }
 
-/* Make the calendar instance fill the width */
+/* Calendar instance */
 :deep(.dp__instance_calendar) {
   width: 100% !important;
+  max-width: 100% !important;
 }
 
+/* Flex display containers */
 :deep(.dp__flex_display) {
   width: 100% !important;
 }
@@ -153,25 +266,34 @@ const formatDateISO = (date: Date): string => {
   width: 100% !important;
 }
 
-/* Calendar grid should fill available space */
+/* Calendar wrap */
+:deep(.dp__calendar_wrap) {
+  width: 100% !important;
+}
+
+/* Calendar grid */
 :deep(.dp__calendar) {
   width: 100% !important;
   font-family: inherit;
 }
 
-/* Calendar rows should use flexbox properly */
+/* Calendar rows - flexbox for equal distribution */
 :deep(.dp__calendar_row) {
   display: flex !important;
   width: 100% !important;
   margin: 0 !important;
+  gap: 6px;
 }
 
-/* Each calendar item takes equal space */
+/* Calendar items - equal flex sizing */
 :deep(.dp__calendar_item) {
-  flex: 1 !important;
-  padding: 2px !important;
+  flex: 1 1 0 !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  padding: 3px !important;
   display: flex !important;
   justify-content: center !important;
+  align-items: center !important;
 }
 
 /* Calendar header row */
@@ -183,18 +305,24 @@ const formatDateISO = (date: Date): string => {
   color: #94a3b8;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  gap: 6px;
+  margin-bottom: 12px;
 }
 
 :deep(.dp__calendar_header_item) {
-  flex: 1 !important;
+  flex: 1 1 0 !important;
+  min-width: 0 !important;
+  max-width: none !important;
   padding: 0.75rem 0 !important;
   text-align: center !important;
 }
 
-/* Cell styling */
+/* Cell inner styling - LARGER cells */
 :deep(.dp__cell_inner) {
   width: 100% !important;
-  height: 48px !important;
+  height: auto !important;
+  aspect-ratio: 1 / 1;
+  min-height: 44px;
   border-radius: 0.5rem;
   font-size: 1rem;
   font-weight: 500;
@@ -206,12 +334,21 @@ const formatDateISO = (date: Date): string => {
 
 /* Month/Year header */
 :deep(.dp__month_year_row) {
-  margin-bottom: 1rem;
   width: 100%;
+  margin-bottom: 1rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+:deep(.dp__month_year_wrap) {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 :deep(.dp__month_year_select) {
-  font-size: 1.125rem;
+  font-size: 1.25rem;
   font-weight: 700;
   color: #ffffff;
   padding: 0.5rem 1rem;
@@ -224,9 +361,12 @@ const formatDateISO = (date: Date): string => {
 
 /* Navigation arrows */
 :deep(.dp__inner_nav) {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 :deep(.dp__inner_nav:hover) {
@@ -238,7 +378,7 @@ const formatDateISO = (date: Date): string => {
   height: 24px;
 }
 
-/* Dark theme overrides */
+/* Dark theme color overrides */
 :deep(.dp__theme_dark) {
   --dp-background-color: transparent;
   --dp-text-color: #ffffff;
@@ -284,24 +424,33 @@ const formatDateISO = (date: Date): string => {
   background-color: #334155;
 }
 
-/* COMPLETELY HIDE TIME PICKER ELEMENTS */
+/* COMPLETELY HIDE TIME PICKER AND ACTION ELEMENTS */
 :deep(.dp__action_row),
 :deep(.dp__selection_preview),
 :deep(.dp__action_buttons),
 :deep(.dp--tp-wrap),
 :deep(.dp__time_display),
 :deep(.dp__button),
-:deep(.dp__overlay_action) {
+:deep(.dp__overlay_action),
+:deep(.dp__time_input),
+:deep(.dp__time_col),
+:deep([aria-label="Open time picker"]) {
   display: none !important;
   visibility: hidden !important;
   height: 0 !important;
   overflow: hidden !important;
+  position: absolute !important;
+  pointer-events: none !important;
 }
 
-/* Responsive adjustments */
+/* ========================================
+   RESPONSIVE ADJUSTMENTS
+   ======================================== */
+
+/* Mobile - smaller cells */
 @media (max-width: 480px) {
   :deep(.dp__cell_inner) {
-    height: 40px !important;
+    min-height: 36px;
     font-size: 0.875rem;
   }
   
@@ -316,21 +465,60 @@ const formatDateISO = (date: Date): string => {
   }
   
   :deep(.dp__calendar_header_item) {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     padding: 0.5rem 0 !important;
   }
-}
-
-@media (min-width: 640px) {
-  :deep(.dp__cell_inner) {
-    height: 52px !important;
+  
+  :deep(.dp__calendar_row) {
+    gap: 3px;
+  }
+  
+  :deep(.dp__calendar_header) {
+    gap: 3px;
   }
 }
 
+/* Tablet */
+@media (min-width: 640px) {
+  :deep(.dp__cell_inner) {
+    min-height: 52px;
+    font-size: 1.125rem;
+  }
+  
+  :deep(.dp__calendar_row) {
+    gap: 8px;
+  }
+  
+  :deep(.dp__calendar_header) {
+    gap: 8px;
+  }
+}
+
+/* Desktop */
 @media (min-width: 768px) {
   :deep(.dp__cell_inner) {
-    height: 56px !important;
-    font-size: 1.125rem;
+    min-height: 60px;
+    font-size: 1.25rem;
+  }
+  
+  :deep(.dp__calendar_header_item) {
+    font-size: 0.9rem;
+  }
+  
+  :deep(.dp__calendar_row) {
+    gap: 10px;
+  }
+  
+  :deep(.dp__calendar_header) {
+    gap: 10px;
+  }
+}
+
+/* Large desktop */
+@media (min-width: 1024px) {
+  :deep(.dp__cell_inner) {
+    min-height: 68px;
+    font-size: 1.375rem;
   }
 }
 </style>
