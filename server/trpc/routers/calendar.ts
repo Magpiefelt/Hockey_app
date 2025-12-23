@@ -10,18 +10,19 @@ export const calendarRouter = router({
       try {
         // Get all active overrides and confirmed quote dates
         // For overrides, we need to generate all dates in the range
+        // Using actual production column names: start_date, end_date, is_available
         const result = await query<{ date: string }>(`
           SELECT DISTINCT date 
           FROM (
             -- Manual overrides (generate all dates in range)
             SELECT generate_series(
-              date_from,
-              date_to,
+              start_date,
+              end_date,
               '1 day'::interval
             )::date as date
             FROM availability_overrides
-            WHERE is_active = true
-              AND date_to >= CURRENT_DATE
+            WHERE is_available = false
+              AND end_date >= CURRENT_DATE
             
             UNION
             
@@ -64,23 +65,25 @@ export const calendarRouter = router({
       }
 
       try {
+        // Using actual production column names: start_date, end_date, is_available, notes
         const result = await query<{
           id: number
-          date_from: string
-          date_to: string
+          start_date: string
+          end_date: string
           reason: string
-          description: string | null
+          notes: string | null
           created_at: string
         }>(`
           INSERT INTO availability_overrides (
-            date_from,
-            date_to,
+            start_date,
+            end_date,
             reason,
-            description,
+            notes,
+            override_type,
             created_by,
-            is_active
-          ) VALUES ($1, $2, $3, $4, $5, true)
-          RETURNING id, date_from, date_to, reason, description, created_at
+            is_available
+          ) VALUES ($1, $2, $3, $4, 'manual', $5, false)
+          RETURNING id, start_date, end_date, reason, notes, created_at
         `, [
           input.dateFrom,
           input.dateTo || input.dateFrom,
@@ -89,7 +92,16 @@ export const calendarRouter = router({
           user.userId
         ])
         
-        return result.rows[0]
+        // Map to expected frontend format
+        const row = result.rows[0]
+        return {
+          id: row.id,
+          date_from: row.start_date,
+          date_to: row.end_date,
+          reason: row.reason,
+          description: row.notes,
+          created_at: row.created_at
+        }
       } catch (error) {
         console.error('Error adding override:', error)
         throw new TRPCError({
@@ -115,9 +127,10 @@ export const calendarRouter = router({
       }
 
       try {
+        // Using actual production column: is_available (set to true to "remove" the block)
         await query(`
           UPDATE availability_overrides
-          SET is_active = false,
+          SET is_available = true,
               updated_at = CURRENT_TIMESTAMP
           WHERE id = $1
         `, [input.id])
@@ -145,32 +158,43 @@ export const calendarRouter = router({
       }
 
       try {
+        // Using actual production column names: start_date, end_date, is_available, notes
         const result = await query<{
           id: number
-          date_from: string
-          date_to: string
+          start_date: string
+          end_date: string
           reason: string
-          description: string | null
-          is_active: boolean
+          notes: string | null
+          is_available: boolean
           created_at: string
           created_by_name: string | null
         }>(`
           SELECT 
             ao.id,
-            ao.date_from,
-            ao.date_to,
+            ao.start_date,
+            ao.end_date,
             ao.reason,
-            ao.description,
-            ao.is_active,
+            ao.notes,
+            ao.is_available,
             ao.created_at,
             u.name as created_by_name
           FROM availability_overrides ao
           LEFT JOIN users u ON ao.created_by = u.id
-          WHERE ao.is_active = true
-          ORDER BY ao.date_from ASC
+          WHERE ao.is_available = false
+          ORDER BY ao.start_date ASC
         `)
         
-        return result.rows
+        // Map to expected frontend format
+        return result.rows.map(row => ({
+          id: row.id,
+          date_from: row.start_date,
+          date_to: row.end_date,
+          reason: row.reason,
+          description: row.notes,
+          is_active: !row.is_available,
+          created_at: row.created_at,
+          created_by_name: row.created_by_name
+        }))
       } catch (error) {
         console.error('Error fetching overrides:', error)
         throw new TRPCError({
