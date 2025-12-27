@@ -38,11 +38,11 @@ export const calendarRouter = router({
         
         return result.rows.map((row) => row.date)
       } catch (error: any) {
-        console.error('Error fetching unavailable dates:', {
+        console.error('Error fetching unavailable dates:', JSON.stringify({
           message: error.message,
           code: error.code,
           detail: error.detail
-        })
+        }))
         
         // If table doesn't exist or columns are wrong, return empty array instead of crashing
         if (error.code === '42P01' || error.code === '42703') {
@@ -76,14 +76,15 @@ export const calendarRouter = router({
       }
 
       try {
-        console.log('Adding override with data:', {
+        // Log input data as stringified JSON for proper Railway logging
+        console.log('Adding override with data: ' + JSON.stringify({
           dateFrom: input.dateFrom,
           dateTo: input.dateTo || input.dateFrom,
           reason: input.reason,
           description: input.description,
           userId: user.userId,
           userRole: user.role
-        })
+        }))
 
         // Using actual production column names: start_date, end_date, is_available, notes
         const result = await query<{
@@ -112,7 +113,7 @@ export const calendarRouter = router({
           user.userId
         ])
         
-        console.log('Override added successfully:', result.rows[0])
+        console.log('Override added successfully: ' + JSON.stringify(result.rows[0]))
         
         // Map to expected frontend format
         const row = result.rows[0]
@@ -125,16 +126,19 @@ export const calendarRouter = router({
           created_at: row.created_at
         }
       } catch (error: any) {
-        console.error('Error adding override - Full error:', {
-          message: error.message,
-          code: error.code,
-          detail: error.detail,
-          hint: error.hint,
-          constraint: error.constraint,
-          table: error.table,
-          column: error.column,
-          stack: error.stack
-        })
+        // Log the full error as stringified JSON for proper Railway logging
+        const errorDetails = {
+          message: error.message || 'Unknown error',
+          code: error.code || 'UNKNOWN',
+          detail: error.detail || null,
+          hint: error.hint || null,
+          constraint: error.constraint || null,
+          table: error.table || null,
+          column: error.column || null,
+          position: error.position || null,
+          routine: error.routine || null
+        }
+        console.error('Error adding override - Full error: ' + JSON.stringify(errorDetails))
         
         // Provide more specific error messages
         if (error.code === '23503') {
@@ -161,11 +165,17 @@ export const calendarRouter = router({
             code: 'INTERNAL_SERVER_ERROR',
             message: 'Database schema error. Please contact support.'
           })
+        } else if (error.code === '23502') {
+          // NOT NULL violation
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: `Missing required field: ${error.column || 'unknown'}. Please fill in all required fields.`
+          })
         }
         
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
-          message: 'Failed to add date override'
+          message: `Failed to add date override: ${error.message || 'Unknown error'}`
         })
       }
     }),
@@ -195,8 +205,12 @@ export const calendarRouter = router({
         `, [input.id])
         
         return { success: true }
-      } catch (error) {
-        console.error('Error removing override:', error)
+      } catch (error: any) {
+        console.error('Error removing override: ' + JSON.stringify({
+          message: error.message,
+          code: error.code,
+          detail: error.detail
+        }))
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
           message: 'Failed to remove date override'
@@ -254,8 +268,12 @@ export const calendarRouter = router({
           created_at: row.created_at,
           created_by_name: row.created_by_name
         }))
-      } catch (error) {
-        console.error('Error fetching overrides:', error)
+      } catch (error: any) {
+        console.error('Error fetching overrides: ' + JSON.stringify({
+          message: error.message,
+          code: error.code,
+          detail: error.detail
+        }))
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
           message: 'Failed to fetch overrides'
