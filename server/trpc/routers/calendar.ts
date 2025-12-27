@@ -103,7 +103,7 @@ export const calendarRouter = router({
             override_type,
             created_by,
             is_available
-          ) VALUES ($1, $2, $3, $4, 'manual', $5, false)
+          ) VALUES ($1, $2, $3, $4, 'blocked', $5, false)
           RETURNING id, start_date, end_date, reason, notes, created_at
         `, [
           input.dateFrom,
