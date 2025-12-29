@@ -3,6 +3,7 @@ import { TRPCError } from '@trpc/server'
 import { router, adminProcedure } from '../trpc'
 import { query } from '../../db/connection'
 import { sendCustomEmail } from '../../utils/email'
+import { escapeHtml } from '../../utils/sanitize'
 import { logger } from '../../utils/logger'
 
 export const emailsRouter = router({
@@ -107,7 +108,7 @@ export const emailsRouter = router({
                 <h1>Message from Elite Sports DJ</h1>
               </div>
               <div class="content">
-                ${input.message.replace(/\n/g, '<br>')}
+                ${escapeHtml(input.message).replace(/\n/g, '<br>')}
               </div>
               <div class="footer">
                 <p>© ${new Date().getFullYear()} Elite Sports DJ. All rights reserved.</p>

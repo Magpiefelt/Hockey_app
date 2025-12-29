@@ -115,3 +115,63 @@ export function sanitizeHtml(html: string): string {
     return allowedTags.includes(tag.toLowerCase()) ? match : ''
   })
 }
+
+/**
+ * Escape HTML entities for safe rendering in HTML contexts
+ * Use this when displaying user input in HTML (e.g., emails, web pages)
+ * 
+ * @param text - The text to escape
+ * @returns HTML-escaped text safe for rendering
+ */
+export function escapeHtml(text: string): string {
+  if (typeof text !== 'string') return ''
+  
+  const htmlEntities: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#x27;',
+    '/': '&#x2F;',
+    '`': '&#x60;',
+    '=': '&#x3D;'
+  }
+  
+  return text.replace(/[&<>"'`=/]/g, char => htmlEntities[char] || char)
+}
+
+/**
+ * Escape text for use in HTML attributes
+ * More aggressive escaping for attribute contexts
+ * 
+ * @param text - The text to escape
+ * @returns Escaped text safe for HTML attributes
+ */
+export function escapeAttribute(text: string): string {
+  if (typeof text !== 'string') return ''
+  
+  return escapeHtml(text)
+    .replace(/\n/g, '&#10;')
+    .replace(/\r/g, '&#13;')
+}
+
+/**
+ * Strip all HTML tags from a string
+ * Use when you need plain text only
+ * 
+ * @param html - The HTML string to strip
+ * @returns Plain text with all HTML removed
+ */
+export function stripHtml(html: string): string {
+  if (typeof html !== 'string') return ''
+  
+  return html
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#x27;/g, "'")
+    .trim()
+}

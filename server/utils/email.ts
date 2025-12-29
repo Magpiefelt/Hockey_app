@@ -453,6 +453,15 @@ export async function sendPaymentReceipt(data: PaymentReceiptData): Promise<bool
 
 /**
  * Send custom email (for admin use)
+ * 
+ * SECURITY NOTE: The htmlContent parameter should be sanitized before passing
+ * to this function if it contains any user-provided content.
+ * Use escapeHtml() from sanitize.ts for user-provided text.
+ * 
+ * @param to - Recipient email address
+ * @param subject - Email subject (will be escaped)
+ * @param htmlContent - HTML content (should be pre-sanitized if contains user input)
+ * @param quoteRequestId - Optional order ID for logging
  */
 export async function sendCustomEmail(
   to: string,
@@ -460,14 +469,22 @@ export async function sendCustomEmail(
   htmlContent: string,
   quoteRequestId?: number
 ): Promise<boolean> {
+  // Import escapeHtml for subject sanitization
+  const { escapeHtml } = await import('./sanitize')
+  
+  // Sanitize subject to prevent header injection
+  const sanitizedSubject = subject
+    .replace(/[\r\n]/g, '') // Remove newlines to prevent header injection
+    .substring(0, 200) // Limit length
+  
   return sendEmail(
     {
       to,
-      subject,
+      subject: sanitizedSubject,
       html: htmlContent
     },
     'custom',
-    { to, subject },
+    { to, subject: sanitizedSubject },
     quoteRequestId
   )
 }

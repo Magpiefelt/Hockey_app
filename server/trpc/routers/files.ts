@@ -1,7 +1,8 @@
 import { z } from 'zod'
 import { TRPCError } from '@trpc/server'
-import { router, publicProcedure, protectedProcedure } from '../trpc'
+import { router, publicProcedure, protectedProcedure, adminProcedure } from '../trpc'
 import { query } from '../../db/connection'
+import { sanitizeFilename } from '../../utils/sanitize'
 
 /**
  * File Upload Integration
@@ -67,10 +68,13 @@ export const filesRouter = router({
       }
       
       try {
+        // SECURITY FIX: Sanitize filename to prevent path traversal
+        const safeFilename = sanitizeFilename(input.filename)
+        
         // Generate S3 key
         const orderId = input.orderId || 0
         const kind = input.kind || 'upload'
-        const key = generateS3Key(orderId, input.filename, kind)
+        const key = generateS3Key(orderId, safeFilename, kind)
         
         // Generate presigned upload URL (valid for 1 hour)
         const uploadUrl = await getUploadPresignedUrl({
@@ -161,8 +165,10 @@ export const filesRouter = router({
 
   /**
    * Register uploaded file in database
+   * SECURITY FIX: Changed from publicProcedure to protectedProcedure
+   * Deliverables can only be uploaded by admins
    */
-  registerUpload: publicProcedure
+  registerUpload: protectedProcedure
     .input(z.object({
       orderId: z.number(),
       fieldName: z.string().default('file'),
@@ -173,12 +179,22 @@ export const filesRouter = router({
       mimeType: z.string(),
       kind: z.enum(['upload', 'deliverable']).default('upload')
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      // SECURITY: Only admins can upload deliverables
+      if (input.kind === 'deliverable' && ctx.user.role !== 'admin') {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Only administrators can upload deliverables'
+        })
+      }
+      
+      // Sanitize filename
+      const safeFilename = sanitizeFilename(input.filename)
       const result = await query(
         `INSERT INTO file_uploads (quote_id, field_name, file_name, storage_path, storage_url, file_size, mime_type, kind)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
          RETURNING id, file_name, storage_url, kind, created_at`,
-        [input.orderId, input.fieldName, input.filename, input.storagePath, input.storageUrl, input.fileSize, input.mimeType, input.kind]
+        [input.orderId, input.fieldName, safeFilename, input.storagePath, input.storageUrl, input.fileSize, input.mimeType, input.kind]
       )
       
       const file = result.rows[0]

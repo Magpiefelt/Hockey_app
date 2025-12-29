@@ -52,7 +52,9 @@ export const authRouter = router({
           reason: 'email_exists',
           ip: ctx.event.context.ip
         })
-        throw new ConflictError('User with this email already exists')
+        // SECURITY FIX: Use generic error message to prevent user enumeration
+        // The specific reason is logged internally but not exposed to the user
+        throw new AuthenticationError('Unable to create account. Please check your information and try again.')
       }
       
       // Hash password
