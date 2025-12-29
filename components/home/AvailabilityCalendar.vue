@@ -281,8 +281,16 @@ const formatDateISO = (date: Date): string => {
   width: 100% !important;
 }
 
-:deep(.dp__flex_display > div) {
+/* Hide the empty first child div (input wrapper in inline mode) */
+:deep(.dp__flex_display > div:first-child:not(.dp__outer_menu_wrap)) {
+  display: none !important;
+}
+
+/* Make the calendar menu wrapper fill the container */
+:deep(.dp__flex_display > .dp__outer_menu_wrap),
+:deep(.dp__flex_display > div:last-child) {
   width: 100% !important;
+  flex: 1 1 100% !important;
 }
 
 /* Calendar wrap */
