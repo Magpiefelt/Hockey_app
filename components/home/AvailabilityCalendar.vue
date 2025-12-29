@@ -242,7 +242,6 @@ const formatDateISO = (date: Date): string => {
 :deep(.dp__outer_menu_wrap) {
   width: 100% !important;
   max-width: 100% !important;
-  min-width: 0 !important;
 }
 
 /* Override the inline style div that sets --dp-menu-width */
@@ -254,7 +253,6 @@ const formatDateISO = (date: Date): string => {
 :deep(.dp__menu > div[style*="--dp-menu-width"]) {
   width: 100% !important;
   max-width: 100% !important;
-  min-width: 0 !important;
   --dp-menu-width: 100% !important;
 }
 
@@ -262,7 +260,6 @@ const formatDateISO = (date: Date): string => {
 :deep(.dp__menu) {
   width: 100% !important;
   max-width: 100% !important;
-  min-width: 0 !important;
   border: none !important;
   background: transparent !important;
   box-shadow: none !important;
