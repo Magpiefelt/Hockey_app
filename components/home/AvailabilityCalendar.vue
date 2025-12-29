@@ -77,22 +77,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { VueDatePicker } from '@vuepic/vue-datepicker'
 import '@vuepic/vue-datepicker/dist/main.css'
+import { useCalendarStore } from '~/stores/calendar'
+import { storeToRefs } from 'pinia'
 
-const trpc = useTrpc()
 const selectedDate = ref<Date | null>(null)
-const unavailableDates = ref<Date[]>([])
 
-// Fetch unavailable dates from API
+// Use centralized calendar store
+const calendarStore = useCalendarStore()
+const { unavailableDates } = storeToRefs(calendarStore)
+
+// Fetch unavailable dates from API via store
 onMounted(async () => {
-  try {
-    const dates = await trpc.calendar.getUnavailableDates.query()
-    unavailableDates.value = dates.map((dateStr: string) => new Date(dateStr))
-  } catch (error) {
-    console.error('Failed to load unavailable dates:', error)
-  }
+  await calendarStore.fetchUnavailableDates()
 })
 
 const handleDateSelect = (date: Date | null) => {
@@ -103,8 +102,7 @@ const isDateAvailable = (date: Date): boolean => {
   if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
     return false
   }
-  const dateStr = formatDateISO(date)
-  return !unavailableDates.value.some(d => formatDateISO(d) === dateStr)
+  return calendarStore.isDateAvailable(date)
 }
 
 const formatDate = (date: Date): string => {
