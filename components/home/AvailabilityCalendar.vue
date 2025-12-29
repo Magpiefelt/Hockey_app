@@ -237,6 +237,12 @@ const formatDateISO = (date: Date): string => {
   max-width: 100% !important;
 }
 
+/* Outer menu wrap - THIS WAS MISSING AND CAUSING THE WIDTH ISSUE */
+:deep(.dp__outer_menu_wrap) {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
 /* Menu container */
 :deep(.dp__menu) {
   width: 100% !important;

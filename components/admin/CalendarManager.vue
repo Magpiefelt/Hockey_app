@@ -512,6 +512,12 @@ const clearForm = () => {
   max-width: 100% !important;
 }
 
+/* Outer menu wrap - critical for full width */
+:deep(.dp__outer_menu_wrap) {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
 /* Menu container */
 :deep(.dp__menu) {
   width: 100% !important;
