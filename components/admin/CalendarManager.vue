@@ -24,6 +24,9 @@
               range
               :multi-calendars="false"
               :hide-navigation="['time']"
+              :six-weeks="true"
+              :month-change-on-scroll="false"
+              month-name-format="long"
               :action-row="{ showNow: false, showPreview: false, showSelect: false, showCancel: false }"
               @update:model-value="handleDateChange"
             />
@@ -447,12 +450,11 @@ const clearForm = () => {
   z-index: 1;
 }
 
-/* Calendar container - constrain width and center */
+/* Calendar container - FIXED: Fill width properly */
 .calendar-container {
   display: flex;
   justify-content: center;
   width: 100%;
-  max-width: 320px;
   overflow: hidden;
 }
 
@@ -504,27 +506,148 @@ const clearForm = () => {
   --dp-highlight-color: rgba(6, 182, 212, 0.1);
 }
 
-/* Ensure calendar fits within container */
+/* Main container - MUST fill width */
 :deep(.dp__main) {
-  width: 100%;
-  max-width: 320px;
+  width: 100% !important;
+  max-width: 100% !important;
 }
 
+/* Menu container */
+:deep(.dp__menu) {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+:deep(.dp__menu_inner) {
+  width: 100% !important;
+  padding: 0 !important;
+}
+
+/* Calendar instance */
 :deep(.dp__instance_calendar) {
-  width: 100%;
+  width: 100% !important;
+  max-width: 100% !important;
 }
 
-:deep(.dp__calendar) {
-  font-family: inherit;
-  width: 100%;
+/* Flex display containers */
+:deep(.dp__flex_display) {
+  width: 100% !important;
 }
 
+:deep(.dp__flex_display > div) {
+  width: 100% !important;
+}
+
+/* Calendar wrap */
 :deep(.dp__calendar_wrap) {
-  width: 100%;
+  width: 100% !important;
 }
 
+/* Calendar grid */
+:deep(.dp__calendar) {
+  width: 100% !important;
+  font-family: inherit;
+}
+
+/* Calendar rows - flexbox for equal distribution */
+:deep(.dp__calendar_row) {
+  display: flex !important;
+  width: 100% !important;
+  margin: 0 !important;
+  gap: 4px;
+}
+
+/* Calendar items - equal flex sizing */
+:deep(.dp__calendar_item) {
+  flex: 1 1 0 !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  padding: 2px !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+}
+
+/* Calendar header row */
 :deep(.dp__calendar_header) {
+  display: flex !important;
+  width: 100% !important;
   font-weight: 600;
+  font-size: 0.75rem;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+:deep(.dp__calendar_header_item) {
+  flex: 1 1 0 !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  padding: 0.5rem 0 !important;
+  text-align: center !important;
+}
+
+/* Cell inner styling */
+:deep(.dp__cell_inner) {
+  width: 100% !important;
+  height: auto !important;
+  aspect-ratio: 1 / 1;
+  min-height: 36px;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Month/Year header */
+:deep(.dp__month_year_row) {
+  width: 100%;
+  margin-bottom: 0.75rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+:deep(.dp__month_year_wrap) {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+:deep(.dp__month_year_select) {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #ffffff;
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.375rem;
+}
+
+:deep(.dp__month_year_select:hover) {
+  background-color: #334155;
+}
+
+/* Navigation arrows */
+:deep(.dp__inner_nav) {
+  width: 36px;
+  height: 36px;
+  border-radius: 0.375rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+:deep(.dp__inner_nav:hover) {
+  background-color: #334155;
+}
+
+:deep(.dp__inner_nav svg) {
+  width: 20px;
+  height: 20px;
 }
 
 :deep(.dp__today) {
@@ -543,10 +666,6 @@ const clearForm = () => {
 
 :deep(.dp__range_between) {
   background-color: rgba(6, 182, 212, 0.2);
-}
-
-:deep(.dp__calendar_item) {
-  padding: 0.5rem;
 }
 
 /* Hide time picker elements completely */
@@ -570,12 +689,6 @@ const clearForm = () => {
 :deep(.dp__menu) {
   position: relative;
   z-index: 1;
-  border: none !important;
-  box-shadow: none !important;
-}
-
-:deep(.dp__menu_inner) {
-  padding-bottom: 0 !important;
 }
 
 /* Hide any action row or button container */

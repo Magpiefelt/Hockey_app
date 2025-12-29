@@ -87,7 +87,8 @@ export const calendarRouter = router({
         }))
 
         // Using actual production column names: start_date, end_date, is_available, notes
-        // Note: override_type column is omitted due to CHECK constraint - it will default to NULL
+        // FIX: Include override_type with 'manual' value to satisfy NOT NULL constraint
+        // The production database has a NOT NULL constraint on override_type that differs from migrations
         const result = await query<{
           id: number
           start_date: string
@@ -102,8 +103,9 @@ export const calendarRouter = router({
             reason,
             notes,
             created_by,
-            is_available
-          ) VALUES ($1, $2, $3, $4, $5, false)
+            is_available,
+            override_type
+          ) VALUES ($1, $2, $3, $4, $5, false, 'manual')
           RETURNING id, start_date, end_date, reason, notes, created_at
         `, [
           input.dateFrom,
