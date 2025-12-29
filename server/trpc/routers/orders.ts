@@ -339,6 +339,27 @@ export const ordersRouter = router({
       
       logger.debug('Fetching order details', { orderId, userId: ctx.user.userId })
       
+      // SECURITY FIX: Check authorization BEFORE fetching full data
+      // This prevents data leakage by verifying access with minimal data fetch
+      const authCheck = await queryOne<{ user_id: number | null }>(
+        'SELECT user_id FROM quote_requests WHERE id = $1',
+        [orderId]
+      )
+      
+      if (!authCheck) {
+        throw new NotFoundError('Order')
+      }
+      
+      if (authCheck.user_id !== ctx.user.userId && ctx.user.role !== 'admin') {
+        logger.warn('Unauthorized order access attempt', { 
+          orderId, 
+          userId: ctx.user.userId,
+          orderUserId: authCheck.user_id
+        })
+        throw new AuthorizationError('Not authorized to view this order')
+      }
+      
+      // Now safe to fetch full order data
       // Get order with form submission data
       const order = await queryOne<{
         id: number
@@ -388,18 +409,11 @@ export const ordersRouter = router({
       )
       
       if (!order) {
+        // This shouldn't happen since we already checked above, but handle gracefully
         throw new NotFoundError('Order')
       }
       
-      // Check authorization
-      if (order.user_id !== ctx.user.userId && ctx.user.role !== 'admin') {
-        logger.warn('Unauthorized order access attempt', { 
-          orderId, 
-          userId: ctx.user.userId,
-          orderUserId: order.user_id
-        })
-        throw new AuthorizationError('Not authorized to view this order')
-      }
+      // Authorization already verified above - safe to proceed
       
       // Get files
       const files = await queryMany<{
