@@ -49,7 +49,13 @@
             v-model="localFormData.eventDate"
             placeholder="Select event date"
             :required="true"
+            :check-availability="true"
+            :show-availability-status="true"
+            @availability-change="handleDateAvailabilityChange"
           />
+          <p class="text-xs text-slate-500 mt-1">
+            Dates shown as unavailable are already booked or blocked.
+          </p>
         </div>
       </div>
 
@@ -206,7 +212,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
+import { useCalendarStore } from '~/stores/calendar'
 
 const props = defineProps<{
   modelValue: any
@@ -225,6 +232,14 @@ const localFormData = computed({
   }
 })
 
+// Calendar store for date availability
+const calendarStore = useCalendarStore()
+const isDateAvailable = ref(true)
+
+const handleDateAvailabilityChange = (available: boolean) => {
+  isDateAvailable.value = available
+}
+
 const handleSubmit = () => {
   // Validate required fields
   if (!localFormData.value.teamName || !localFormData.value.teamName.trim()) {
@@ -234,6 +249,12 @@ const handleSubmit = () => {
   
   if (!localFormData.value.eventDate) {
     alert('Please select an event date')
+    return
+  }
+  
+  // Check if selected date is available
+  if (!calendarStore.isDateAvailable(localFormData.value.eventDate)) {
+    alert('The selected date is no longer available. Please choose another date.')
     return
   }
   

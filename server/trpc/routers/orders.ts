@@ -2,8 +2,8 @@ import { z } from 'zod'
 import { router, publicProcedure, protectedProcedure } from '../trpc'
 import { queryOne, queryMany, executeQuery, executeTransaction } from '../../utils/database'
 import { sanitizeEmail, sanitizeString, sanitizePhone } from '../../utils/sanitize'
-import { isValidEmail, isValidPhone, isValidDate } from '../../utils/validation'
-import { NotFoundError, AuthorizationError, ValidationError } from '../../utils/errors'
+import { isValidEmail, isValidPhone, isValidDate, isFutureDate } from '../../utils/validation'
+import { NotFoundError, AuthorizationError, ValidationError, ConflictError } from '../../utils/errors'
 import { logOrderEvent, AuditAction } from '../../utils/audit'
 import { logger } from '../../utils/logger'
 import { sendOrderConfirmation } from '../../utils/email'
@@ -11,6 +11,7 @@ import { cleanJsonbObject, cleanWarmupSongs, cleanRosterPlayers, cleanSongObject
 import { validateOrderInputLengths, validateJsonbFields, validateNoXSS } from '../../utils/validation-extended'
 import { logFailedSubmission } from '../../utils/failed-submissions'
 import { rateLimit } from '../middleware/rateLimit'
+import { calendarRouter } from './calendar'
 
 export const ordersRouter = router({
   /**
@@ -69,6 +70,53 @@ export const ordersRouter = router({
       
       if (input.eventDate && !isValidDate(input.eventDate)) {
         throw new ValidationError('Invalid event date', 'eventDate')
+      }
+      
+      // Validate event date is in the future
+      if (input.eventDate && !isFutureDate(input.eventDate)) {
+        throw new ValidationError('Event date must be in the future', 'eventDate')
+      }
+      
+      // SERVER-SIDE DATE AVAILABILITY CHECK
+      // This is the critical validation to prevent double-bookings
+      // Even if the client-side check passes, we verify here to handle race conditions
+      if (input.eventDate) {
+        try {
+          // Create a caller for the calendar router to check availability
+          const calendarApi = calendarRouter.createCaller(ctx)
+          const availability = await calendarApi.isDateAvailable({ date: input.eventDate })
+          
+          if (!availability.available) {
+            const reasonMessage = availability.reason === 'blocked' 
+              ? 'This date has been blocked by the administrator.'
+              : 'This date is already booked for another event.'
+            
+            logger.warn('Date availability conflict during order creation', {
+              date: input.eventDate,
+              reason: availability.reason,
+              email,
+              ip: ctx.event?.context?.ip
+            })
+            
+            throw new ConflictError(
+              `The selected date (${input.eventDate}) is no longer available. ${reasonMessage} Please go back and choose another date.`
+            )
+          }
+          
+          logger.debug('Date availability check passed', { date: input.eventDate })
+        } catch (error: any) {
+          // If it's already a ConflictError, re-throw it
+          if (error instanceof ConflictError) {
+            throw error
+          }
+          
+          // Log the error but don't block submission if availability check fails
+          // This is a graceful degradation - we'd rather accept the order than reject it
+          // due to a temporary API issue
+          logger.error('Date availability check failed, proceeding with order', error, {
+            date: input.eventDate
+          })
+        }
       }
       
       // Validate input lengths

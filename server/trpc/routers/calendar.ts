@@ -57,6 +57,95 @@ export const calendarRouter = router({
       }
     }),
 
+  /**
+   * Public: Check if a specific date is available
+   * Used for server-side validation during order creation
+   * More efficient than fetching all unavailable dates for a single check
+   */
+  isDateAvailable: publicProcedure
+    .input(z.object({
+      date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, {
+        message: 'Invalid date format. Expected YYYY-MM-DD'
+      })
+    }))
+    .query(async ({ input }) => {
+      const { date } = input
+
+      try {
+        // Check if the date falls within any blocked range or is a confirmed order date
+        const result = await query<{
+          is_unavailable: boolean
+          reason: string | null
+        }>(`
+          SELECT 
+            EXISTS (
+              SELECT 1 FROM (
+                -- Check manual overrides
+                SELECT 1
+                FROM availability_overrides
+                WHERE is_available = false 
+                  AND $1::date BETWEEN start_date AND end_date
+                
+                UNION ALL
+                
+                -- Check confirmed orders
+                SELECT 1
+                FROM quote_requests
+                WHERE status IN ('confirmed', 'in_progress')
+                  AND event_date = $1::date
+              ) AS unavailable_check
+            ) AS is_unavailable,
+            (
+              -- Get the reason if unavailable (prioritize override reason)
+              SELECT 
+                CASE 
+                  WHEN EXISTS (
+                    SELECT 1 FROM availability_overrides 
+                    WHERE is_available = false 
+                      AND $1::date BETWEEN start_date AND end_date
+                  ) THEN 'blocked'
+                  WHEN EXISTS (
+                    SELECT 1 FROM quote_requests 
+                    WHERE status IN ('confirmed', 'in_progress')
+                      AND event_date = $1::date
+                  ) THEN 'booked'
+                  ELSE NULL
+                END
+            ) AS reason
+        `, [date])
+
+        const data = result.rows[0]
+        
+        return {
+          available: !data.is_unavailable,
+          date: date,
+          reason: data.is_unavailable ? data.reason : null
+        }
+      } catch (error: any) {
+        console.error('Error checking date availability:', JSON.stringify({
+          message: error.message,
+          code: error.code,
+          detail: error.detail,
+          date: date
+        }))
+
+        // If table doesn't exist, assume date is available (graceful degradation)
+        if (error.code === '42P01' || error.code === '42703') {
+          console.warn('Calendar tables not found, assuming date is available')
+          return {
+            available: true,
+            date: date,
+            reason: null
+          }
+        }
+
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Failed to check date availability'
+        })
+      }
+    }),
+
   // Admin: Add date override
   addOverride: adminProcedure
     .input(z.object({

@@ -232,6 +232,7 @@
 <script setup lang="ts">
 import { ref, reactive, shallowReactive, computed, watch } from 'vue'
 import { deepMerge } from '~/utils/deepMerge'
+import { useCalendarStore } from '~/stores/calendar'
 
 definePageMeta({
   layout: 'default'
@@ -520,6 +521,14 @@ const handleFinalSubmit = async () => {
       }
       if (!formData.eventDate) {
         validationErrors.push('Event date is required')
+      }
+    }
+    
+    // Date availability validation (final check before submission)
+    if (formData.eventDate) {
+      const calendarStore = useCalendarStore()
+      if (!calendarStore.isDateAvailable(formData.eventDate)) {
+        validationErrors.push('The selected date is no longer available. Please go back and choose another date.')
       }
     }
     
