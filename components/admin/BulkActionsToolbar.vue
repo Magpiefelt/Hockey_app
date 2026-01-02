@@ -1,0 +1,299 @@
+<script setup lang="ts">
+/**
+ * Bulk Actions Toolbar Component
+ * For performing actions on multiple selected orders
+ */
+
+const props = defineProps<{
+  selectedIds: number[]
+  totalCount: number
+}>()
+
+const emit = defineEmits<{
+  clearSelection: []
+  selectAll: []
+  actionComplete: [action: string, results: { success: number[]; failed: { id: number; error: string }[] }]
+}>()
+
+const { $trpc } = useNuxtApp()
+
+// State
+const isProcessing = ref(false)
+const showStatusModal = ref(false)
+const showEmailModal = ref(false)
+const selectedStatus = ref('')
+const statusNotes = ref('')
+const emailType = ref<'reminder' | 'status_update' | 'custom'>('reminder')
+const customSubject = ref('')
+const customBody = ref('')
+
+// Available statuses for bulk update
+const availableStatuses = [
+  { value: 'in_progress', label: 'In Progress' },
+  { value: 'completed', label: 'Completed' },
+  { value: 'delivered', label: 'Delivered' },
+  { value: 'cancelled', label: 'Cancelled' }
+]
+
+// Methods
+async function bulkUpdateStatus() {
+  if (!selectedStatus.value || isProcessing.value) return
+  
+  isProcessing.value = true
+  
+  try {
+    const results = await $trpc.adminEnhancements.bulkUpdateStatus.mutate({
+      orderIds: props.selectedIds,
+      status: selectedStatus.value,
+      notes: statusNotes.value || undefined
+    })
+    
+    emit('actionComplete', 'status_update', results)
+    showStatusModal.value = false
+    selectedStatus.value = ''
+    statusNotes.value = ''
+  } catch (err: any) {
+    console.error('Bulk status update failed', err)
+  } finally {
+    isProcessing.value = false
+  }
+}
+
+async function bulkSendEmail() {
+  if (isProcessing.value) return
+  
+  isProcessing.value = true
+  
+  try {
+    const results = await $trpc.adminEnhancements.bulkSendEmail.mutate({
+      orderIds: props.selectedIds,
+      emailType: emailType.value,
+      subject: emailType.value === 'custom' ? customSubject.value : undefined,
+      body: emailType.value === 'custom' ? customBody.value : undefined
+    })
+    
+    emit('actionComplete', 'email', { 
+      success: Array(results.sent).fill(0), 
+      failed: Array(results.failed).fill({ id: 0, error: 'Failed' }) 
+    })
+    showEmailModal.value = false
+    customSubject.value = ''
+    customBody.value = ''
+  } catch (err: any) {
+    console.error('Bulk email failed', err)
+  } finally {
+    isProcessing.value = false
+  }
+}
+
+async function exportSelected() {
+  isProcessing.value = true
+  
+  try {
+    const result = await $trpc.adminEnhancements.exportOrders.mutate({
+      orderIds: props.selectedIds
+    })
+    
+    // Download CSV
+    const blob = new Blob([result.csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = result.filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    
+    emit('actionComplete', 'export', { success: props.selectedIds, failed: [] })
+  } catch (err: any) {
+    console.error('Export failed', err)
+  } finally {
+    isProcessing.value = false
+  }
+}
+</script>
+
+<template>
+  <div class="bg-cyan-600 text-white px-4 py-3 rounded-lg shadow-lg flex items-center justify-between">
+    <div class="flex items-center gap-4">
+      <div class="flex items-center gap-2">
+        <input
+          type="checkbox"
+          :checked="selectedIds.length === totalCount && totalCount > 0"
+          :indeterminate="selectedIds.length > 0 && selectedIds.length < totalCount"
+          @change="selectedIds.length === totalCount ? emit('clearSelection') : emit('selectAll')"
+          class="w-5 h-5 rounded border-white/30 text-cyan-500 focus:ring-cyan-400"
+        />
+        <span class="font-medium">
+          {{ selectedIds.length }} selected
+        </span>
+      </div>
+      
+      <div class="h-6 w-px bg-white/30"></div>
+      
+      <!-- Action Buttons -->
+      <div class="flex items-center gap-2">
+        <button
+          @click="showStatusModal = true"
+          :disabled="isProcessing"
+          class="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+        >
+          Update Status
+        </button>
+        
+        <button
+          @click="showEmailModal = true"
+          :disabled="isProcessing"
+          class="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+        >
+          Send Email
+        </button>
+        
+        <button
+          @click="exportSelected"
+          :disabled="isProcessing"
+          class="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+        >
+          Export CSV
+        </button>
+      </div>
+    </div>
+    
+    <button
+      @click="emit('clearSelection')"
+      class="text-white/80 hover:text-white transition-colors"
+    >
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    </button>
+  </div>
+  
+  <!-- Status Update Modal -->
+  <Teleport to="body">
+    <div v-if="showStatusModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-2xl max-w-md w-full">
+        <div class="px-6 py-4 border-b border-gray-200">
+          <h3 class="text-lg font-bold text-gray-900">Bulk Update Status</h3>
+          <p class="text-sm text-gray-500">Update {{ selectedIds.length }} orders</p>
+        </div>
+        
+        <div class="p-6">
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">New Status</label>
+            <select
+              v-model="selectedStatus"
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+            >
+              <option value="">Select status...</option>
+              <option v-for="s in availableStatuses" :key="s.value" :value="s.value">
+                {{ s.label }}
+              </option>
+            </select>
+          </div>
+          
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Notes (Optional)</label>
+            <textarea
+              v-model="statusNotes"
+              rows="2"
+              placeholder="Add notes for this status change..."
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent resize-none"
+            ></textarea>
+          </div>
+        </div>
+        
+        <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+          <button
+            @click="showStatusModal = false"
+            class="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button
+            @click="bulkUpdateStatus"
+            :disabled="!selectedStatus || isProcessing"
+            class="px-4 py-2 bg-cyan-500 text-white rounded-lg hover:bg-cyan-600 disabled:opacity-50"
+          >
+            {{ isProcessing ? 'Updating...' : 'Update All' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
+  
+  <!-- Email Modal -->
+  <Teleport to="body">
+    <div v-if="showEmailModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-2xl max-w-md w-full">
+        <div class="px-6 py-4 border-b border-gray-200">
+          <h3 class="text-lg font-bold text-gray-900">Bulk Send Email</h3>
+          <p class="text-sm text-gray-500">Send to {{ selectedIds.length }} customers</p>
+        </div>
+        
+        <div class="p-6">
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Email Type</label>
+            <select
+              v-model="emailType"
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+            >
+              <option value="reminder">Quote Reminder</option>
+              <option value="status_update">Status Update</option>
+              <option value="custom">Custom Email</option>
+            </select>
+          </div>
+          
+          <template v-if="emailType === 'custom'">
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Subject</label>
+              <input
+                v-model="customSubject"
+                type="text"
+                placeholder="Email subject..."
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+              />
+            </div>
+            
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Body</label>
+              <textarea
+                v-model="customBody"
+                rows="4"
+                placeholder="Email body... Use {{name}} and {{orderId}} for personalization"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent resize-none"
+              ></textarea>
+              <p class="text-xs text-gray-500 mt-1">Available variables: {{name}}, {{orderId}}</p>
+            </div>
+          </template>
+          
+          <div v-else class="bg-gray-50 rounded-lg p-4 text-sm text-gray-600">
+            <p v-if="emailType === 'reminder'">
+              Sends a reminder email to customers with pending quotes, encouraging them to respond.
+            </p>
+            <p v-else-if="emailType === 'status_update'">
+              Notifies customers about their order status change.
+            </p>
+          </div>
+        </div>
+        
+        <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+          <button
+            @click="showEmailModal = false"
+            class="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button
+            @click="bulkSendEmail"
+            :disabled="isProcessing || (emailType === 'custom' && (!customSubject || !customBody))"
+            class="px-4 py-2 bg-cyan-500 text-white rounded-lg hover:bg-cyan-600 disabled:opacity-50"
+          >
+            {{ isProcessing ? 'Sending...' : 'Send Emails' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
+</template>
