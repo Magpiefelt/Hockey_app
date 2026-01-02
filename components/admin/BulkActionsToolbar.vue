@@ -272,7 +272,7 @@ async function exportSelected() {
                 placeholder="Email body... Use {{name}} and {{orderId}} for personalization"
                 class="w-full px-4 py-2.5 bg-dark-tertiary border border-white/10 rounded-lg text-white placeholder:text-slate-500 focus:ring-2 focus:ring-brand-500 focus:border-transparent resize-none"
               ></textarea>
-              <p class="text-xs text-slate-500 mt-1">Available variables: {{ '{{name}}' }}, {{ '{{orderId}}' }}</p>
+              <p class="text-xs text-slate-500 mt-1">Available variables: <code>&#123;&#123;name&#125;&#125;</code>, <code>&#123;&#123;orderId&#125;&#125;</code></p>
             </div>
           </template>
           
