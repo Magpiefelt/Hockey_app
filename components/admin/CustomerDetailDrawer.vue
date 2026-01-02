@@ -13,7 +13,7 @@ const emit = defineEmits<{
   viewOrder: [orderId: string]
 }>()
 
-const { $trpc } = useNuxtApp()
+const trpc = useTrpc()
 
 // State
 const loading = ref(true)
@@ -53,14 +53,15 @@ const activeTab = ref<'orders' | 'emails'>('orders')
 // Load customer data
 onMounted(async () => {
   try {
-    const data = await $trpc.adminEnhancements.getCustomerDetails.query({
+    const data = await trpc.adminEnhancements.getCustomerDetails.query({
       email: props.email
     })
     customer.value = data.customer
     orders.value = data.orders
     emails.value = data.emails
   } catch (err: any) {
-    error.value = err.message || 'Failed to load customer details'
+    const { handleTrpcError } = await import('~/composables/useTrpc')
+    error.value = handleTrpcError(err)
   } finally {
     loading.value = false
   }
@@ -81,43 +82,43 @@ function formatDate(dateStr: string | null): string {
   })
 }
 
-function getStatusColor(status: string): string {
-  const colors: Record<string, string> = {
-    'submitted': 'bg-blue-100 text-blue-800',
-    'quoted': 'bg-purple-100 text-purple-800',
-    'quote_viewed': 'bg-indigo-100 text-indigo-800',
-    'quote_accepted': 'bg-cyan-100 text-cyan-800',
-    'invoiced': 'bg-yellow-100 text-yellow-800',
-    'paid': 'bg-green-100 text-green-800',
-    'in_progress': 'bg-orange-100 text-orange-800',
-    'completed': 'bg-emerald-100 text-emerald-800',
-    'delivered': 'bg-teal-100 text-teal-800',
-    'cancelled': 'bg-red-100 text-red-800'
+function getStatusVariant(status: string): 'brand' | 'success' | 'warning' | 'error' | 'neutral' {
+  const variants: Record<string, 'brand' | 'success' | 'warning' | 'error' | 'neutral'> = {
+    'submitted': 'brand',
+    'quoted': 'warning',
+    'quote_viewed': 'brand',
+    'quote_accepted': 'success',
+    'invoiced': 'warning',
+    'paid': 'success',
+    'in_progress': 'warning',
+    'completed': 'success',
+    'delivered': 'success',
+    'cancelled': 'error'
   }
-  return colors[status] || 'bg-gray-100 text-gray-800'
+  return variants[status] || 'neutral'
 }
 
 function getEmailStatusColor(status: string): string {
   const colors: Record<string, string> = {
-    'sent': 'text-green-600',
-    'failed': 'text-red-600',
-    'bounced': 'text-orange-600'
+    'sent': 'text-success-400',
+    'failed': 'text-error-400',
+    'bounced': 'text-warning-400'
   }
-  return colors[status] || 'text-gray-600'
+  return colors[status] || 'text-slate-400'
 }
 </script>
 
 <template>
   <div class="fixed inset-0 z-50 flex justify-end">
     <!-- Backdrop -->
-    <div class="absolute inset-0 bg-black/30" @click="emit('close')"></div>
+    <div class="absolute inset-0 bg-black/50" @click="emit('close')"></div>
     
     <!-- Drawer -->
-    <div class="relative w-full max-w-lg bg-white shadow-2xl overflow-hidden flex flex-col">
+    <div class="relative w-full max-w-lg bg-dark-secondary border-l border-white/10 shadow-2xl overflow-hidden flex flex-col">
       <!-- Header -->
-      <div class="flex-shrink-0 bg-gradient-to-r from-slate-800 to-slate-700 px-6 py-4 text-white">
+      <div class="flex-shrink-0 bg-gradient-to-r from-slate-800 to-slate-700 px-6 py-4 border-b border-white/10">
         <div class="flex items-center justify-between">
-          <h2 class="text-lg font-bold">Customer Profile</h2>
+          <h2 class="text-lg font-bold text-white">Customer Profile</h2>
           <button 
             @click="emit('close')" 
             class="text-white/80 hover:text-white transition-colors"
@@ -133,12 +134,12 @@ function getEmailStatusColor(status: string): string {
       <div class="flex-1 overflow-y-auto">
         <!-- Loading -->
         <div v-if="loading" class="flex items-center justify-center h-64">
-          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-500"></div>
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-500"></div>
         </div>
         
         <!-- Error -->
         <div v-else-if="error" class="p-6">
-          <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+          <div class="bg-error-500/10 border border-error-500/30 text-error-400 px-4 py-3 rounded-lg">
             {{ error }}
           </div>
         </div>
@@ -146,44 +147,44 @@ function getEmailStatusColor(status: string): string {
         <!-- Customer Data -->
         <div v-else-if="customer" class="p-6">
           <!-- Customer Info Card -->
-          <div class="bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl p-5 mb-6">
+          <div class="bg-dark-tertiary border border-white/10 rounded-xl p-5 mb-6">
             <div class="flex items-start gap-4">
-              <div class="w-14 h-14 bg-cyan-500 rounded-full flex items-center justify-center text-white text-xl font-bold flex-shrink-0">
+              <div class="w-14 h-14 bg-gradient-to-br from-brand-500 to-accent-500 rounded-full flex items-center justify-center text-white text-xl font-bold flex-shrink-0">
                 {{ customer.name.charAt(0).toUpperCase() }}
               </div>
               <div class="flex-1 min-w-0">
-                <h3 class="text-lg font-bold text-gray-900 truncate">{{ customer.name }}</h3>
-                <p class="text-gray-600 truncate">{{ customer.email }}</p>
-                <p v-if="customer.phone" class="text-gray-500 text-sm">{{ customer.phone }}</p>
-                <p v-if="customer.organization" class="text-gray-500 text-sm">{{ customer.organization }}</p>
+                <h3 class="text-lg font-bold text-white truncate">{{ customer.name }}</h3>
+                <p class="text-slate-400 truncate">{{ customer.email }}</p>
+                <p v-if="customer.phone" class="text-slate-500 text-sm">{{ customer.phone }}</p>
+                <p v-if="customer.organization" class="text-slate-500 text-sm">{{ customer.organization }}</p>
               </div>
             </div>
             
             <!-- Stats -->
-            <div class="grid grid-cols-3 gap-4 mt-5 pt-5 border-t border-slate-200">
+            <div class="grid grid-cols-3 gap-4 mt-5 pt-5 border-t border-white/10">
               <div class="text-center">
-                <p class="text-2xl font-bold text-gray-900">{{ customer.orderCount }}</p>
-                <p class="text-xs text-gray-500">Orders</p>
+                <p class="text-2xl font-bold text-white">{{ customer.orderCount }}</p>
+                <p class="text-xs text-slate-400">Orders</p>
               </div>
               <div class="text-center">
-                <p class="text-2xl font-bold text-cyan-600">{{ formatCurrency(customer.totalSpent) }}</p>
-                <p class="text-xs text-gray-500">Total Spent</p>
+                <p class="text-2xl font-bold text-brand-400">{{ formatCurrency(customer.totalSpent) }}</p>
+                <p class="text-xs text-slate-400">Total Spent</p>
               </div>
               <div class="text-center">
-                <p class="text-sm font-medium text-gray-900">{{ formatDate(customer.firstOrderDate) }}</p>
-                <p class="text-xs text-gray-500">First Order</p>
+                <p class="text-sm font-medium text-white">{{ formatDate(customer.firstOrderDate) }}</p>
+                <p class="text-xs text-slate-400">First Order</p>
               </div>
             </div>
           </div>
           
           <!-- Tabs -->
-          <div class="flex border-b border-gray-200 mb-4">
+          <div class="flex border-b border-white/10 mb-4">
             <button
               @click="activeTab = 'orders'"
               class="px-4 py-2 font-medium text-sm border-b-2 transition-colors"
               :class="activeTab === 'orders' 
-                ? 'border-cyan-500 text-cyan-600' 
-                : 'border-transparent text-gray-500 hover:text-gray-700'"
+                ? 'border-brand-500 text-brand-400' 
+                : 'border-transparent text-slate-400 hover:text-white'"
             >
               Orders ({{ orders.length }})
             </button>
@@ -191,8 +192,8 @@ function getEmailStatusColor(status: string): string {
               @click="activeTab = 'emails'"
               class="px-4 py-2 font-medium text-sm border-b-2 transition-colors"
               :class="activeTab === 'emails' 
-                ? 'border-cyan-500 text-cyan-600' 
-                : 'border-transparent text-gray-500 hover:text-gray-700'"
+                ? 'border-brand-500 text-brand-400' 
+                : 'border-transparent text-slate-400 hover:text-white'"
             >
               Emails ({{ emails.length }})
             </button>
@@ -200,7 +201,7 @@ function getEmailStatusColor(status: string): string {
           
           <!-- Orders Tab -->
           <div v-if="activeTab === 'orders'" class="space-y-3">
-            <div v-if="orders.length === 0" class="text-center py-8 text-gray-500">
+            <div v-if="orders.length === 0" class="text-center py-8 text-slate-400">
               No orders found
             </div>
             
@@ -208,28 +209,25 @@ function getEmailStatusColor(status: string): string {
               v-for="order in orders" 
               :key="order.id"
               @click="emit('viewOrder', order.id)"
-              class="bg-white border border-gray-200 rounded-lg p-4 hover:border-cyan-300 hover:shadow-sm cursor-pointer transition-all"
+              class="bg-dark-tertiary border border-white/10 rounded-lg p-4 hover:border-brand-500/30 cursor-pointer transition-all"
             >
               <div class="flex items-start justify-between mb-2">
-                <div>
-                  <span class="font-medium text-gray-900">#{{ order.id }}</span>
-                  <span 
-                    class="ml-2 px-2 py-0.5 text-xs font-medium rounded-full"
-                    :class="getStatusColor(order.status)"
-                  >
+                <div class="flex items-center gap-2">
+                  <span class="font-medium text-white">#{{ order.id }}</span>
+                  <UiBadge :variant="getStatusVariant(order.status)" size="sm">
                     {{ order.status.replace('_', ' ') }}
-                  </span>
+                  </UiBadge>
                 </div>
-                <span class="text-sm text-gray-500">{{ formatDate(order.createdAt) }}</span>
+                <span class="text-sm text-slate-400">{{ formatDate(order.createdAt) }}</span>
               </div>
               
-              <p class="text-sm text-gray-600 mb-2">{{ order.packageName || order.serviceType }}</p>
+              <p class="text-sm text-slate-400 mb-2">{{ order.packageName || order.serviceType }}</p>
               
               <div class="flex items-center justify-between text-sm">
-                <span v-if="order.eventDate" class="text-gray-500">
+                <span v-if="order.eventDate" class="text-slate-500">
                   Event: {{ formatDate(order.eventDate) }}
                 </span>
-                <span v-if="order.totalAmount || order.quotedAmount" class="font-medium text-cyan-600">
+                <span v-if="order.totalAmount || order.quotedAmount" class="font-medium text-brand-400">
                   {{ formatCurrency(order.totalAmount || order.quotedAmount) }}
                 </span>
               </div>
@@ -238,17 +236,17 @@ function getEmailStatusColor(status: string): string {
           
           <!-- Emails Tab -->
           <div v-if="activeTab === 'emails'" class="space-y-3">
-            <div v-if="emails.length === 0" class="text-center py-8 text-gray-500">
+            <div v-if="emails.length === 0" class="text-center py-8 text-slate-400">
               No emails sent
             </div>
             
             <div 
               v-for="email in emails" 
               :key="email.id"
-              class="bg-white border border-gray-200 rounded-lg p-4"
+              class="bg-dark-tertiary border border-white/10 rounded-lg p-4"
             >
               <div class="flex items-start justify-between mb-1">
-                <span class="font-medium text-gray-900 text-sm truncate flex-1 mr-2">
+                <span class="font-medium text-white text-sm truncate flex-1 mr-2">
                   {{ email.subject }}
                 </span>
                 <span 
@@ -259,8 +257,8 @@ function getEmailStatusColor(status: string): string {
                 </span>
               </div>
               
-              <div class="flex items-center justify-between text-xs text-gray-500">
-                <span class="bg-gray-100 px-2 py-0.5 rounded">{{ email.type }}</span>
+              <div class="flex items-center justify-between text-xs text-slate-500">
+                <span class="bg-slate-700 px-2 py-0.5 rounded text-slate-300">{{ email.type }}</span>
                 <span>{{ email.sentAt ? formatDate(email.sentAt) : 'Pending' }}</span>
               </div>
             </div>
@@ -269,14 +267,14 @@ function getEmailStatusColor(status: string): string {
       </div>
       
       <!-- Footer Actions -->
-      <div v-if="customer" class="flex-shrink-0 border-t border-gray-200 px-6 py-4 bg-gray-50">
+      <div v-if="customer" class="flex-shrink-0 border-t border-white/10 px-6 py-4 bg-dark-tertiary">
         <div class="flex gap-3">
-          <button class="flex-1 px-4 py-2 bg-cyan-500 text-white rounded-lg hover:bg-cyan-600 transition-colors text-sm font-medium">
+          <UiButton variant="primary" full-width size="sm">
             Send Email
-          </button>
-          <button class="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
+          </UiButton>
+          <UiButton variant="outline" size="sm">
             Create Order
-          </button>
+          </UiButton>
         </div>
       </div>
     </div>

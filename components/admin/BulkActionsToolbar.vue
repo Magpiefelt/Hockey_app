@@ -15,7 +15,8 @@ const emit = defineEmits<{
   actionComplete: [action: string, results: { success: number[]; failed: { id: number; error: string }[] }]
 }>()
 
-const { $trpc } = useNuxtApp()
+const trpc = useTrpc()
+const { showError, showSuccess } = useNotification()
 
 // State
 const isProcessing = ref(false)
@@ -42,7 +43,7 @@ async function bulkUpdateStatus() {
   isProcessing.value = true
   
   try {
-    const results = await $trpc.adminEnhancements.bulkUpdateStatus.mutate({
+    const results = await trpc.adminEnhancements.bulkUpdateStatus.mutate({
       orderIds: props.selectedIds,
       status: selectedStatus.value,
       notes: statusNotes.value || undefined
@@ -52,8 +53,10 @@ async function bulkUpdateStatus() {
     showStatusModal.value = false
     selectedStatus.value = ''
     statusNotes.value = ''
+    showSuccess(`Updated ${results.success.length} orders`)
   } catch (err: any) {
-    console.error('Bulk status update failed', err)
+    const { handleTrpcError } = await import('~/composables/useTrpc')
+    showError(handleTrpcError(err))
   } finally {
     isProcessing.value = false
   }
@@ -65,7 +68,7 @@ async function bulkSendEmail() {
   isProcessing.value = true
   
   try {
-    const results = await $trpc.adminEnhancements.bulkSendEmail.mutate({
+    const results = await trpc.adminEnhancements.bulkSendEmail.mutate({
       orderIds: props.selectedIds,
       emailType: emailType.value,
       subject: emailType.value === 'custom' ? customSubject.value : undefined,
@@ -79,8 +82,10 @@ async function bulkSendEmail() {
     showEmailModal.value = false
     customSubject.value = ''
     customBody.value = ''
+    showSuccess(`Sent ${results.sent} emails`)
   } catch (err: any) {
-    console.error('Bulk email failed', err)
+    const { handleTrpcError } = await import('~/composables/useTrpc')
+    showError(handleTrpcError(err))
   } finally {
     isProcessing.value = false
   }
@@ -90,7 +95,7 @@ async function exportSelected() {
   isProcessing.value = true
   
   try {
-    const result = await $trpc.adminEnhancements.exportOrders.mutate({
+    const result = await trpc.adminEnhancements.exportOrders.mutate({
       orderIds: props.selectedIds
     })
     
@@ -106,8 +111,10 @@ async function exportSelected() {
     URL.revokeObjectURL(url)
     
     emit('actionComplete', 'export', { success: props.selectedIds, failed: [] })
+    showSuccess('Export downloaded')
   } catch (err: any) {
-    console.error('Export failed', err)
+    const { handleTrpcError } = await import('~/composables/useTrpc')
+    showError(handleTrpcError(err))
   } finally {
     isProcessing.value = false
   }
@@ -115,7 +122,7 @@ async function exportSelected() {
 </script>
 
 <template>
-  <div class="bg-cyan-600 text-white px-4 py-3 rounded-lg shadow-lg flex items-center justify-between">
+  <div class="bg-brand-600 border border-brand-500 text-white px-4 py-3 rounded-lg shadow-lg flex items-center justify-between">
     <div class="flex items-center gap-4">
       <div class="flex items-center gap-2">
         <input
@@ -123,7 +130,7 @@ async function exportSelected() {
           :checked="selectedIds.length === totalCount && totalCount > 0"
           :indeterminate="selectedIds.length > 0 && selectedIds.length < totalCount"
           @change="selectedIds.length === totalCount ? emit('clearSelection') : emit('selectAll')"
-          class="w-5 h-5 rounded border-white/30 text-cyan-500 focus:ring-cyan-400"
+          class="w-5 h-5 rounded border-white/30 text-brand-500 bg-brand-700 focus:ring-brand-400 focus:ring-offset-0"
         />
         <span class="font-medium">
           {{ selectedIds.length }} selected
@@ -172,19 +179,19 @@ async function exportSelected() {
   
   <!-- Status Update Modal -->
   <Teleport to="body">
-    <div v-if="showStatusModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-xl shadow-2xl max-w-md w-full">
-        <div class="px-6 py-4 border-b border-gray-200">
-          <h3 class="text-lg font-bold text-gray-900">Bulk Update Status</h3>
-          <p class="text-sm text-gray-500">Update {{ selectedIds.length }} orders</p>
+    <div v-if="showStatusModal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+      <div class="bg-dark-secondary border border-white/10 rounded-xl shadow-2xl max-w-md w-full">
+        <div class="px-6 py-4 border-b border-white/10">
+          <h3 class="text-lg font-bold text-white">Bulk Update Status</h3>
+          <p class="text-sm text-slate-400">Update {{ selectedIds.length }} orders</p>
         </div>
         
         <div class="p-6">
           <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-2">New Status</label>
+            <label class="block text-sm font-medium text-slate-300 mb-2">New Status</label>
             <select
               v-model="selectedStatus"
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+              class="w-full px-4 py-2.5 bg-dark-tertiary border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-brand-500 focus:border-transparent"
             >
               <option value="">Select status...</option>
               <option v-for="s in availableStatuses" :key="s.value" :value="s.value">
@@ -194,30 +201,31 @@ async function exportSelected() {
           </div>
           
           <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-2">Notes (Optional)</label>
+            <label class="block text-sm font-medium text-slate-300 mb-2">Notes (Optional)</label>
             <textarea
               v-model="statusNotes"
               rows="2"
               placeholder="Add notes for this status change..."
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent resize-none"
+              class="w-full px-4 py-2.5 bg-dark-tertiary border border-white/10 rounded-lg text-white placeholder:text-slate-500 focus:ring-2 focus:ring-brand-500 focus:border-transparent resize-none"
             ></textarea>
           </div>
         </div>
         
-        <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
-          <button
+        <div class="px-6 py-4 border-t border-white/10 flex justify-end gap-3">
+          <UiButton
             @click="showStatusModal = false"
-            class="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+            variant="outline"
           >
             Cancel
-          </button>
-          <button
+          </UiButton>
+          <UiButton
             @click="bulkUpdateStatus"
             :disabled="!selectedStatus || isProcessing"
-            class="px-4 py-2 bg-cyan-500 text-white rounded-lg hover:bg-cyan-600 disabled:opacity-50"
+            :loading="isProcessing"
+            variant="primary"
           >
-            {{ isProcessing ? 'Updating...' : 'Update All' }}
-          </button>
+            Update All
+          </UiButton>
         </div>
       </div>
     </div>
@@ -225,19 +233,19 @@ async function exportSelected() {
   
   <!-- Email Modal -->
   <Teleport to="body">
-    <div v-if="showEmailModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-xl shadow-2xl max-w-md w-full">
-        <div class="px-6 py-4 border-b border-gray-200">
-          <h3 class="text-lg font-bold text-gray-900">Bulk Send Email</h3>
-          <p class="text-sm text-gray-500">Send to {{ selectedIds.length }} customers</p>
+    <div v-if="showEmailModal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+      <div class="bg-dark-secondary border border-white/10 rounded-xl shadow-2xl max-w-md w-full">
+        <div class="px-6 py-4 border-b border-white/10">
+          <h3 class="text-lg font-bold text-white">Bulk Send Email</h3>
+          <p class="text-sm text-slate-400">Send to {{ selectedIds.length }} customers</p>
         </div>
         
         <div class="p-6">
           <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-2">Email Type</label>
+            <label class="block text-sm font-medium text-slate-300 mb-2">Email Type</label>
             <select
               v-model="emailType"
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+              class="w-full px-4 py-2.5 bg-dark-tertiary border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-brand-500 focus:border-transparent"
             >
               <option value="reminder">Quote Reminder</option>
               <option value="status_update">Status Update</option>
@@ -247,28 +255,28 @@ async function exportSelected() {
           
           <template v-if="emailType === 'custom'">
             <div class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-2">Subject</label>
+              <label class="block text-sm font-medium text-slate-300 mb-2">Subject</label>
               <input
                 v-model="customSubject"
                 type="text"
                 placeholder="Email subject..."
-                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                class="w-full px-4 py-2.5 bg-dark-tertiary border border-white/10 rounded-lg text-white placeholder:text-slate-500 focus:ring-2 focus:ring-brand-500 focus:border-transparent"
               />
             </div>
             
             <div class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-2">Body</label>
+              <label class="block text-sm font-medium text-slate-300 mb-2">Body</label>
               <textarea
                 v-model="customBody"
                 rows="4"
                 placeholder="Email body... Use {{name}} and {{orderId}} for personalization"
-                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent resize-none"
+                class="w-full px-4 py-2.5 bg-dark-tertiary border border-white/10 rounded-lg text-white placeholder:text-slate-500 focus:ring-2 focus:ring-brand-500 focus:border-transparent resize-none"
               ></textarea>
-              <p class="text-xs text-gray-500 mt-1">Available variables: {{name}}, {{orderId}}</p>
+              <p class="text-xs text-slate-500 mt-1">Available variables: {{ '{{name}}' }}, {{ '{{orderId}}' }}</p>
             </div>
           </template>
           
-          <div v-else class="bg-gray-50 rounded-lg p-4 text-sm text-gray-600">
+          <div v-else class="bg-dark-tertiary border border-white/5 rounded-lg p-4 text-sm text-slate-400">
             <p v-if="emailType === 'reminder'">
               Sends a reminder email to customers with pending quotes, encouraging them to respond.
             </p>
@@ -278,20 +286,21 @@ async function exportSelected() {
           </div>
         </div>
         
-        <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
-          <button
+        <div class="px-6 py-4 border-t border-white/10 flex justify-end gap-3">
+          <UiButton
             @click="showEmailModal = false"
-            class="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+            variant="outline"
           >
             Cancel
-          </button>
-          <button
+          </UiButton>
+          <UiButton
             @click="bulkSendEmail"
             :disabled="isProcessing || (emailType === 'custom' && (!customSubject || !customBody))"
-            class="px-4 py-2 bg-cyan-500 text-white rounded-lg hover:bg-cyan-600 disabled:opacity-50"
+            :loading="isProcessing"
+            variant="primary"
           >
-            {{ isProcessing ? 'Sending...' : 'Send Emails' }}
-          </button>
+            Send Emails
+          </UiButton>
         </div>
       </div>
     </div>

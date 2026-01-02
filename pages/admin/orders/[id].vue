@@ -47,7 +47,7 @@
             <button
               v-if="canSubmitQuote"
               @click="showEnhancedQuoteModal = true"
-              class="px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-semibold rounded-lg hover:from-cyan-600 hover:to-blue-600 transition-all shadow-lg"
+              class="px-4 py-2 bg-gradient-to-r from-brand-500 to-accent-500 text-white font-semibold rounded-lg hover:from-brand-600 hover:to-accent-600 transition-all shadow-lg"
             >
               {{ orderData.order.quotedAmount ? 'Revise Quote' : 'Submit Quote' }}
             </button>
@@ -79,7 +79,7 @@
               <h2 class="text-2xl font-bold text-white">Customer Information</h2>
               <button
                 @click="showCustomerDrawer = true"
-                class="text-cyan-400 hover:text-cyan-300 text-sm font-medium transition-colors"
+                class="text-brand-400 hover:text-brand-300 text-sm font-medium transition-colors"
               >
                 View Full Profile →
               </button>
@@ -129,7 +129,7 @@
               <div class="flex items-center gap-2">
                 <span 
                   v-if="orderData.order.quotedAmount"
-                  class="text-2xl font-bold text-cyan-400"
+                  class="text-2xl font-bold text-brand-400"
                 >
                   {{ formatPrice(orderData.order.quotedAmount) }}
                 </span>
@@ -162,7 +162,7 @@
               <button
                 v-if="!orderData.order.quotedAmount"
                 @click="showEnhancedQuoteModal = true"
-                class="flex-1 px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-bold rounded-lg hover:from-cyan-600 hover:to-blue-600 transition-all"
+                class="flex-1 px-6 py-3 bg-gradient-to-r from-brand-500 to-accent-500 text-white font-bold rounded-lg hover:from-brand-600 hover:to-accent-600 transition-all"
               >
                 Submit Quote
               </button>
@@ -291,7 +291,7 @@
               <div
                 v-for="(file, index) in deliverableQueue"
                 :key="index"
-                class="flex items-center justify-between p-3 bg-slate-50 border border-white/10 rounded-md"
+                class="flex items-center justify-between p-3 bg-dark-tertiary border border-white/10 rounded-md"
               >
                 <div class="flex items-center gap-3 flex-1 min-w-0">
                   <div v-if="file.uploading" class="animate-spin h-5 w-5 text-brand-primary">
@@ -344,7 +344,7 @@
                 <div
                   v-for="file in uploadedFiles"
                   :key="file.id"
-                  class="flex items-center justify-between p-3 bg-slate-50 border border-white/10 rounded-md"
+                  class="flex items-center justify-between p-3 bg-dark-tertiary border border-white/10 rounded-md"
                 >
                   <div class="flex items-center gap-3 flex-1 min-w-0">
                     <svg class="h-5 w-5 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -366,7 +366,7 @@
                 <div
                   v-for="file in deliverableFiles"
                   :key="file.id"
-                  class="flex items-center justify-between p-3 bg-slate-50 border border-white/10 rounded-md"
+                  class="flex items-center justify-between p-3 bg-dark-tertiary border border-white/10 rounded-md"
                 >
                   <div class="flex items-center gap-3 flex-1 min-w-0">
                     <svg class="h-5 w-5 text-brand-primary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">

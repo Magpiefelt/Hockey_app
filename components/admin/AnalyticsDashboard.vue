@@ -4,7 +4,7 @@
  * Shows key metrics and trends for admin overview
  */
 
-const { $trpc } = useNuxtApp()
+const trpc = useTrpc()
 
 // State
 const period = ref<'7d' | '30d' | '90d' | '1y'>('30d')
@@ -32,11 +32,12 @@ async function loadAnalytics() {
   error.value = null
   
   try {
-    analytics.value = await $trpc.adminEnhancements.analytics.query({
+    analytics.value = await trpc.adminEnhancements.analytics.query({
       period: period.value
     })
   } catch (err: any) {
-    error.value = err.message || 'Failed to load analytics'
+    const { handleTrpcError } = await import('~/composables/useTrpc')
+    error.value = handleTrpcError(err)
   } finally {
     loading.value = false
   }
@@ -83,14 +84,14 @@ function getSparklinePath(data: Array<{ revenue: number }>): string {
 </script>
 
 <template>
-  <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+  <UiCard variant="default" :hover="false">
     <!-- Header -->
-    <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-      <h2 class="text-lg font-bold text-gray-900">Analytics Overview</h2>
+    <div class="flex items-center justify-between mb-6">
+      <h2 class="text-lg font-bold text-white">Analytics Overview</h2>
       
       <select
         v-model="period"
-        class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+        class="px-3 py-1.5 text-sm bg-dark-tertiary border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-brand-500 focus:border-transparent"
       >
         <option value="7d">Last 7 days</option>
         <option value="30d">Last 30 days</option>
@@ -100,66 +101,66 @@ function getSparklinePath(data: Array<{ revenue: number }>): string {
     </div>
     
     <!-- Content -->
-    <div class="p-6">
+    <div>
       <!-- Loading -->
       <div v-if="loading" class="flex items-center justify-center h-48">
-        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-500"></div>
+        <UiLoadingSpinner />
       </div>
       
       <!-- Error -->
-      <div v-else-if="error" class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+      <div v-else-if="error" class="bg-error-500/10 border border-error-500/30 text-error-400 px-4 py-3 rounded-lg">
         {{ error }}
       </div>
       
       <!-- Analytics Data -->
       <div v-else-if="analytics">
         <!-- Key Metrics -->
-        <div class="grid grid-cols-4 gap-4 mb-6">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <!-- Conversion Rate -->
-          <div class="bg-gradient-to-br from-cyan-50 to-cyan-100 rounded-xl p-4">
-            <p class="text-sm text-cyan-600 font-medium mb-1">Conversion Rate</p>
-            <p class="text-3xl font-bold text-cyan-700">{{ analytics.conversionRate }}%</p>
-            <p class="text-xs text-cyan-600 mt-1">
+          <div class="bg-brand-500/10 border border-brand-500/20 rounded-xl p-4">
+            <p class="text-sm text-brand-400 font-medium mb-1">Conversion Rate</p>
+            <p class="text-3xl font-bold text-brand-300">{{ analytics.conversionRate }}%</p>
+            <p class="text-xs text-brand-400/70 mt-1">
               {{ analytics.convertedCount }}/{{ analytics.quotedCount }} quotes
             </p>
           </div>
           
           <!-- Avg Time to Quote -->
-          <div class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4">
-            <p class="text-sm text-purple-600 font-medium mb-1">Avg Time to Quote</p>
-            <p class="text-3xl font-bold text-purple-700">{{ formatHours(analytics.avgTimeToQuoteHours) }}</p>
-            <p class="text-xs text-purple-600 mt-1">from submission</p>
+          <div class="bg-accent-500/10 border border-accent-500/20 rounded-xl p-4">
+            <p class="text-sm text-accent-400 font-medium mb-1">Avg Time to Quote</p>
+            <p class="text-3xl font-bold text-accent-300">{{ formatHours(analytics.avgTimeToQuoteHours) }}</p>
+            <p class="text-xs text-accent-400/70 mt-1">from submission</p>
           </div>
           
           <!-- Awaiting Quote -->
-          <div class="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-4">
-            <p class="text-sm text-amber-600 font-medium mb-1">Awaiting Quote</p>
-            <p class="text-3xl font-bold text-amber-700">{{ analytics.pendingActions.awaitingQuote }}</p>
-            <p class="text-xs text-amber-600 mt-1">need attention</p>
+          <div class="bg-warning-500/10 border border-warning-500/20 rounded-xl p-4">
+            <p class="text-sm text-warning-400 font-medium mb-1">Awaiting Quote</p>
+            <p class="text-3xl font-bold text-warning-300">{{ analytics.pendingActions.awaitingQuote }}</p>
+            <p class="text-xs text-warning-400/70 mt-1">need attention</p>
           </div>
           
           <!-- Stale Quotes -->
           <div 
-            class="rounded-xl p-4"
+            class="rounded-xl p-4 border"
             :class="analytics.pendingActions.staleQuotes > 0 
-              ? 'bg-gradient-to-br from-red-50 to-red-100' 
-              : 'bg-gradient-to-br from-green-50 to-green-100'"
+              ? 'bg-error-500/10 border-error-500/20' 
+              : 'bg-success-500/10 border-success-500/20'"
           >
             <p 
               class="text-sm font-medium mb-1"
-              :class="analytics.pendingActions.staleQuotes > 0 ? 'text-red-600' : 'text-green-600'"
+              :class="analytics.pendingActions.staleQuotes > 0 ? 'text-error-400' : 'text-success-400'"
             >
               Stale Quotes
             </p>
             <p 
               class="text-3xl font-bold"
-              :class="analytics.pendingActions.staleQuotes > 0 ? 'text-red-700' : 'text-green-700'"
+              :class="analytics.pendingActions.staleQuotes > 0 ? 'text-error-300' : 'text-success-300'"
             >
               {{ analytics.pendingActions.staleQuotes }}
             </p>
             <p 
               class="text-xs mt-1"
-              :class="analytics.pendingActions.staleQuotes > 0 ? 'text-red-600' : 'text-green-600'"
+              :class="analytics.pendingActions.staleQuotes > 0 ? 'text-error-400/70' : 'text-success-400/70'"
             >
               {{ analytics.pendingActions.staleQuotes > 0 ? '7+ days old' : 'all fresh!' }}
             </p>
@@ -168,54 +169,54 @@ function getSparklinePath(data: Array<{ revenue: number }>): string {
         
         <!-- Revenue Trend -->
         <div class="mb-6">
-          <h3 class="text-sm font-semibold text-gray-700 mb-3">Revenue Trend</h3>
-          <div class="bg-gray-50 rounded-lg p-4 h-24 flex items-end">
+          <h3 class="text-sm font-semibold text-slate-300 mb-3">Revenue Trend</h3>
+          <div class="bg-dark-tertiary border border-white/5 rounded-lg p-4 h-24 flex items-end">
             <svg v-if="analytics.revenueTrend.length > 1" class="w-full h-full" viewBox="0 0 100 30" preserveAspectRatio="none">
               <path 
                 :d="getSparklinePath(analytics.revenueTrend)"
                 fill="none"
-                stroke="#0891b2"
+                stroke="#22d3ee"
                 stroke-width="2"
                 stroke-linecap="round"
                 stroke-linejoin="round"
               />
             </svg>
-            <p v-else class="text-gray-400 text-sm w-full text-center">Not enough data</p>
+            <p v-else class="text-slate-500 text-sm w-full text-center">Not enough data</p>
           </div>
         </div>
         
         <!-- Top Packages -->
         <div>
-          <h3 class="text-sm font-semibold text-gray-700 mb-3">Top Packages</h3>
-          <div class="space-y-2">
+          <h3 class="text-sm font-semibold text-slate-300 mb-3">Top Packages</h3>
+          <div class="space-y-3">
             <div 
               v-for="(pkg, index) in analytics.topPackages" 
               :key="pkg.package"
               class="flex items-center gap-3"
             >
-              <span class="w-6 h-6 rounded-full bg-cyan-100 text-cyan-700 text-xs font-bold flex items-center justify-center">
+              <span class="w-6 h-6 rounded-full bg-brand-500/20 text-brand-400 text-xs font-bold flex items-center justify-center">
                 {{ index + 1 }}
               </span>
               <div class="flex-1 min-w-0">
                 <div class="flex items-center justify-between">
-                  <span class="text-sm font-medium text-gray-900 truncate">{{ pkg.package }}</span>
-                  <span class="text-sm font-bold text-cyan-600">{{ formatCurrency(pkg.revenue) }}</span>
+                  <span class="text-sm font-medium text-white truncate">{{ pkg.package }}</span>
+                  <span class="text-sm font-bold text-brand-400">{{ formatCurrency(pkg.revenue) }}</span>
                 </div>
-                <div class="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                <div class="w-full bg-slate-700 rounded-full h-1.5 mt-1">
                   <div 
-                    class="bg-cyan-500 h-1.5 rounded-full"
+                    class="bg-brand-500 h-1.5 rounded-full transition-all"
                     :style="{ width: `${(pkg.revenue / (analytics.topPackages[0]?.revenue || 1)) * 100}%` }"
                   ></div>
                 </div>
               </div>
             </div>
             
-            <p v-if="analytics.topPackages.length === 0" class="text-gray-400 text-sm text-center py-4">
+            <p v-if="analytics.topPackages.length === 0" class="text-slate-500 text-sm text-center py-4">
               No data for this period
             </p>
           </div>
         </div>
       </div>
     </div>
-  </div>
+  </UiCard>
 </template>

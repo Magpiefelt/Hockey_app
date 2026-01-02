@@ -84,7 +84,7 @@
                     :checked="isAllSelected"
                     :indeterminate="isPartiallySelected"
                     @change="toggleSelectAll"
-                    class="w-4 h-4 rounded border-slate-600 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-0 bg-dark-secondary"
+                    class="w-4 h-4 rounded border-white/20 text-brand-500 focus:ring-brand-500 focus:ring-offset-0 bg-dark-tertiary"
                   />
                 </th>
                 <th class="text-left py-4 px-6 text-slate-200 font-semibold text-xs uppercase">Order ID</th>
@@ -107,14 +107,14 @@
                 v-for="order in paginatedOrders" 
                 :key="order.id"
                 class="border-b border-white/5 hover:bg-dark-secondary transition-colors"
-                :class="{ 'bg-cyan-500/5': selectedOrderIds.includes(order.id) }"
+                :class="{ 'bg-brand-500/5': selectedOrderIds.includes(order.id) }"
               >
                 <td class="py-4 px-4" @click.stop>
                   <input
                     type="checkbox"
                     :checked="selectedOrderIds.includes(order.id)"
                     @change="toggleOrderSelection(order.id)"
-                    class="w-4 h-4 rounded border-slate-600 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-0 bg-dark-secondary"
+                    class="w-4 h-4 rounded border-white/20 text-brand-500 focus:ring-brand-500 focus:ring-offset-0 bg-dark-tertiary"
                   />
                 </td>
                 <td 

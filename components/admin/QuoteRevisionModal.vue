@@ -16,7 +16,8 @@ const emit = defineEmits<{
   revised: [data: { orderId: number; previousAmount: number; newAmount: number; version: number }]
 }>()
 
-const { $trpc } = useNuxtApp()
+const trpc = useTrpc()
+const { showError } = useNotification()
 
 // Form state
 const newAmount = ref<string>((props.currentAmount / 100).toFixed(2))
@@ -38,7 +39,7 @@ const loadingHistory = ref(true)
 // Load revision history
 onMounted(async () => {
   try {
-    const history = await $trpc.adminEnhancements.getQuoteRevisions.query({
+    const history = await trpc.adminEnhancements.getQuoteRevisions.query({
       orderId: props.orderId
     })
     revisions.value = history
@@ -78,7 +79,7 @@ async function submitRevision() {
   error.value = null
   
   try {
-    const result = await $trpc.adminEnhancements.reviseQuote.mutate({
+    const result = await trpc.adminEnhancements.reviseQuote.mutate({
       orderId: props.orderId,
       newAmount: newAmountInCents.value,
       reason: reason.value,
@@ -93,7 +94,9 @@ async function submitRevision() {
     })
     emit('close')
   } catch (err: any) {
-    error.value = err.message || 'Failed to revise quote'
+    const { handleTrpcError } = await import('~/composables/useTrpc')
+    error.value = handleTrpcError(err)
+    showError(error.value)
   } finally {
     isSubmitting.value = false
   }
@@ -115,14 +118,14 @@ function useCommonReason(r: string) {
 </script>
 
 <template>
-  <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
+  <div class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+    <div class="bg-dark-secondary border border-white/10 rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
       <!-- Header -->
-      <div class="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-4 text-white">
+      <div class="bg-gradient-to-r from-warning-600 to-warning-500 px-6 py-4">
         <div class="flex items-center justify-between">
           <div>
-            <h2 class="text-xl font-bold">Revise Quote</h2>
-            <p class="text-amber-100 text-sm">Order #{{ orderId }} - {{ customerName }}</p>
+            <h2 class="text-xl font-bold text-white">Revise Quote</h2>
+            <p class="text-white/70 text-sm">Order #{{ orderId }} - {{ customerName }}</p>
           </div>
           <button 
             @click="emit('close')" 
@@ -137,26 +140,26 @@ function useCommonReason(r: string) {
       
       <div class="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
         <!-- Error Message -->
-        <div v-if="error" class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+        <div v-if="error" class="bg-error-500/10 border border-error-500/30 text-error-400 px-4 py-3 rounded-lg mb-6">
           {{ error }}
         </div>
         
         <!-- Current vs New Amount -->
         <div class="grid grid-cols-2 gap-4 mb-6">
-          <div class="bg-gray-100 rounded-lg p-4 text-center">
-            <p class="text-sm text-gray-500 mb-1">Current Quote</p>
-            <p class="text-2xl font-bold text-gray-700">${{ (currentAmount / 100).toFixed(2) }}</p>
+          <div class="bg-dark-tertiary border border-white/10 rounded-lg p-4 text-center">
+            <p class="text-sm text-slate-400 mb-1">Current Quote</p>
+            <p class="text-2xl font-bold text-slate-300">${{ (currentAmount / 100).toFixed(2) }}</p>
           </div>
-          <div class="bg-amber-50 border-2 border-amber-500 rounded-lg p-4 text-center">
-            <p class="text-sm text-gray-500 mb-1">New Quote</p>
+          <div class="bg-warning-500/10 border-2 border-warning-500 rounded-lg p-4 text-center">
+            <p class="text-sm text-slate-400 mb-1">New Quote</p>
             <div class="relative">
-              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">$</span>
               <input
                 v-model="newAmount"
                 type="number"
                 step="0.01"
                 min="0"
-                class="w-full pl-7 pr-2 py-1 text-2xl font-bold text-center border-0 bg-transparent focus:ring-0"
+                class="w-full pl-7 pr-2 py-1 text-2xl font-bold text-center border-0 bg-transparent text-warning-400 focus:ring-0"
               />
             </div>
           </div>
@@ -166,7 +169,7 @@ function useCommonReason(r: string) {
         <div 
           v-if="amountDifference !== 0"
           class="flex items-center justify-center gap-2 mb-6 py-2 rounded-lg"
-          :class="amountDifference > 0 ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'"
+          :class="amountDifference > 0 ? 'bg-success-500/10 text-success-400' : 'bg-error-500/10 text-error-400'"
         >
           <svg v-if="amountDifference > 0" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" />
@@ -182,26 +185,26 @@ function useCommonReason(r: string) {
         
         <!-- Reason -->
         <div class="mb-6">
-          <label class="block text-sm font-medium text-gray-700 mb-2">
-            Reason for Revision <span class="text-red-500">*</span>
+          <label class="block text-sm font-medium text-slate-300 mb-2">
+            Reason for Revision <span class="text-error-500">*</span>
           </label>
           <textarea
             v-model="reason"
             rows="3"
             placeholder="Explain why the quote is being revised..."
-            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent resize-none"
-            :class="{ 'border-red-300': !reason.trim() && newAmountInCents !== currentAmount }"
+            class="w-full px-4 py-3 bg-dark-tertiary border border-white/10 rounded-lg text-white placeholder:text-slate-500 focus:ring-2 focus:ring-warning-500 focus:border-transparent resize-none"
+            :class="{ 'border-error-500/50': !reason.trim() && newAmountInCents !== currentAmount }"
           ></textarea>
           
           <!-- Common Reasons -->
-          <div class="mt-2">
-            <p class="text-xs text-gray-500 mb-2">Quick select:</p>
+          <div class="mt-3">
+            <p class="text-xs text-slate-400 mb-2">Quick select:</p>
             <div class="flex flex-wrap gap-2">
               <button
                 v-for="r in commonReasons"
                 :key="r"
                 @click="useCommonReason(r)"
-                class="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"
+                class="px-2 py-1 text-xs bg-dark-tertiary hover:bg-white/10 text-slate-300 rounded-full transition-colors border border-white/10"
               >
                 {{ r }}
               </button>
@@ -214,23 +217,23 @@ function useCommonReason(r: string) {
           <input
             v-model="notifyCustomer"
             type="checkbox"
-            class="w-5 h-5 text-amber-500 border-gray-300 rounded focus:ring-amber-500"
+            class="w-5 h-5 text-warning-500 bg-dark-tertiary border-white/20 rounded focus:ring-warning-500 focus:ring-offset-0"
           />
           <div>
-            <span class="font-medium text-gray-900">Notify Customer</span>
-            <p class="text-sm text-gray-500">Send email notification about the revised quote</p>
+            <span class="font-medium text-white">Notify Customer</span>
+            <p class="text-sm text-slate-400">Send email notification about the revised quote</p>
           </div>
         </label>
         
         <!-- Revision History -->
-        <div class="border-t border-gray-200 pt-6">
-          <h3 class="font-semibold text-gray-900 mb-3">Quote History</h3>
+        <div class="border-t border-white/10 pt-6">
+          <h3 class="font-semibold text-white mb-3">Quote History</h3>
           
-          <div v-if="loadingHistory" class="text-center py-4 text-gray-500">
+          <div v-if="loadingHistory" class="text-center py-4 text-slate-400">
             Loading history...
           </div>
           
-          <div v-else-if="revisions.length === 0" class="text-center py-4 text-gray-500">
+          <div v-else-if="revisions.length === 0" class="text-center py-4 text-slate-400">
             No previous revisions
           </div>
           
@@ -238,20 +241,20 @@ function useCommonReason(r: string) {
             <div 
               v-for="rev in revisions" 
               :key="rev.version"
-              class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg"
+              class="flex items-start gap-3 p-3 bg-dark-tertiary border border-white/5 rounded-lg"
             >
-              <div class="flex-shrink-0 w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-sm font-medium">
+              <div class="flex-shrink-0 w-8 h-8 bg-slate-700 rounded-full flex items-center justify-center text-sm font-medium text-slate-300">
                 v{{ rev.version }}
               </div>
               <div class="flex-1 min-w-0">
                 <div class="flex items-center justify-between">
-                  <span class="font-medium">${{ (rev.amount / 100).toFixed(2) }}</span>
-                  <span class="text-xs text-gray-500">
+                  <span class="font-medium text-white">${{ (rev.amount / 100).toFixed(2) }}</span>
+                  <span class="text-xs text-slate-400">
                     {{ new Date(rev.createdAt).toLocaleDateString() }}
                   </span>
                 </div>
-                <p class="text-sm text-gray-600 truncate">{{ rev.notes }}</p>
-                <p v-if="rev.createdBy" class="text-xs text-gray-400">by {{ rev.createdBy }}</p>
+                <p class="text-sm text-slate-400 truncate">{{ rev.notes }}</p>
+                <p v-if="rev.createdBy" class="text-xs text-slate-500">by {{ rev.createdBy }}</p>
               </div>
             </div>
           </div>
@@ -259,24 +262,21 @@ function useCommonReason(r: string) {
       </div>
       
       <!-- Footer -->
-      <div class="border-t border-gray-200 px-6 py-4 bg-gray-50 flex items-center justify-end gap-3">
-        <button
+      <div class="border-t border-white/10 px-6 py-4 bg-dark-tertiary flex items-center justify-end gap-3">
+        <UiButton
           @click="emit('close')"
-          class="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          variant="outline"
         >
           Cancel
-        </button>
-        <button
+        </UiButton>
+        <UiButton
           @click="submitRevision"
           :disabled="!isValid || isSubmitting"
-          class="px-6 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+          :loading="isSubmitting"
+          variant="secondary"
         >
-          <svg v-if="isSubmitting" class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
           {{ isSubmitting ? 'Updating...' : 'Update Quote' }}
-        </button>
+        </UiButton>
       </div>
     </div>
   </div>
