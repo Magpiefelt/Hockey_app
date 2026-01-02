@@ -11,6 +11,17 @@
         </p>
       </div>
 
+      <!-- Bulk Actions Toolbar -->
+      <AdminBulkActionsToolbar
+        v-if="selectedOrderIds.length > 0"
+        :selected-ids="selectedOrderIds"
+        :total-count="filteredOrders.length"
+        @clear-selection="clearSelection"
+        @select-all="selectAll"
+        @action-complete="handleBulkActionComplete"
+        class="mb-6"
+      />
+
       <!-- Filters -->
       <div class="card p-6 mb-6">
         <div class="grid md:grid-cols-4 gap-4">
@@ -67,6 +78,15 @@
           <table class="w-full">
             <thead>
               <tr class="border-b border-white/10">
+                <th class="text-left py-4 px-4 text-slate-200 font-semibold text-xs uppercase">
+                  <input
+                    type="checkbox"
+                    :checked="isAllSelected"
+                    :indeterminate="isPartiallySelected"
+                    @change="toggleSelectAll"
+                    class="w-4 h-4 rounded border-slate-600 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-0 bg-dark-secondary"
+                  />
+                </th>
                 <th class="text-left py-4 px-6 text-slate-200 font-semibold text-xs uppercase">Order ID</th>
                 <th class="text-left py-4 px-6 text-slate-200 font-semibold text-xs uppercase">Customer</th>
                 <th class="text-left py-4 px-6 text-slate-200 font-semibold text-xs uppercase">Email</th>
@@ -79,22 +99,52 @@
             </thead>
             <tbody>
               <tr v-if="paginatedOrders.length === 0">
-                <td colspan="8" class="py-12 text-center text-slate-400">
+                <td colspan="9" class="py-12 text-center text-slate-400">
                   No orders found
                 </td>
               </tr>
               <tr 
                 v-for="order in paginatedOrders" 
                 :key="order.id"
-                class="border-b border-white/5 hover:bg-dark-secondary transition-colors cursor-pointer"
-                @click="navigateTo(`/admin/orders/${order.id}`)"
+                class="border-b border-white/5 hover:bg-dark-secondary transition-colors"
+                :class="{ 'bg-cyan-500/5': selectedOrderIds.includes(order.id) }"
               >
-                <td class="py-4 px-6 text-white font-mono text-sm font-semibold">#{{ order.id }}</td>
-                <td class="py-4 px-6 text-white font-medium">{{ order.name }}</td>
-                <td class="py-4 px-6 text-slate-300">{{ order.email }}</td>
-                <!-- FIX: Use serviceType directly from backend instead of client-side lookup -->
-                <td class="py-4 px-6 text-slate-300">{{ order.serviceType || 'No Package' }}</td>
-                <td class="py-4 px-6">
+                <td class="py-4 px-4" @click.stop>
+                  <input
+                    type="checkbox"
+                    :checked="selectedOrderIds.includes(order.id)"
+                    @change="toggleOrderSelection(order.id)"
+                    class="w-4 h-4 rounded border-slate-600 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-0 bg-dark-secondary"
+                  />
+                </td>
+                <td 
+                  class="py-4 px-6 text-white font-mono text-sm font-semibold cursor-pointer"
+                  @click="navigateTo(`/admin/orders/${order.id}`)"
+                >
+                  #{{ order.id }}
+                </td>
+                <td 
+                  class="py-4 px-6 text-white font-medium cursor-pointer"
+                  @click="navigateTo(`/admin/orders/${order.id}`)"
+                >
+                  {{ order.name }}
+                </td>
+                <td 
+                  class="py-4 px-6 text-slate-300 cursor-pointer"
+                  @click="navigateTo(`/admin/orders/${order.id}`)"
+                >
+                  {{ order.email }}
+                </td>
+                <td 
+                  class="py-4 px-6 text-slate-300 cursor-pointer"
+                  @click="navigateTo(`/admin/orders/${order.id}`)"
+                >
+                  {{ order.serviceType || 'No Package' }}
+                </td>
+                <td 
+                  class="py-4 px-6 cursor-pointer"
+                  @click="navigateTo(`/admin/orders/${order.id}`)"
+                >
                   <UiBadge
                     :variant="getStatusVariant(order.status)"
                     size="sm"
@@ -102,13 +152,21 @@
                     {{ getStatusLabel(order.status) }}
                   </UiBadge>
                 </td>
-                <td class="py-4 px-6">
+                <td 
+                  class="py-4 px-6 cursor-pointer"
+                  @click="navigateTo(`/admin/orders/${order.id}`)"
+                >
                   <div class="flex items-center gap-2 text-slate-400">
                     <Icon v-if="getFileCount(order) > 0" name="mdi:file-multiple" class="w-4 h-4" />
                     <span class="text-sm">{{ getFileCount(order) || 'None' }}</span>
                   </div>
                 </td>
-                <td class="py-4 px-6 text-slate-300">{{ formatDate(order.createdAt) }}</td>
+                <td 
+                  class="py-4 px-6 text-slate-300 cursor-pointer"
+                  @click="navigateTo(`/admin/orders/${order.id}`)"
+                >
+                  {{ formatDate(order.createdAt) }}
+                </td>
                 <td class="py-4 px-6" @click.stop>
                   <div class="flex items-center gap-2">
                     <button
@@ -178,7 +236,7 @@ definePageMeta({
   middleware: 'admin'
 })
 
-const { showError } = useNotification()
+const { showError, showSuccess } = useNotification()
 const { getStatusColor, getStatusLabel, formatDate } = useUtils()
 const trpc = useTrpc()
 
@@ -191,6 +249,60 @@ const pageSize = 20
 const totalOrders = ref(0)
 const totalPages = computed(() => Math.ceil(totalOrders.value / pageSize))
 
+// Selection state for bulk actions
+const selectedOrderIds = ref<number[]>([])
+
+const isAllSelected = computed(() => {
+  return filteredOrders.value.length > 0 && 
+         selectedOrderIds.value.length === filteredOrders.value.length
+})
+
+const isPartiallySelected = computed(() => {
+  return selectedOrderIds.value.length > 0 && 
+         selectedOrderIds.value.length < filteredOrders.value.length
+})
+
+const toggleSelectAll = () => {
+  if (isAllSelected.value) {
+    selectedOrderIds.value = []
+  } else {
+    selectedOrderIds.value = filteredOrders.value.map(o => o.id)
+  }
+}
+
+const toggleOrderSelection = (orderId: number) => {
+  const index = selectedOrderIds.value.indexOf(orderId)
+  if (index === -1) {
+    selectedOrderIds.value.push(orderId)
+  } else {
+    selectedOrderIds.value.splice(index, 1)
+  }
+}
+
+const clearSelection = () => {
+  selectedOrderIds.value = []
+}
+
+const selectAll = () => {
+  selectedOrderIds.value = filteredOrders.value.map(o => o.id)
+}
+
+const handleBulkActionComplete = (action: string, results: { success: number[]; failed: { id: number; error: string }[] }) => {
+  const successCount = results.success.length
+  const failedCount = results.failed.length
+  
+  if (successCount > 0) {
+    showSuccess(`${action}: ${successCount} order(s) updated successfully`)
+  }
+  if (failedCount > 0) {
+    showError(`${action}: ${failedCount} order(s) failed`)
+  }
+  
+  // Refresh orders and clear selection
+  fetchOrders()
+  clearSelection()
+}
+
 const filters = ref({
   status: '',
   packageId: '',
@@ -200,6 +312,7 @@ const filters = ref({
 const statusOptions = [
   { label: 'All Statuses', value: '' },
   { label: 'Submitted', value: 'submitted' },
+  { label: 'Quoted', value: 'quoted' },
   { label: 'In Progress', value: 'in_progress' },
   { label: 'Ready', value: 'ready' },
   { label: 'Delivered', value: 'delivered' },
@@ -226,7 +339,7 @@ const getStatusVariant = (status: string) => {
   return variants[status] || 'neutral'
 }
 
-// FIX: Apply filters to orders
+// Apply filters to orders
 const filteredOrders = computed(() => {
   let result = orders.value
 
@@ -249,20 +362,24 @@ const filteredOrders = computed(() => {
   return result
 })
 
-// FIX: Paginate the filtered results
+// Paginate the filtered results
 const paginatedOrders = computed(() => {
   const start = (currentPage.value - 1) * pageSize
   const end = start + pageSize
   return filteredOrders.value.slice(start, end)
 })
 
-// FIX: Update total orders count based on filtered results
+// Update total orders count based on filtered results
 watch(filteredOrders, (newFiltered) => {
   totalOrders.value = newFiltered.length
   // Reset to page 1 if current page is out of bounds
   if (currentPage.value > Math.ceil(newFiltered.length / pageSize)) {
     currentPage.value = 1
   }
+  // Clear selection when filters change
+  selectedOrderIds.value = selectedOrderIds.value.filter(id => 
+    newFiltered.some(o => o.id === id)
+  )
 }, { immediate: true })
 
 const fetchPackages = async () => {
@@ -271,7 +388,6 @@ const fetchPackages = async () => {
     packages.value = response
   } catch (err: any) {
     console.error('Failed to load packages:', err)
-    // Don't show error to user, just log it - packages are not critical
   }
 }
 
@@ -280,7 +396,6 @@ const fetchOrders = async () => {
   error.value = null
   
   try {
-    // FIX: Use pagination parameters from backend
     const queryParams: { 
       status?: string; 
       search?: string;
@@ -296,8 +411,6 @@ const fetchOrders = async () => {
     const response = await trpc.admin.orders.list.query(queryParams)
     
     orders.value = response
-    // Note: For full server-side pagination, backend should return { orders, total }
-    // Currently using client-side pagination on the filtered results
     totalOrders.value = response.length
   } catch (err: any) {
     const { handleTrpcError } = await import('~/composables/useTrpc')
@@ -315,22 +428,15 @@ const resetFilters = () => {
     search: ''
   }
   currentPage.value = 1
+  selectedOrderIds.value = []
 }
 
-// FIX: Keep getPackageName for backward compatibility but it's no longer used in template
-// The template now uses order.serviceType directly
-const getPackageName = (packageId: string | null | undefined): string => {
-  if (!packageId) return 'No Package'
-  const pkg = packages.value.find(p => p.id === packageId)
-  return pkg ? pkg.name : 'Unknown'
-}
-
-// Get file count from order data (now provided by backend)
+// Get file count from order data
 const getFileCount = (order: any) => {
   return order.fileCount || 0
 }
 
-// FIX: Add goToPage function for pagination
+// Add goToPage function for pagination
 const goToPage = (page: number) => {
   if (page >= 1 && page <= totalPages.value) {
     currentPage.value = page

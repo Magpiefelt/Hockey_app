@@ -18,6 +18,9 @@
 
       <!-- Dashboard Content -->
       <div v-else class="space-y-6">
+        <!-- Analytics Dashboard Component -->
+        <AdminAnalyticsDashboard />
+
         <!-- Financial Summary -->
         <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
           <!-- Total Revenue -->
