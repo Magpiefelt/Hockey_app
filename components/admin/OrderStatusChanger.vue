@@ -120,13 +120,15 @@ const isUpdating = ref(false)
 const error = ref('')
 const showSuccess = ref(false)
 
-// Status transition map (based on business logic)
+// FIX Issue 9: Status transition map synchronized with backend (server/trpc/routers/admin.ts)
+// These transitions must match the validTransitions in the backend update endpoint
 const statusTransitions: Record<string, string[]> = {
-  'submitted': ['quoted', 'in_progress', 'cancelled'],
+  'pending': ['submitted', 'cancelled'],
+  'submitted': ['in_progress', 'quoted', 'cancelled'],
+  'in_progress': ['quoted', 'cancelled'],
   'quoted': ['invoiced', 'in_progress', 'cancelled'],
   'invoiced': ['paid', 'cancelled'],
-  'paid': ['in_progress', 'cancelled'],
-  'in_progress': ['completed', 'cancelled'],
+  'paid': ['completed', 'delivered'],
   'completed': ['delivered'],
   'delivered': [], // Terminal status
   'cancelled': [] // Terminal status
@@ -158,6 +160,7 @@ watch(() => props.currentStatus, (newStatus) => {
 
 function formatStatus(status: string): string {
   const statusMap: Record<string, string> = {
+    'pending': 'Pending',
     'submitted': 'Submitted',
     'quoted': 'Quoted',
     'invoiced': 'Invoiced',
@@ -180,10 +183,12 @@ async function handleStatusChange() {
   try {
     const trpc = useTrpc()
     
-    await trpc.admin.orders.updateStatus.mutate({
+    // FIX Issue 6: Use the correct endpoint - admin.orders.update instead of admin.orders.updateStatus
+    // The updateStatus endpoint does not exist; the update endpoint handles status changes
+    await trpc.admin.orders.update.mutate({
       id: props.orderId,
       status: selectedStatus.value,
-      notes: statusNotes.value || undefined
+      adminNotes: statusNotes.value || undefined
     })
 
     // Emit success

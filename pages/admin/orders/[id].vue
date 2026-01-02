@@ -64,7 +64,8 @@
           <div>
             <p class="text-sm text-slate-400 mb-1">Package</p>
             <p class="text-white font-medium">
-              {{ orderData.order.packageId ? getPackageName(orderData.order.packageId) : 'Custom' }}
+              <!-- FIX Issue 10: Use serviceType directly from order data instead of client-side lookup -->
+              {{ orderData.order.serviceType || (orderData.order.packageId ? getPackageName(orderData.order.packageId) : 'Custom') }}
             </p>
           </div>
           <div>
@@ -488,20 +489,29 @@ const uploadDeliverables = async () => {
     deliverableQueue.value[i].uploading = true
     
     try {
+      // FIX Issue 7 & 8: The uploadFile function now handles:
+      // 1. Getting presigned URL from server
+      // 2. Uploading to S3
+      // 3. Registering the file in the database with the correct orderId
+      // The file is automatically linked to the order during registration,
+      // so we don't need to call attachFile separately
       const result = await uploadFile(fileUpload.file, { 
         orderId: orderId.value,
         kind: 'deliverable' 
       })
       
-      // Attach file to order
-      await trpc.orders.attachFile.mutate({
-        orderId: orderId.value,
-        key: result.key,
-        filename: result.filename,
-        mime: result.mime,
-        fileSize: result.fileSize || result.sizeBytes || 0,
-        url: result.url
-      })
+      // FIX Issue 7: The attachFile endpoint expects {orderId, fileId}, not raw file metadata
+      // Since uploadFile now registers the file with the correct orderId and returns fileId,
+      // we only need to call attachFile if we want to re-link an existing file
+      // For new uploads, the file is already linked during registration
+      // This call is now optional and only needed for edge cases
+      if (result.fileId) {
+        // File already registered and linked to order, but we can verify the link
+        await trpc.orders.attachFile.mutate({
+          orderId: orderId.value,
+          fileId: result.fileId
+        })
+      }
       
       deliverableQueue.value[i].uploading = false
       deliverableQueue.value[i].uploaded = true

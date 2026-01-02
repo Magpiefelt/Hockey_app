@@ -78,13 +78,13 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-if="filteredOrders.length === 0">
+              <tr v-if="paginatedOrders.length === 0">
                 <td colspan="8" class="py-12 text-center text-slate-400">
                   No orders found
                 </td>
               </tr>
               <tr 
-                v-for="order in filteredOrders" 
+                v-for="order in paginatedOrders" 
                 :key="order.id"
                 class="border-b border-white/5 hover:bg-dark-secondary transition-colors cursor-pointer"
                 @click="navigateTo(`/admin/orders/${order.id}`)"
@@ -92,7 +92,8 @@
                 <td class="py-4 px-6 text-white font-mono text-sm font-semibold">#{{ order.id }}</td>
                 <td class="py-4 px-6 text-white font-medium">{{ order.name }}</td>
                 <td class="py-4 px-6 text-slate-300">{{ order.email }}</td>
-                <td class="py-4 px-6 text-slate-300">{{ getPackageName(order.packageId) }}</td>
+                <!-- FIX: Use serviceType directly from backend instead of client-side lookup -->
+                <td class="py-4 px-6 text-slate-300">{{ order.serviceType || 'No Package' }}</td>
                 <td class="py-4 px-6">
                   <UiBadge
                     :variant="getStatusVariant(order.status)"
@@ -140,7 +141,7 @@
           </div>
           <div class="flex gap-2">
             <UiButton
-              @click="currentPage--"
+              @click="goToPage(currentPage - 1)"
               :disabled="currentPage === 1"
               variant="outline"
               size="sm"
@@ -148,7 +149,7 @@
               Previous
             </UiButton>
             <UiButton
-              @click="currentPage++"
+              @click="goToPage(currentPage + 1)"
               :disabled="currentPage === totalPages"
               variant="outline"
               size="sm"
@@ -225,6 +226,7 @@ const getStatusVariant = (status: string) => {
   return variants[status] || 'neutral'
 }
 
+// FIX: Apply filters to orders
 const filteredOrders = computed(() => {
   let result = orders.value
 
@@ -247,6 +249,22 @@ const filteredOrders = computed(() => {
   return result
 })
 
+// FIX: Paginate the filtered results
+const paginatedOrders = computed(() => {
+  const start = (currentPage.value - 1) * pageSize
+  const end = start + pageSize
+  return filteredOrders.value.slice(start, end)
+})
+
+// FIX: Update total orders count based on filtered results
+watch(filteredOrders, (newFiltered) => {
+  totalOrders.value = newFiltered.length
+  // Reset to page 1 if current page is out of bounds
+  if (currentPage.value > Math.ceil(newFiltered.length / pageSize)) {
+    currentPage.value = 1
+  }
+}, { immediate: true })
+
 const fetchPackages = async () => {
   try {
     const response = await trpc.packages.getAll.query()
@@ -262,13 +280,24 @@ const fetchOrders = async () => {
   error.value = null
   
   try {
-    const queryParams: { status?: string; search?: string } = {}
+    // FIX: Use pagination parameters from backend
+    const queryParams: { 
+      status?: string; 
+      search?: string;
+      page?: number;
+      pageSize?: number;
+    } = {
+      page: currentPage.value,
+      pageSize: pageSize
+    }
     if (filters.value.status) queryParams.status = filters.value.status
     if (filters.value.search) queryParams.search = filters.value.search
     
     const response = await trpc.admin.orders.list.query(queryParams)
     
     orders.value = response
+    // Note: For full server-side pagination, backend should return { orders, total }
+    // Currently using client-side pagination on the filtered results
     totalOrders.value = response.length
   } catch (err: any) {
     const { handleTrpcError } = await import('~/composables/useTrpc')
@@ -285,9 +314,12 @@ const resetFilters = () => {
     packageId: '',
     search: ''
   }
+  currentPage.value = 1
 }
 
-const getPackageName = (packageId) => {
+// FIX: Keep getPackageName for backward compatibility but it's no longer used in template
+// The template now uses order.serviceType directly
+const getPackageName = (packageId: string | null | undefined): string => {
   if (!packageId) return 'No Package'
   const pkg = packages.value.find(p => p.id === packageId)
   return pkg ? pkg.name : 'Unknown'
@@ -296,6 +328,13 @@ const getPackageName = (packageId) => {
 // Get file count from order data (now provided by backend)
 const getFileCount = (order: any) => {
   return order.fileCount || 0
+}
+
+// FIX: Add goToPage function for pagination
+const goToPage = (page: number) => {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page
+  }
 }
 
 // Edit modal state

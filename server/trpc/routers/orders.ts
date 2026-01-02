@@ -138,6 +138,7 @@ export const ordersRouter = router({
       })
       
       // Get package ID for failed submission logging
+      // FIX: Add validation to prevent silent failures when invalid package slug is provided
       let dbPackageId: number | null = null
       if (input.packageId) {
         const pkgResult = await executeQuery<{ id: number }>(
@@ -146,6 +147,9 @@ export const ordersRouter = router({
         )
         if (pkgResult.rows.length > 0) {
           dbPackageId = pkgResult.rows[0].id
+        } else {
+          // FIX: Throw validation error if package slug was provided but not found
+          throw new ValidationError(`Invalid package ID: '${input.packageId}' not found`, 'packageId')
         }
       }
       

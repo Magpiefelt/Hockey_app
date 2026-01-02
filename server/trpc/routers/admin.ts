@@ -569,22 +569,24 @@ export const adminRouter = router({
   customers: router({
     /**
      * List all customers
+     * FIX: Group by email (unique identifier) to prevent duplicate customer entries
+     * when the same customer has orders with slightly different contact info
      */
     list: adminProcedure
       .query(async () => {
         const result = await query(
           `SELECT 
-            COALESCE(u.id, 0) as id,
-            COALESCE(u.name, qr.contact_name) as name,
+            COALESCE(MAX(u.id), 0) as id,
+            COALESCE(MAX(u.name), MAX(qr.contact_name)) as name,
             COALESCE(u.email, qr.contact_email) as email,
-            qr.contact_phone as phone,
-            qr.organization,
+            MAX(qr.contact_phone) as phone,
+            MAX(qr.organization) as organization,
             COUNT(qr.id) as order_count,
             COALESCE(SUM(qr.total_amount), 0) as total_spent,
             MIN(qr.created_at) as created_at
           FROM quote_requests qr
           LEFT JOIN users u ON qr.user_id = u.id
-          GROUP BY u.id, u.name, u.email, qr.contact_name, qr.contact_email, qr.contact_phone, qr.organization
+          GROUP BY COALESCE(u.email, qr.contact_email)
           ORDER BY total_spent DESC`
         )
         

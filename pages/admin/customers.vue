@@ -31,6 +31,22 @@
         <div class="animate-spin h-12 w-12 border-4 border-brand-600 border-t-transparent rounded-full"></div>
       </div>
 
+      <!-- FIX Issue 12: Add error state display -->
+      <div v-else-if="error" class="bg-red-500/10 border border-red-500/30 rounded-lg p-6 text-center">
+        <div class="flex flex-col items-center gap-4">
+          <svg class="h-12 w-12 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <p class="text-red-400 font-medium">{{ error }}</p>
+          <button 
+            @click="fetchCustomers" 
+            class="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+
       <!-- Content -->
       <div v-else>
         <!-- Stats Summary -->
@@ -153,8 +169,11 @@ const fetchCustomers = async () => {
     const response = await trpc.admin.customers.list.query()
     
     customers.value = response
-    totalOrders.value = response.reduce((sum, c) => sum + (c.totalOrders || c.orderCount || 0), 0)
-    totalRevenue.value = response.reduce((sum, c) => sum + (c.totalSpent || 0), 0)
+    // FIX Issue 11: Backend returns both orderCount and totalOrders (same value)
+    // and totalSpent in cents. Use consistent field access.
+    totalOrders.value = response.reduce((sum, c) => sum + (c.orderCount || 0), 0)
+    // totalSpent is returned in cents from the database, convert to dollars for display
+    totalRevenue.value = response.reduce((sum, c) => sum + (c.totalSpent || 0), 0) / 100
   } catch (err: any) {
     const { handleTrpcError } = await import('~/composables/useTrpc')
     error.value = handleTrpcError(err)
