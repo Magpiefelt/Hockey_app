@@ -26,6 +26,7 @@
           :number="String(index + 1).padStart(2, '0')"
           :orientation="video.orientation"
           :show-info="showVideoInfo"
+          @video-clicked="handleVideoClicked"
         />
         
         <!-- Duplicate Set for Seamless Loop -->
@@ -39,6 +40,7 @@
           :number="String(index + 1).padStart(2, '0')"
           :orientation="video.orientation"
           :show-info="showVideoInfo"
+          @video-clicked="handleVideoClicked"
         />
       </div>
     </div>
@@ -50,7 +52,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 
 interface VideoItem {
   src: string
@@ -60,16 +62,30 @@ interface VideoItem {
   orientation?: 'landscape' | 'portrait' | 'auto'
 }
 
+interface VideoClickedData {
+  src: string
+  posterSrc?: string
+  category?: string
+  title?: string
+  orientation?: 'landscape' | 'portrait' | 'auto'
+}
+
 interface Props {
   videos: VideoItem[]
   scrollSpeed?: number
   showVideoInfo?: boolean
+  isModalOpen?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   scrollSpeed: 30, // pixels per second
-  showVideoInfo: true
+  showVideoInfo: true,
+  isModalOpen: false
 })
+
+const emit = defineEmits<{
+  'video-clicked': [videoData: VideoClickedData]
+}>()
 
 const scrollContainer = ref<HTMLElement | null>(null)
 const scrollPosition = ref(0)
@@ -86,6 +102,25 @@ const scrollStyle = computed(() => {
   }
 })
 
+// Handle video click from carousel items
+const handleVideoClicked = (videoData: VideoClickedData) => {
+  // Pause animation when video is clicked (modal will open)
+  isPaused.value = true
+  emit('video-clicked', videoData)
+}
+
+// Watch for modal state changes to pause/resume animation
+watch(() => props.isModalOpen, (isOpen) => {
+  if (isOpen) {
+    isPaused.value = true
+  } else {
+    // Resume animation when modal closes (with slight delay for smooth transition)
+    setTimeout(() => {
+      isPaused.value = false
+    }, 300)
+  }
+})
+
 const animate = (timestamp: number) => {
   if (!lastTimestamp.value) {
     lastTimestamp.value = timestamp
@@ -94,7 +129,7 @@ const animate = (timestamp: number) => {
   const deltaTime = timestamp - lastTimestamp.value
   lastTimestamp.value = timestamp
   
-  if (!isPaused.value && isVisible.value && scrollContainer.value) {
+  if (!isPaused.value && isVisible.value && scrollContainer.value && !props.isModalOpen) {
     // Calculate scroll increment based on time elapsed
     const scrollIncrement = (props.scrollSpeed * deltaTime) / 1000
     scrollPosition.value += scrollIncrement
@@ -116,7 +151,10 @@ const pauseAnimation = () => {
 }
 
 const resumeAnimation = () => {
-  isPaused.value = false
+  // Only resume if modal is not open
+  if (!props.isModalOpen) {
+    isPaused.value = false
+  }
 }
 
 onMounted(() => {

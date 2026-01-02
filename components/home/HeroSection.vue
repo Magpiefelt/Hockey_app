@@ -132,6 +132,8 @@
                 :videos="heroVideos"
                 :scroll-speed="25"
                 :show-video-info="true"
+                :is-modal-open="isVideoModalOpen"
+                @video-clicked="openVideoModal"
               />
             </div>
           </RevealOnScroll>
@@ -151,6 +153,17 @@
     
     <!-- Bottom Gradient Fade -->
     <div class="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-dark-primary to-transparent"></div>
+    
+    <!-- Video Player Modal -->
+    <VideoPlayerModal
+      :is-open="isVideoModalOpen"
+      :video-src="selectedVideo?.src || ''"
+      :category="selectedVideo?.category"
+      :title="selectedVideo?.title"
+      :orientation="selectedVideo?.orientation"
+      @close="closeVideoModal"
+      @video-ended="onVideoEnded"
+    />
   </section>
 </template>
 
@@ -159,6 +172,42 @@ import { ref } from 'vue'
 
 // Emit event for scroll to packages
 defineEmits(['scroll-to-packages'])
+
+// ============================================
+// Video Modal State & Handlers
+// ============================================
+interface VideoData {
+  src: string
+  posterSrc?: string
+  category?: string
+  title?: string
+  orientation?: 'landscape' | 'portrait' | 'auto'
+}
+
+const isVideoModalOpen = ref(false)
+const selectedVideo = ref<VideoData | null>(null)
+
+const openVideoModal = (videoData: VideoData) => {
+  selectedVideo.value = videoData
+  isVideoModalOpen.value = true
+}
+
+const closeVideoModal = () => {
+  isVideoModalOpen.value = false
+  // Clear selected video after transition completes
+  setTimeout(() => {
+    selectedVideo.value = null
+  }, 300)
+}
+
+const onVideoEnded = () => {
+  // Optional: Auto-close modal when video ends, or do nothing
+  // closeVideoModal()
+}
+
+// ============================================
+// Hero Video Carousel Data
+// ============================================
 
 // Define video data for the hero carousel
 const heroVideos = ref([

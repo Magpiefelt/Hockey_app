@@ -146,6 +146,8 @@
                   :videos="heroVideos"
                   :scroll-speed="25"
                   :show-video-info="true"
+                  :is-modal-open="isVideoModalOpen"
+                  @video-clicked="openVideoModal"
                 />
               </div>
             </RevealOnScroll>
@@ -776,6 +778,16 @@
       </div>
     </section>
     
+    <!-- Video Player Modal -->
+    <VideoPlayerModal
+      :is-open="isVideoModalOpen"
+      :video-src="selectedVideo?.src || ''"
+      :category="selectedVideo?.category"
+      :title="selectedVideo?.title"
+      :orientation="selectedVideo?.orientation"
+      @close="closeVideoModal"
+      @video-ended="onVideoEnded"
+    />
   </div>
 </template>
 
@@ -786,6 +798,42 @@ definePageMeta({
   layout: 'default'
 })
 
+// ============================================
+// Video Modal State & Handlers
+// ============================================
+interface VideoData {
+  src: string
+  posterSrc?: string
+  category?: string
+  title?: string
+  orientation?: 'landscape' | 'portrait' | 'auto'
+}
+
+const isVideoModalOpen = ref(false)
+const selectedVideo = ref<VideoData | null>(null)
+
+const openVideoModal = (videoData: VideoData) => {
+  selectedVideo.value = videoData
+  isVideoModalOpen.value = true
+}
+
+const closeVideoModal = () => {
+  isVideoModalOpen.value = false
+  // Clear selected video after transition completes
+  setTimeout(() => {
+    selectedVideo.value = null
+  }, 300)
+}
+
+const onVideoEnded = () => {
+  // Optional: Auto-close modal when video ends, or do nothing
+  // closeVideoModal()
+}
+
+// ============================================
+// Page Navigation
+// ============================================
+
 // Smooth scroll to packages section
 const scrollToPackages = () => {
   const packagesSection = document.getElementById('packages')
@@ -793,6 +841,10 @@ const scrollToPackages = () => {
     packagesSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 }
+
+// ============================================
+// Hero Video Carousel Data
+// ============================================
 
 // Define video data for the hero carousel
 const heroVideos = ref([
