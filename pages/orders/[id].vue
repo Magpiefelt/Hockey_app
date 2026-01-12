@@ -32,10 +32,7 @@
       <div 
         :class="[
           'border-l-4 rounded-lg p-6',
-          orderData.order.status === 'pending' ? 'bg-blue-50 border-blue-500' : '',
-          orderData.order.status === 'in_progress' ? 'bg-yellow-50 border-yellow-500' : '',
-          orderData.order.status === 'ready' ? 'bg-green-50 border-green-500' : '',
-          orderData.order.status === 'completed' ? 'bg-slate-50 border-slate-400' : ''
+          getStatusBannerClass(orderData.order.status)
         ]"
       >
         <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
@@ -44,22 +41,14 @@
               <span 
                 :class="[
                   'px-3 py-1 text-sm font-bold rounded-full',
-                  orderData.order.status === 'pending' ? 'bg-blue-100 text-blue-700' : '',
-                  orderData.order.status === 'in_progress' ? 'bg-yellow-100 text-yellow-700' : '',
-                  orderData.order.status === 'ready' ? 'bg-green-100 text-green-700' : '',
-                  orderData.order.status === 'completed' ? 'bg-slate-100 text-slate-700' : ''
+                  getStatusBadgeClass(orderData.order.status)
                 ]"
               >
                 {{ getStatusLabel(orderData.order.status) }}
               </span>
             </div>
             <h1 class="text-2xl font-bold text-slate-900 mb-2">Order #{{ orderData.order.id }}</h1>
-            <p class="text-slate-600">
-              <span v-if="orderData.order.status === 'pending'">Your order has been received and is awaiting review. We'll send you a quote within 24 hours.</span>
-              <span v-else-if="orderData.order.status === 'in_progress'">Your order is being prepared. We'll notify you when it's ready.</span>
-              <span v-else-if="orderData.order.status === 'ready'">Your order is complete! Download your files below.</span>
-              <span v-else-if="orderData.order.status === 'completed'">This order has been completed and delivered.</span>
-            </p>
+            <p class="text-slate-600">{{ getStatusDescription(orderData.order.status) }}</p>
           </div>
           <div v-if="orderData.order.quotedAmount" class="text-right">
             <p class="text-sm text-slate-500 mb-1">Quote Amount</p>
@@ -98,10 +87,10 @@
               <div 
                 :class="[
                   'relative z-10 flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center',
-                  orderData.order.status !== 'pending' ? 'bg-cyan-500 text-white' : 'bg-slate-200 text-slate-500'
+                  isStepComplete('quoted') ? 'bg-cyan-500 text-white' : 'bg-slate-200 text-slate-500'
                 ]"
               >
-                <svg v-if="orderData.order.status !== 'pending'" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg v-if="isStepComplete('quoted')" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                 </svg>
                 <svg v-else class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -109,9 +98,9 @@
                 </svg>
               </div>
               <div class="flex-1 pt-2">
-                <h3 :class="['font-bold', orderData.order.status !== 'pending' ? 'text-slate-900' : 'text-slate-500']">Quote Prepared</h3>
+                <h3 :class="['font-bold', isStepComplete('quoted') ? 'text-slate-900' : 'text-slate-500']">Quote Prepared</h3>
                 <p class="text-sm text-slate-600">
-                  <span v-if="orderData.order.status === 'pending'">We're reviewing your request...</span>
+                  <span v-if="!isStepComplete('quoted')">We're reviewing your request...</span>
                   <span v-else>Quote sent</span>
                 </p>
               </div>
@@ -122,10 +111,10 @@
               <div 
                 :class="[
                   'relative z-10 flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center',
-                  orderData.order.status === 'in_progress' || orderData.order.status === 'ready' || orderData.order.status === 'completed' ? 'bg-cyan-500 text-white' : 'bg-slate-200 text-slate-500'
+                  isStepComplete('in_progress') ? 'bg-cyan-500 text-white' : 'bg-slate-200 text-slate-500'
                 ]"
               >
-                <svg v-if="orderData.order.status === 'in_progress' || orderData.order.status === 'ready' || orderData.order.status === 'completed'" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg v-if="isStepComplete('in_progress')" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                 </svg>
                 <svg v-else class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -133,10 +122,10 @@
                 </svg>
               </div>
               <div class="flex-1 pt-2">
-                <h3 :class="['font-bold', orderData.order.status === 'in_progress' || orderData.order.status === 'ready' || orderData.order.status === 'completed' ? 'text-slate-900' : 'text-slate-500']">In Production</h3>
+                <h3 :class="['font-bold', isStepComplete('in_progress') ? 'text-slate-900' : 'text-slate-500']">In Production</h3>
                 <p class="text-sm text-slate-600">
                   <span v-if="orderData.order.status === 'in_progress'">We're preparing your order...</span>
-                  <span v-else-if="orderData.order.status === 'ready' || orderData.order.status === 'completed'">Production complete</span>
+                  <span v-else-if="isStepComplete('in_progress')">Production complete</span>
                   <span v-else>Awaiting payment</span>
                 </p>
               </div>
@@ -147,10 +136,10 @@
               <div 
                 :class="[
                   'relative z-10 flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center',
-                  orderData.order.status === 'ready' || orderData.order.status === 'completed' ? 'bg-green-600 text-white' : 'bg-slate-200 text-slate-500'
+                  isStepComplete('delivered') ? 'bg-green-600 text-white' : 'bg-slate-200 text-slate-500'
                 ]"
               >
-                <svg v-if="orderData.order.status === 'ready' || orderData.order.status === 'completed'" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg v-if="isStepComplete('delivered')" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                 </svg>
                 <svg v-else class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -158,9 +147,9 @@
                 </svg>
               </div>
               <div class="flex-1 pt-2">
-                <h3 :class="['font-bold', orderData.order.status === 'ready' || orderData.order.status === 'completed' ? 'text-slate-900' : 'text-slate-500']">Ready for Download</h3>
+                <h3 :class="['font-bold', isStepComplete('delivered') ? 'text-slate-900' : 'text-slate-500']">Ready for Download</h3>
                 <p class="text-sm text-slate-600">
-                  <span v-if="orderData.order.status === 'ready' || orderData.order.status === 'completed'">Your files are ready!</span>
+                  <span v-if="isStepComplete('delivered')">Your files are ready!</span>
                   <span v-else>Files will be available here</span>
                 </p>
               </div>
@@ -204,39 +193,34 @@
         <p class="text-slate-600 whitespace-pre-wrap">{{ orderData.order.adminNotes }}</p>
       </div>
 
-      <!-- Payment Section -->
-      <div v-if="orderData.order.quotedAmount && !orderData.payment" class="bg-cyan-500/5 border border-cyan-500/50 rounded-lg p-6">
-        <div class="flex items-start gap-4">
-          <svg class="h-6 w-6 text-cyan-600 flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <div class="flex-1">
-            <h3 class="text-xl font-bold text-slate-900 mb-2">Payment Required</h3>
-            <p class="text-slate-600 mb-4">Your quote is ready. Complete payment to proceed with your order.</p>
-            <button
-              @click="handlePayment"
-              :disabled="paymentLoading"
-              class="px-8 py-3 bg-cyan-500 hover:bg-cyan-500-600 text-white font-bold rounded-md shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              <span v-if="!paymentLoading">Pay Now - {{ formatPrice(orderData.order.quotedAmount) }}</span>
-              <span v-else class="flex items-center gap-2">
-                <svg class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Processing...
-              </span>
-            </button>
+      <!-- Payment Section - Enhanced -->
+      <div v-if="showPaymentSection" class="bg-gradient-to-br from-cyan-500/5 to-blue-500/5 border border-cyan-500/50 rounded-lg p-8">
+        <div class="text-center">
+          <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-cyan-500/10 mb-4">
+            <Icon name="mdi:receipt-text" class="w-8 h-8 text-cyan-600" />
           </div>
+          <h3 class="text-2xl font-bold text-slate-900 mb-2">Payment Required</h3>
+          <p class="text-slate-600 mb-6 max-w-md mx-auto">
+            Your quote is ready. Complete payment to proceed with your order.
+          </p>
+          
+          <!-- Enhanced Payment Button Component -->
+          <CustomerPaymentButton
+            :order-id="orderId"
+            :amount="orderData.order.quotedAmount"
+            @payment-started="onPaymentStarted"
+            @payment-error="onPaymentError"
+            @payment-redirecting="onPaymentRedirecting"
+          />
         </div>
       </div>
 
       <!-- Payment Status -->
       <div v-if="orderData.payment" class="bg-green-500/10 border border-green-500/30 rounded-lg p-6">
         <div class="flex items-start gap-4">
-          <svg class="h-6 w-6 text-green-500 flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
+          <div class="flex-shrink-0 w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center">
+            <Icon name="mdi:check-circle" class="w-6 h-6 text-green-500" />
+          </div>
           <div>
             <h3 class="text-xl font-bold text-slate-900 mb-2">Payment Received</h3>
             <p class="text-slate-600">Amount: {{ formatPrice(orderData.payment.amount) }}</p>
@@ -259,9 +243,7 @@
               class="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-md"
             >
               <div class="flex items-center gap-3 flex-1 min-w-0">
-                <svg class="h-5 w-5 text-slate-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                </svg>
+                <Icon name="mdi:file-document" class="w-5 h-5 text-slate-500 flex-shrink-0" />
                 <div class="flex-1 min-w-0">
                   <p class="text-slate-900 text-sm truncate">{{ file.filename }}</p>
                   <p class="text-slate-500 text-xs">{{ formatFileSize(file.fileSize) }}</p>
@@ -281,9 +263,7 @@
               class="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-md hover:border-cyan-500 transition-colors"
             >
               <div class="flex items-center gap-3 flex-1 min-w-0">
-                <svg class="h-5 w-5 text-cyan-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                </svg>
+                <Icon name="mdi:file-music" class="w-5 h-5 text-cyan-600 flex-shrink-0" />
                 <div class="flex-1 min-w-0">
                   <p class="text-slate-900 text-sm truncate">{{ file.filename }}</p>
                   <p class="text-slate-500 text-xs">{{ formatFileSize(file.fileSize) }}</p>
@@ -291,12 +271,14 @@
               </div>
               <button
                 @click="downloadFile(file.id, file.filename)"
-                class="ml-2 px-4 py-2 bg-cyan-500 text-white hover:bg-cyan-500-600 rounded-md transition-colors flex items-center gap-2 font-medium"
+                :disabled="downloadingFileId === file.id"
+                class="ml-2 px-4 py-2 bg-cyan-500 text-white hover:bg-cyan-600 rounded-md transition-colors flex items-center gap-2 font-medium disabled:opacity-50"
               >
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-                Download
+                <Icon 
+                  :name="downloadingFileId === file.id ? 'mdi:loading' : 'mdi:download'" 
+                  :class="['w-4 h-4', downloadingFileId === file.id ? 'animate-spin' : '']" 
+                />
+                {{ downloadingFileId === file.id ? 'Downloading...' : 'Download' }}
               </button>
             </div>
           </div>
@@ -304,6 +286,7 @@
 
         <!-- No Files -->
         <div v-if="uploadedFiles.length === 0 && deliverableFiles.length === 0" class="text-center py-8 text-slate-500">
+          <Icon name="mdi:folder-open" class="w-12 h-12 mx-auto mb-3 opacity-50" />
           <p>No files attached to this order</p>
         </div>
       </div>
@@ -312,7 +295,7 @@
 </template>
 
 <script setup lang="ts">
-import { loadStripe } from '@stripe/stripe-js'
+import { ref, computed, onMounted } from 'vue'
 
 definePageMeta({
   layout: 'default',
@@ -343,7 +326,7 @@ const ordersStore = useOrdersStore()
 const orderData = computed(() => ordersStore.currentOrder)
 const loading = computed(() => ordersStore.isLoading)
 const error = computed(() => ordersStore.error)
-const paymentLoading = ref(false)
+const downloadingFileId = ref<number | null>(null)
 
 const uploadedFiles = computed(() => {
   return orderData.value?.files?.filter((f: any) => f.kind === 'upload') || []
@@ -353,6 +336,81 @@ const deliverableFiles = computed(() => {
   return orderData.value?.files?.filter((f: any) => f.kind === 'deliverable') || []
 })
 
+// Show payment section only when quote exists and not yet paid
+const showPaymentSection = computed(() => {
+  return orderData.value?.order?.quotedAmount && 
+         !orderData.value?.payment &&
+         !['paid', 'completed', 'delivered', 'cancelled'].includes(orderData.value?.order?.status)
+})
+
+// Status-based helpers
+const statusOrder = ['pending', 'submitted', 'quoted', 'quote_viewed', 'quote_accepted', 'invoiced', 'paid', 'in_progress', 'completed', 'delivered']
+
+function isStepComplete(targetStatus: string): boolean {
+  const currentStatus = orderData.value?.order?.status
+  if (!currentStatus) return false
+  
+  // Map target status to check
+  const statusMapping: Record<string, string[]> = {
+    'quoted': ['quoted', 'quote_viewed', 'quote_accepted', 'invoiced', 'paid', 'in_progress', 'completed', 'delivered'],
+    'in_progress': ['in_progress', 'completed', 'delivered'],
+    'delivered': ['completed', 'delivered']
+  }
+  
+  return statusMapping[targetStatus]?.includes(currentStatus) || false
+}
+
+function getStatusBannerClass(status: string): string {
+  const classes: Record<string, string> = {
+    'pending': 'bg-blue-50 border-blue-500',
+    'submitted': 'bg-blue-50 border-blue-500',
+    'quoted': 'bg-purple-50 border-purple-500',
+    'quote_viewed': 'bg-purple-50 border-purple-500',
+    'quote_accepted': 'bg-green-50 border-green-500',
+    'invoiced': 'bg-orange-50 border-orange-500',
+    'paid': 'bg-green-50 border-green-500',
+    'in_progress': 'bg-yellow-50 border-yellow-500',
+    'completed': 'bg-green-50 border-green-500',
+    'delivered': 'bg-slate-50 border-slate-400',
+    'cancelled': 'bg-red-50 border-red-500'
+  }
+  return classes[status] || 'bg-slate-50 border-slate-400'
+}
+
+function getStatusBadgeClass(status: string): string {
+  const classes: Record<string, string> = {
+    'pending': 'bg-blue-100 text-blue-700',
+    'submitted': 'bg-blue-100 text-blue-700',
+    'quoted': 'bg-purple-100 text-purple-700',
+    'quote_viewed': 'bg-purple-100 text-purple-700',
+    'quote_accepted': 'bg-green-100 text-green-700',
+    'invoiced': 'bg-orange-100 text-orange-700',
+    'paid': 'bg-green-100 text-green-700',
+    'in_progress': 'bg-yellow-100 text-yellow-700',
+    'completed': 'bg-green-100 text-green-700',
+    'delivered': 'bg-slate-100 text-slate-700',
+    'cancelled': 'bg-red-100 text-red-700'
+  }
+  return classes[status] || 'bg-slate-100 text-slate-700'
+}
+
+function getStatusDescription(status: string): string {
+  const descriptions: Record<string, string> = {
+    'pending': 'Your order has been received and is awaiting review. We\'ll send you a quote within 24 hours.',
+    'submitted': 'Your order has been submitted and is being reviewed.',
+    'quoted': 'Your quote is ready! Please review and proceed with payment.',
+    'quote_viewed': 'You\'ve viewed your quote. Ready to proceed?',
+    'quote_accepted': 'Great! You\'ve accepted the quote. Awaiting payment.',
+    'invoiced': 'Your invoice is ready. Please complete payment to proceed.',
+    'paid': 'Payment received! We\'re starting work on your order.',
+    'in_progress': 'Your order is being prepared. We\'ll notify you when it\'s ready.',
+    'completed': 'Your order is complete! Download your files below.',
+    'delivered': 'This order has been completed and delivered.',
+    'cancelled': 'This order has been cancelled.'
+  }
+  return descriptions[status] || 'Order status unknown.'
+}
+
 const fetchOrder = async () => {
   await ordersStore.fetchOrderById(orderId.value)
   if (ordersStore.error) {
@@ -360,45 +418,38 @@ const fetchOrder = async () => {
   }
 }
 
-const handlePayment = async () => {
-  if (!orderData.value?.order?.quotedAmount) return
-  
-  try {
-    paymentLoading.value = true
-    
-    // Create Stripe checkout session
-    const { url } = await trpc.payments.createCheckout.mutate({
-      orderId: orderId.value
-    })
-    
-    // Redirect to Stripe checkout
-    window.location.href = url
-  } catch (err: any) {
-    // Error logged: 'Payment error:', err)
-    const { handleTrpcError } = await import('~/composables/useTrpc')
-    showError(`Failed to initiate payment: ${handleTrpcError(err)}`)
-  } finally {
-    paymentLoading.value = false
-  }
+// Payment event handlers
+function onPaymentStarted() {
+  console.log('Payment process started')
+}
+
+function onPaymentError(error: string) {
+  console.error('Payment error:', error)
+}
+
+function onPaymentRedirecting(url: string) {
+  console.log('Redirecting to payment:', url)
 }
 
 const getProgressHeight = (status: string) => {
-  switch (status) {
-    case 'pending':
-      return '0%'
-    case 'in_progress':
-      return '33%'
-    case 'ready':
-      return '66%'
-    case 'completed':
-      return '100%'
-    default:
-      return '0%'
+  const progressMap: Record<string, string> = {
+    'pending': '0%',
+    'submitted': '0%',
+    'quoted': '25%',
+    'quote_viewed': '25%',
+    'quote_accepted': '25%',
+    'invoiced': '25%',
+    'paid': '50%',
+    'in_progress': '66%',
+    'completed': '100%',
+    'delivered': '100%'
   }
+  return progressMap[status] || '0%'
 }
 
 const downloadFile = async (fileId: number, filename: string) => {
   try {
+    downloadingFileId.value = fileId
     const { url } = await trpc.files.getDownloadUrl.query({ fileId })
     
     // Create a temporary link and trigger download
@@ -406,9 +457,13 @@ const downloadFile = async (fileId: number, filename: string) => {
     link.href = url
     link.download = filename
     link.click()
+    
+    showSuccess('Download started')
   } catch (err: any) {
-    // Error logged: 'Download error:', err)
-    showError(`Failed to download file: ${handleTrpcError(err)}`)
+    console.error('Download error:', err)
+    showError(`Failed to download file: ${err.message || 'Unknown error'}`)
+  } finally {
+    downloadingFileId.value = null
   }
 }
 
@@ -424,4 +479,3 @@ useHead({
   ]
 })
 </script>
-

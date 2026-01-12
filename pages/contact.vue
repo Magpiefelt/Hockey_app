@@ -200,6 +200,9 @@ definePageMeta({
   description: 'Get in touch with Elite Sports DJ for questions about our services or to discuss your event.'
 })
 
+const trpc = useTrpc()
+const { showSuccess: showSuccessToast, showError: showErrorToast } = useNotification()
+
 const formData = reactive({
   name: '',
   email: '',
@@ -238,8 +241,12 @@ const validateField = (field: keyof typeof formData) => {
     errors.subject = 'Subject is required'
   }
 
-  if (field === 'message' && !formData.message.trim()) {
-    errors.message = 'Message is required'
+  if (field === 'message') {
+    if (!formData.message.trim()) {
+      errors.message = 'Message is required'
+    } else if (formData.message.trim().length < 10) {
+      errors.message = 'Message must be at least 10 characters'
+    }
   }
 }
 
@@ -262,19 +269,20 @@ const handleSubmit = async () => {
   errorMessage.value = ''
 
   try {
-    // TODO: Replace with actual API call when backend endpoint is ready
-    // const response = await $fetch('/api/contact', {
-    //   method: 'POST',
-    //   body: formData
-    // })
-
-    // Simulate API call for now
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    // Submit to backend via tRPC
+    const result = await trpc.contact.submit.mutate({
+      name: formData.name.trim(),
+      email: formData.email.trim(),
+      phone: formData.phone.trim() || undefined,
+      subject: formData.subject.trim(),
+      message: formData.message.trim()
+    })
 
     // Show success message
     showSuccess.value = true
+    showSuccessToast('Message sent successfully!')
     
-    // Reset form to empty values (not placeholders)
+    // Reset form to empty values
     Object.assign(formData, {
       name: '',
       email: '',
@@ -298,9 +306,13 @@ const handleSubmit = async () => {
     setTimeout(() => {
       showSuccess.value = false
     }, 5000)
-  } catch (error) {
+  } catch (error: any) {
     console.error('Contact form submission error:', error)
-    errorMessage.value = 'Failed to send message. Please try again or email us directly.'
+    
+    // Extract error message from tRPC error
+    const message = error.data?.message || error.message || 'Failed to send message. Please try again or email us directly.'
+    errorMessage.value = message
+    showErrorToast(message)
   } finally {
     isSubmitting.value = false
   }

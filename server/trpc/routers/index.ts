@@ -9,6 +9,7 @@ import { packagesRouter } from './packages'
 import { calendarRouter } from './calendar'
 import { adminEnhancementsRouter } from './admin-enhancements'
 import { quotePublicRouter } from './quote-public'
+import { contactRouter } from './contact'
 
 export const appRouter = router({
   auth: authRouter,
@@ -21,7 +22,8 @@ export const appRouter = router({
   calendar: calendarRouter,
   // New enhanced routers
   adminEnhancements: adminEnhancementsRouter,
-  quote: quotePublicRouter
+  quote: quotePublicRouter,
+  contact: contactRouter
 })
 
 export type AppRouter = typeof appRouter

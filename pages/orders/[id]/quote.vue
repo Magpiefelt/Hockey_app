@@ -2,6 +2,7 @@
 /**
  * Customer Quote View Page
  * Allows customers to view, accept, or decline quotes
+ * Supports both authenticated access and token-based access from email links
  */
 
 definePageMeta({
@@ -14,6 +15,10 @@ const { $trpc } = useNuxtApp()
 
 const orderId = computed(() => parseInt(route.params.id as string))
 
+// Get token from URL query params (for email link access)
+const accessToken = computed(() => route.query.token as string | undefined)
+const autoAction = computed(() => route.query.action as string | undefined)
+
 // State
 const loading = ref(true)
 const error = ref<string | null>(null)
@@ -21,10 +26,12 @@ const isAccepting = ref(false)
 const isDeclining = ref(false)
 const showDeclineModal = ref(false)
 const declineReason = ref('')
+const tokenAccessMode = ref(false)
 
 const quote = ref<{
   id: string
   customerName: string
+  customerEmail: string
   status: string
   quotedAmount: number
   packageName: string
@@ -35,6 +42,7 @@ const quote = ref<{
   expiresAt: string | null
   isExpired: boolean
   version: number
+  notes: string | null
 } | null>(null)
 
 const revisions = ref<Array<{
@@ -50,15 +58,32 @@ async function loadQuote() {
   error.value = null
   
   try {
-    // Get quote details
-    quote.value = await $trpc.quote.getQuote.query({
-      orderId: orderId.value
-    })
-    
-    // Record view event
-    await $trpc.quote.recordQuoteView.mutate({
-      orderId: orderId.value
-    })
+    // Determine if we're using token-based access
+    if (accessToken.value) {
+      tokenAccessMode.value = true
+      
+      // Use token-based access
+      quote.value = await $trpc.quote.getQuoteWithToken.query({
+        orderId: orderId.value,
+        token: accessToken.value
+      })
+      
+      // Record view event with token
+      await $trpc.quote.recordQuoteViewWithToken.mutate({
+        orderId: orderId.value,
+        token: accessToken.value
+      })
+    } else {
+      // Use authenticated access
+      quote.value = await $trpc.quote.getQuote.query({
+        orderId: orderId.value
+      })
+      
+      // Record view event
+      await $trpc.quote.recordQuoteView.mutate({
+        orderId: orderId.value
+      })
+    }
     
     // Load revision history if authenticated
     try {
@@ -68,8 +93,21 @@ async function loadQuote() {
     } catch {
       // Not authenticated or no access - ignore
     }
+    
+    // Handle auto-action from email link
+    if (autoAction.value === 'accept' && canAct.value) {
+      // Show a confirmation before auto-accepting
+      showAcceptConfirmation.value = true
+    }
   } catch (err: any) {
     error.value = err.message || 'Failed to load quote'
+    
+    // Provide more helpful error messages
+    if (err.message?.includes('expired')) {
+      error.value = 'This quote link has expired. Please contact us for an updated quote.'
+    } else if (err.message?.includes('Invalid token')) {
+      error.value = 'This quote link is invalid. Please check your email for the correct link or log in to view your orders.'
+    }
   } finally {
     loading.value = false
   }
@@ -77,22 +115,45 @@ async function loadQuote() {
 
 onMounted(loadQuote)
 
+// Accept confirmation modal (for auto-accept from email)
+const showAcceptConfirmation = ref(false)
+
 // Accept quote
 async function acceptQuote() {
   if (isAccepting.value || !quote.value) return
   
   isAccepting.value = true
+  showAcceptConfirmation.value = false
   
   try {
-    await $trpc.quote.acceptQuote.mutate({
-      orderId: orderId.value
-    })
+    if (tokenAccessMode.value && accessToken.value) {
+      // Use token-based acceptance
+      await $trpc.quote.acceptQuoteWithToken.mutate({
+        orderId: orderId.value,
+        token: accessToken.value
+      })
+    } else {
+      // Use authenticated acceptance
+      await $trpc.quote.acceptQuote.mutate({
+        orderId: orderId.value
+      })
+    }
     
-    // Redirect to payment or order page
-    router.push(`/orders/${orderId.value}`)
+    // Update local state
+    if (quote.value) {
+      quote.value.status = 'quote_accepted'
+    }
+    
+    // Show success and redirect to payment
+    const { showSuccess } = useNotification()
+    showSuccess('Quote accepted! Redirecting to payment...')
+    
+    // Redirect to order page (which has payment button)
+    setTimeout(() => {
+      router.push(`/orders/${orderId.value}`)
+    }, 1500)
   } catch (err: any) {
     error.value = err.message || 'Failed to accept quote'
-  } finally {
     isAccepting.value = false
   }
 }
@@ -104,13 +165,34 @@ async function declineQuote() {
   isDeclining.value = true
   
   try {
-    await $trpc.quote.declineQuote.mutate({
-      orderId: orderId.value,
-      reason: declineReason.value || undefined
-    })
+    if (tokenAccessMode.value && accessToken.value) {
+      // Use token-based decline
+      await $trpc.quote.declineQuoteWithToken.mutate({
+        orderId: orderId.value,
+        token: accessToken.value,
+        reason: declineReason.value || undefined
+      })
+    } else {
+      // Use authenticated decline
+      await $trpc.quote.declineQuote.mutate({
+        orderId: orderId.value,
+        reason: declineReason.value || undefined
+      })
+    }
     
     showDeclineModal.value = false
-    router.push('/orders')
+    
+    const { showSuccess } = useNotification()
+    showSuccess('Quote declined. We hope to work with you in the future!')
+    
+    // Redirect to orders or home
+    setTimeout(() => {
+      if (tokenAccessMode.value) {
+        router.push('/')
+      } else {
+        router.push('/orders')
+      }
+    }, 1500)
   } catch (err: any) {
     error.value = err.message || 'Failed to decline quote'
   } finally {
@@ -139,6 +221,24 @@ const canAct = computed(() => {
   const actableStatuses = ['quoted', 'quote_viewed']
   return actableStatuses.includes(quote.value.status) && !quote.value.isExpired
 })
+
+// Status display helpers
+const statusDisplay = computed(() => {
+  if (!quote.value) return { text: '', color: '' }
+  
+  switch (quote.value.status) {
+    case 'quoted':
+      return { text: 'Awaiting Response', color: 'text-yellow-600 bg-yellow-50' }
+    case 'quote_viewed':
+      return { text: 'Viewed', color: 'text-blue-600 bg-blue-50' }
+    case 'quote_accepted':
+      return { text: 'Accepted', color: 'text-green-600 bg-green-50' }
+    case 'quote_declined':
+      return { text: 'Declined', color: 'text-red-600 bg-red-50' }
+    default:
+      return { text: quote.value.status, color: 'text-gray-600 bg-gray-50' }
+  }
+})
 </script>
 
 <template>
@@ -160,12 +260,21 @@ const canAct = computed(() => {
           </div>
           <h2 class="text-xl font-bold text-gray-900 mb-2">Unable to Load Quote</h2>
           <p class="text-gray-600 mb-6">{{ error }}</p>
-          <NuxtLink 
-            to="/orders" 
-            class="inline-block px-6 py-2 bg-cyan-500 text-white rounded-lg hover:bg-cyan-600 transition-colors"
-          >
-            View My Orders
-          </NuxtLink>
+          <div class="flex flex-col sm:flex-row gap-3 justify-center">
+            <NuxtLink 
+              to="/contact" 
+              class="inline-block px-6 py-2 bg-cyan-500 text-white rounded-lg hover:bg-cyan-600 transition-colors"
+            >
+              Contact Us
+            </NuxtLink>
+            <NuxtLink 
+              v-if="!tokenAccessMode"
+              to="/orders" 
+              class="inline-block px-6 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              View My Orders
+            </NuxtLink>
+          </div>
         </div>
       </div>
       
@@ -175,6 +284,21 @@ const canAct = computed(() => {
         <div class="bg-gradient-to-r from-cyan-500 to-blue-500 px-8 py-8 text-white text-center">
           <h1 class="text-2xl font-bold mb-2">Your Custom Quote</h1>
           <p class="text-cyan-100">Order #{{ quote.id }}</p>
+          <div class="mt-3">
+            <span :class="['inline-block px-3 py-1 rounded-full text-sm font-medium', statusDisplay.color]">
+              {{ statusDisplay.text }}
+            </span>
+          </div>
+        </div>
+        
+        <!-- Token Access Notice -->
+        <div v-if="tokenAccessMode" class="bg-blue-50 border-b border-blue-100 px-8 py-3">
+          <div class="flex items-center gap-2 text-blue-700 text-sm">
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>Viewing as {{ quote.customerEmail }}</span>
+          </div>
         </div>
         
         <!-- Expired Warning -->
@@ -198,7 +322,20 @@ const canAct = computed(() => {
             </svg>
             <div>
               <p class="font-semibold">Quote Accepted</p>
-              <p class="text-sm">Thank you! We'll be in touch with next steps.</p>
+              <p class="text-sm">Thank you! Proceed to payment to confirm your order.</p>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Already Declined -->
+        <div v-else-if="quote.status === 'quote_declined'" class="bg-gray-50 border-b border-gray-100 px-8 py-4">
+          <div class="flex items-center gap-3 text-gray-700">
+            <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            <div>
+              <p class="font-semibold">Quote Declined</p>
+              <p class="text-sm">This quote has been declined. Contact us if you'd like a new quote.</p>
             </div>
           </div>
         </div>
@@ -219,6 +356,10 @@ const canAct = computed(() => {
             <h3 class="font-semibold text-gray-900 mb-4">Order Details</h3>
             <dl class="space-y-3">
               <div class="flex justify-between">
+                <dt class="text-gray-500">Customer</dt>
+                <dd class="font-medium text-gray-900">{{ quote.customerName }}</dd>
+              </div>
+              <div class="flex justify-between">
                 <dt class="text-gray-500">Package</dt>
                 <dd class="font-medium text-gray-900">{{ quote.packageName }}</dd>
               </div>
@@ -235,6 +376,12 @@ const canAct = computed(() => {
                 <dd class="font-medium text-gray-900">{{ formatDate(quote.eventDate) }}</dd>
               </div>
             </dl>
+          </div>
+          
+          <!-- Quote Notes -->
+          <div v-if="quote.notes" class="bg-cyan-50 rounded-xl p-6 mb-8">
+            <h3 class="font-semibold text-gray-900 mb-3">Notes from Our Team</h3>
+            <p class="text-gray-700 whitespace-pre-wrap">{{ quote.notes }}</p>
           </div>
           
           <!-- What's Included -->
@@ -308,7 +455,7 @@ const canAct = computed(() => {
                 </svg>
                 Processing...
               </span>
-              <span v-else>Accept Quote</span>
+              <span v-else>Accept Quote & Proceed to Payment</span>
             </button>
             
             <button
@@ -317,6 +464,16 @@ const canAct = computed(() => {
             >
               Decline
             </button>
+          </div>
+          
+          <!-- View Order Button (for accepted quotes) -->
+          <div v-else-if="quote.status === 'quote_accepted'" class="flex justify-center">
+            <NuxtLink
+              :to="`/orders/${orderId}`"
+              class="px-8 py-4 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-xl font-bold text-lg hover:from-cyan-600 hover:to-blue-600 transition-all shadow-lg hover:shadow-xl"
+            >
+              View Order & Pay
+            </NuxtLink>
           </div>
           
           <!-- Contact Info -->
@@ -329,6 +486,42 @@ const canAct = computed(() => {
         </div>
       </div>
     </div>
+    
+    <!-- Accept Confirmation Modal (for auto-accept from email) -->
+    <Teleport to="body">
+      <div v-if="showAcceptConfirmation" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full">
+          <div class="px-6 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-bold text-gray-900">Accept Quote?</h3>
+          </div>
+          
+          <div class="p-6">
+            <p class="text-gray-600 mb-4">
+              You're about to accept this quote for <strong>{{ quote ? formatCurrency(quote.quotedAmount) : '' }}</strong>.
+            </p>
+            <p class="text-gray-600">
+              After accepting, you'll be directed to complete payment.
+            </p>
+          </div>
+          
+          <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+            <button
+              @click="showAcceptConfirmation = false"
+              class="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+            >
+              Review First
+            </button>
+            <button
+              @click="acceptQuote"
+              :disabled="isAccepting"
+              class="px-4 py-2 bg-cyan-500 text-white rounded-lg hover:bg-cyan-600 disabled:opacity-50"
+            >
+              {{ isAccepting ? 'Processing...' : 'Accept & Pay' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
     
     <!-- Decline Modal -->
     <Teleport to="body">

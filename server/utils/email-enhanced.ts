@@ -122,6 +122,7 @@ export interface EnhancedQuoteEmailData {
   packageName: string
   orderId: number
   paymentUrl?: string | null
+  quoteViewUrl?: string | null  // Direct link to view quote (token-based)
   eventDate?: string | null
   teamName?: string | null
   sportType?: string | null
@@ -135,6 +136,9 @@ export async function sendEnhancedQuoteEmail(data: EnhancedQuoteEmailData): Prom
     ? data.expirationDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
     : '30 days from today'
   
+  // Generate the quote view URL (use token-based URL if available, fallback to standard)
+  const quoteUrl = data.quoteViewUrl || `${appBaseUrl}/orders/${data.orderId}/quote`
+  
   const paymentSection = data.paymentUrl ? `
     <div style="text-align: center; margin: 30px 0;">
       <a href="${data.paymentUrl}" 
@@ -146,9 +150,16 @@ export async function sendEnhancedQuoteEmail(data: EnhancedQuoteEmailData): Prom
       Secure payment powered by Stripe
     </p>
   ` : `
-    <p><strong>Next Steps:</strong></p>
-    <p>To proceed with this quote, please reply to this email or contact us at:</p>
-    <p>📞 Phone: (555) 123-4567<br>📧 Email: info@elitesportsdj.com</p>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${quoteUrl}" 
+         style="display: inline-block; padding: 16px 32px; background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%); color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 18px;">
+        View Quote Details
+      </a>
+    </div>
+    <p style="text-align: center; color: #64748b; font-size: 14px;">
+      Click the button above to view your full quote and proceed with your order.<br>
+      No login required - this link is unique to your order.
+    </p>
   `
   
   const orderDetailsSection = (data.eventDate || data.teamName || data.sportType) ? `
@@ -221,7 +232,10 @@ export async function sendEnhancedQuoteEmail(data: EnhancedQuoteEmailData): Prom
         <div class="footer">
           <p>© ${new Date().getFullYear()} Elite Sports DJ. All rights reserved.</p>
           <p style="margin-top: 10px;">
-            <a href="${appBaseUrl}/orders/${data.orderId}" style="color: #0ea5e9;">View Order Online</a>
+            <a href="${quoteUrl}" style="color: #0ea5e9;">View Quote Online</a>
+          </p>
+          <p style="margin-top: 5px; font-size: 12px; color: #94a3b8;">
+            This link is unique to your order and will expire in 30 days.
           </p>
         </div>
       </div>

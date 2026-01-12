@@ -994,5 +994,81 @@ export const adminRouter = router({
           successRate: row.total > 0 ? (parseInt(row.sent) / parseInt(row.total) * 100).toFixed(1) : '0'
         }
       })
-  })
+  }),
+
+  /**
+   * Get allowed status transitions for a given status
+   * This endpoint provides the frontend with valid status transitions
+   * to ensure synchronization between frontend and backend state machines
+   */
+  getAllowedTransitions: adminProcedure
+    .input(z.object({
+      currentStatus: z.string()
+    }))
+    .query(async ({ input }) => {
+      // Status transition rules - single source of truth
+      // These must match the validTransitions in orders.update
+      const validTransitions: Record<string, string[]> = {
+        'pending': ['submitted', 'cancelled'],
+        'submitted': ['in_progress', 'quoted', 'cancelled'],
+        'in_progress': ['quoted', 'cancelled'],
+        'quoted': ['invoiced', 'in_progress', 'cancelled'],
+        'quote_viewed': ['invoiced', 'in_progress', 'cancelled'],
+        'quote_accepted': ['invoiced', 'in_progress', 'cancelled'],
+        'invoiced': ['paid', 'cancelled'],
+        'paid': ['completed', 'delivered'],
+        'completed': ['delivered'],
+        'delivered': [], // Terminal state
+        'cancelled': [] // Terminal state
+      }
+
+      // Status display labels
+      const statusLabels: Record<string, string> = {
+        'pending': 'Pending',
+        'submitted': 'Submitted',
+        'in_progress': 'In Progress',
+        'quoted': 'Quoted',
+        'quote_viewed': 'Quote Viewed',
+        'quote_accepted': 'Quote Accepted',
+        'invoiced': 'Invoiced',
+        'paid': 'Paid',
+        'completed': 'Completed',
+        'delivered': 'Delivered',
+        'cancelled': 'Cancelled'
+      }
+
+      const allowedStatuses = validTransitions[input.currentStatus] || []
+      
+      return {
+        currentStatus: input.currentStatus,
+        currentStatusLabel: statusLabels[input.currentStatus] || input.currentStatus,
+        allowedTransitions: allowedStatuses.map(status => ({
+          status,
+          label: statusLabels[status] || status
+        })),
+        isTerminal: allowedStatuses.length === 0
+      }
+    }),
+
+  /**
+   * Get all possible statuses with their labels
+   */
+  getAllStatuses: adminProcedure
+    .query(async () => {
+      const statuses = [
+        { status: 'pending', label: 'Pending', color: 'gray' },
+        { status: 'submitted', label: 'Submitted', color: 'blue' },
+        { status: 'in_progress', label: 'In Progress', color: 'yellow' },
+        { status: 'quoted', label: 'Quoted', color: 'purple' },
+        { status: 'quote_viewed', label: 'Quote Viewed', color: 'purple' },
+        { status: 'quote_accepted', label: 'Quote Accepted', color: 'green' },
+        { status: 'invoiced', label: 'Invoiced', color: 'orange' },
+        { status: 'paid', label: 'Paid', color: 'green' },
+        { status: 'completed', label: 'Completed', color: 'green' },
+        { status: 'delivered', label: 'Delivered', color: 'green' },
+        { status: 'cancelled', label: 'Cancelled', color: 'red' }
+      ]
+      
+      return { statuses }
+    })
 })

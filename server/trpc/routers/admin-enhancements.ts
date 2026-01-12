@@ -15,6 +15,7 @@ import {
   sendAdminNotificationEmail,
   sendCustomEmailEnhanced
 } from '../../utils/email-enhanced'
+import { generateQuoteViewUrl, generateQuoteAcceptUrl, storeQuoteToken, generateQuoteToken } from '../../utils/quote-tokens'
 
 export const adminEnhancementsRouter = router({
   /**
@@ -103,11 +104,20 @@ export const adminEnhancementsRouter = router({
           })
         }
         
-        // Generate payment URL if requested (placeholder - would integrate with Stripe)
+        // Generate URLs for email
+        const appUrl = process.env.NUXT_PUBLIC_APP_BASE_URL || 'https://elitesportsdj.com'
+        
+        // Generate secure token-based quote view URL
+        const quoteViewUrl = generateQuoteViewUrl(input.orderId, order.contact_email, appUrl)
+        
+        // Store token for tracking
+        const tokenData = generateQuoteToken(input.orderId, order.contact_email)
+        await storeQuoteToken(input.orderId, tokenData.token, tokenData.expiresAt)
+        
+        // Generate payment URL if requested
         let paymentUrl: string | null = null
         if (input.includePaymentLink) {
-          const appUrl = process.env.NUXT_PUBLIC_APP_BASE_URL || 'https://elitesportsdj.com'
-          paymentUrl = `${appUrl}/orders/${input.orderId}/pay`
+          paymentUrl = generateQuoteAcceptUrl(input.orderId, order.contact_email, appUrl)
         }
         
         // Send enhanced quote email
@@ -119,6 +129,7 @@ export const adminEnhancementsRouter = router({
             packageName,
             orderId: input.orderId,
             paymentUrl,
+            quoteViewUrl,  // Include direct token-based quote view URL
             eventDate: eventDateFormatted,
             teamName: order.team_name,
             sportType: order.sport_type,
