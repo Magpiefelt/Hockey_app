@@ -43,72 +43,53 @@
         </NuxtLink>
       </div>
 
-      <!-- Stats Grid -->
+      <!-- Stats Grid - Using MetricCard Component -->
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
-        <!-- Total Revenue -->
-        <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-5 lg:p-6 hover:border-slate-700 transition-all group">
-          <div class="flex items-center justify-between mb-4">
-            <div class="w-11 h-11 rounded-xl bg-emerald-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Icon name="mdi:currency-usd" class="w-6 h-6 text-emerald-400" />
-            </div>
-            <span class="text-xs font-medium text-slate-500 uppercase tracking-wide">All Time</span>
-          </div>
-          <p class="text-2xl lg:text-3xl font-bold text-white mb-1">{{ formatPrice(financeStats.totalRevenue) }}</p>
-          <p class="text-sm text-slate-400">Total Revenue</p>
-        </div>
-
-        <!-- Monthly Revenue -->
-        <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-5 lg:p-6 hover:border-slate-700 transition-all group">
-          <div class="flex items-center justify-between mb-4">
-            <div class="w-11 h-11 rounded-xl bg-cyan-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Icon name="mdi:trending-up" class="w-6 h-6 text-cyan-400" />
-            </div>
-            <span class="text-xs font-medium text-slate-500 uppercase tracking-wide">This Month</span>
-          </div>
-          <p class="text-2xl lg:text-3xl font-bold text-white mb-1">{{ formatPrice(financeStats.monthlyRevenue) }}</p>
-          <p class="text-sm text-slate-400">Monthly Revenue</p>
-        </div>
-
-        <!-- Total Orders -->
-        <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-5 lg:p-6 hover:border-slate-700 transition-all group">
-          <div class="flex items-center justify-between mb-4">
-            <div class="w-11 h-11 rounded-xl bg-blue-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Icon name="mdi:clipboard-list" class="w-6 h-6 text-blue-400" />
-            </div>
-            <span class="text-xs font-medium text-slate-500 uppercase tracking-wide">All Time</span>
-          </div>
-          <p class="text-2xl lg:text-3xl font-bold text-white mb-1">{{ stats.totalOrders }}</p>
-          <p class="text-sm text-slate-400">Total Orders</p>
-        </div>
-
-        <!-- Pending Payments -->
-        <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-5 lg:p-6 hover:border-slate-700 transition-all group">
-          <div class="flex items-center justify-between mb-4">
-            <div class="w-11 h-11 rounded-xl bg-amber-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Icon name="mdi:clock-outline" class="w-6 h-6 text-amber-400" />
-            </div>
-            <span class="text-xs font-medium text-slate-500 uppercase tracking-wide">Awaiting</span>
-          </div>
-          <p class="text-2xl lg:text-3xl font-bold text-white mb-1">{{ formatPrice(financeStats.pendingPayments) }}</p>
-          <p class="text-sm text-slate-400">Pending Payments</p>
-        </div>
+        <UiMetricCard
+          icon="mdi:currency-usd"
+          color="emerald"
+          :value="financeStats.totalRevenue"
+          format="currency"
+          title="Total Revenue"
+          label="All Time"
+        />
+        <UiMetricCard
+          icon="mdi:trending-up"
+          color="cyan"
+          :value="financeStats.monthlyRevenue"
+          format="currency"
+          title="Monthly Revenue"
+          label="This Month"
+        />
+        <UiMetricCard
+          icon="mdi:clipboard-list"
+          color="blue"
+          :value="stats.totalOrders"
+          format="number"
+          title="Total Orders"
+          label="All Time"
+        />
+        <UiMetricCard
+          icon="mdi:clock-outline"
+          color="amber"
+          :value="financeStats.pendingPayments"
+          format="currency"
+          title="Pending Payments"
+          label="Awaiting"
+        />
       </div>
 
       <!-- Main Content Grid -->
       <div class="grid lg:grid-cols-3 gap-6 lg:gap-8">
-        <!-- Recent Orders - Takes 2 columns -->
-        <div class="lg:col-span-2 bg-slate-900/50 border border-slate-800 rounded-2xl overflow-hidden">
-          <div class="flex items-center justify-between p-5 lg:p-6 border-b border-slate-800">
-            <h2 class="text-lg font-bold text-white">Recent Orders</h2>
-            <NuxtLink 
-              to="/admin/orders" 
-              class="text-sm text-cyan-400 hover:text-cyan-300 font-medium flex items-center gap-1 transition-colors"
-            >
-              View All
-              <Icon name="mdi:arrow-right" class="w-4 h-4" />
-            </NuxtLink>
-          </div>
-
+        <!-- Recent Orders - Using DataCard Component -->
+        <UiDataCard
+          class="lg:col-span-2"
+          title="Recent Orders"
+          icon="mdi:clipboard-list"
+          icon-color="cyan"
+          action-text="View All"
+          action-to="/admin/orders"
+        >
           <div v-if="recentOrders.length === 0" class="p-12 text-center">
             <div class="w-16 h-16 rounded-2xl bg-slate-800 flex items-center justify-center mx-auto mb-4">
               <Icon name="mdi:clipboard-text-outline" class="w-8 h-8 text-slate-600" />
@@ -148,13 +129,17 @@
               </div>
             </div>
           </div>
-        </div>
+        </UiDataCard>
 
         <!-- Quick Actions Sidebar -->
         <div class="space-y-6">
-          <!-- Order Status Summary -->
-          <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-5 lg:p-6">
-            <h3 class="text-lg font-bold text-white mb-4">Order Status</h3>
+          <!-- Order Status Summary - Using DataCard Component -->
+          <UiDataCard
+            title="Order Status"
+            icon="mdi:chart-donut"
+            icon-color="purple"
+            padding="md"
+          >
             <div class="space-y-3">
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3">
@@ -178,11 +163,15 @@
                 <span class="font-semibold text-white">{{ stats.completedOrders }}</span>
               </div>
             </div>
-          </div>
+          </UiDataCard>
 
-          <!-- Quick Actions -->
-          <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-5 lg:p-6">
-            <h3 class="text-lg font-bold text-white mb-4">Quick Actions</h3>
+          <!-- Quick Actions - Using DataCard Component -->
+          <UiDataCard
+            title="Quick Actions"
+            icon="mdi:lightning-bolt"
+            icon-color="amber"
+            padding="sm"
+          >
             <div class="space-y-2">
               <NuxtLink
                 to="/admin/orders"
@@ -224,7 +213,7 @@
                 <span class="font-medium text-slate-300 group-hover:text-white transition-colors">View Reports</span>
               </NuxtLink>
             </div>
-          </div>
+          </UiDataCard>
         </div>
       </div>
     </div>
@@ -261,15 +250,6 @@ const financeStats = ref({
 })
 const recentOrders = ref<any[]>([])
 
-const formatPrice = (amount: number | null) => {
-  if (amount === null || amount === undefined) return '$0'
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0
-  }).format(amount)
-}
-
 const getStatusClasses = (status: string) => {
   const classes: Record<string, string> = {
     submitted: 'bg-blue-500/20 text-blue-400',
@@ -292,9 +272,9 @@ const fetchDashboardData = async () => {
     const statsData = await trpc.admin.orders.stats.query()
     stats.value = statsData
     
-    // Fetch finance stats
+    // Fetch finance stats - try new finance router first, fall back to admin.finance
     try {
-      const financeData = await trpc.admin.finance.stats.query()
+      const financeData = await trpc.finance.stats.query()
       financeStats.value = {
         totalRevenue: financeData.totalRevenue,
         monthlyRevenue: financeData.monthlyRevenue,
@@ -302,7 +282,18 @@ const fetchDashboardData = async () => {
         paidOrderCount: financeData.paidOrderCount
       }
     } catch (financeError) {
-      console.error('Failed to fetch finance data:', financeError)
+      // Fall back to old endpoint
+      try {
+        const financeData = await trpc.admin.finance.stats.query()
+        financeStats.value = {
+          totalRevenue: financeData.totalRevenue,
+          monthlyRevenue: financeData.monthlyRevenue,
+          pendingPayments: financeData.pendingPayments,
+          paidOrderCount: financeData.paidOrderCount
+        }
+      } catch (fallbackError) {
+        console.error('Failed to fetch finance data:', fallbackError)
+      }
     }
     
     // Fetch recent orders (limit 5)

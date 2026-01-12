@@ -21,14 +21,14 @@ export const calendarRouter = router({
               AND end_date >= CURRENT_DATE
           ),
           booked_dates AS (
-            -- Dates with confirmed or in-progress orders
+            -- Dates with paid, confirmed, or in-progress orders
             SELECT 
-              event_date as date,
+              COALESCE(event_datetime::date, event_date) as date,
               'booked' as source
             FROM quote_requests
-            WHERE status IN ('confirmed', 'in_progress')
-              AND event_date >= CURRENT_DATE
-              AND event_date IS NOT NULL
+            WHERE status IN ('paid', 'confirmed', 'in_progress', 'completed')
+              AND COALESCE(event_datetime::date, event_date) >= CURRENT_DATE
+              AND (event_date IS NOT NULL OR event_datetime IS NOT NULL)
           ),
           all_unavailable AS (
             SELECT date, source FROM blocked_dates
@@ -97,11 +97,11 @@ export const calendarRouter = router({
                 
                 UNION ALL
                 
-                -- Check confirmed orders
+                -- Check paid/confirmed orders
                 SELECT 1
                 FROM quote_requests
-                WHERE status IN ('confirmed', 'in_progress')
-                  AND event_date = $1::date
+                WHERE status IN ('paid', 'confirmed', 'in_progress', 'completed')
+                  AND (event_date = $1::date OR event_datetime::date = $1::date)
               ) AS unavailable_check
             ) AS is_unavailable,
             (
@@ -115,8 +115,8 @@ export const calendarRouter = router({
                   ) THEN 'blocked'
                   WHEN EXISTS (
                     SELECT 1 FROM quote_requests 
-                    WHERE status IN ('confirmed', 'in_progress')
-                      AND event_date = $1::date
+                    WHERE status IN ('paid', 'confirmed', 'in_progress', 'completed')
+                      AND (event_date = $1::date OR event_datetime::date = $1::date)
                   ) THEN 'booked'
                   ELSE NULL
                 END

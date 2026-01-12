@@ -1,8 +1,16 @@
 <script setup lang="ts">
 /**
  * Enhanced Quote Modal Component
- * Improved UX for submitting quotes with payment link option and preview
+ * Improved UX for submitting quotes with event date/time confirmation
+ * 
+ * Changes from original:
+ * - Removed quote expiration days (not needed for this business model)
+ * - Added event date/time picker for admin to confirm booking slot
+ * - Added availability validation for selected date/time
  */
+
+import { VueDatePicker } from '@vuepic/vue-datepicker'
+import '@vuepic/vue-datepicker/dist/main.css'
 
 const props = defineProps<{
   orderId: number
@@ -21,16 +29,38 @@ const emit = defineEmits<{
 }>()
 
 const trpc = useTrpc()
-const { showError } = useNotification()
+const { showError, showSuccess } = useNotification()
 
 // Form state
 const quoteAmount = ref<string>(props.currentQuote ? (props.currentQuote / 100).toFixed(2) : '')
 const adminNotes = ref('')
 const includePaymentLink = ref(true)
-const expirationDays = ref(30)
 const isSubmitting = ref(false)
 const error = ref<string | null>(null)
 const showPreview = ref(false)
+
+// Event date/time state
+const confirmedEventDate = ref<Date | null>(props.eventDate ? new Date(props.eventDate) : null)
+const confirmedEventTime = ref<string>('12:00')
+const isCheckingAvailability = ref(false)
+const dateAvailable = ref<boolean | null>(null)
+
+// Time options for the dropdown
+const timeOptions = [
+  { value: '09:00', label: '9:00 AM' },
+  { value: '10:00', label: '10:00 AM' },
+  { value: '11:00', label: '11:00 AM' },
+  { value: '12:00', label: '12:00 PM' },
+  { value: '13:00', label: '1:00 PM' },
+  { value: '14:00', label: '2:00 PM' },
+  { value: '15:00', label: '3:00 PM' },
+  { value: '16:00', label: '4:00 PM' },
+  { value: '17:00', label: '5:00 PM' },
+  { value: '18:00', label: '6:00 PM' },
+  { value: '19:00', label: '7:00 PM' },
+  { value: '20:00', label: '8:00 PM' },
+  { value: '21:00', label: '9:00 PM' },
+]
 
 // Computed
 const amountInCents = computed(() => {
@@ -44,19 +74,58 @@ const formattedAmount = computed(() => {
     : '$0.00'
 })
 
-const expirationDate = computed(() => {
-  const date = new Date()
-  date.setDate(date.getDate() + expirationDays.value)
-  return date.toLocaleDateString('en-US', { 
-    weekday: 'long', 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
+const formattedEventDateTime = computed(() => {
+  if (!confirmedEventDate.value) return 'Not selected'
+  
+  const date = confirmedEventDate.value.toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  })
+  
+  const timeOption = timeOptions.find(t => t.value === confirmedEventTime.value)
+  const time = timeOption?.label || confirmedEventTime.value
+  
+  return `${date} at ${time}`
+})
+
+const customerRequestedDate = computed(() => {
+  if (!props.eventDate) return 'Not specified'
+  return new Date(props.eventDate).toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
   })
 })
 
 const isValid = computed(() => {
-  return amountInCents.value > 0
+  return amountInCents.value > 0 && confirmedEventDate.value !== null && dateAvailable.value === true
+})
+
+// Check availability when date changes
+watch(confirmedEventDate, async (newDate) => {
+  if (!newDate) {
+    dateAvailable.value = null
+    return
+  }
+  
+  isCheckingAvailability.value = true
+  try {
+    const year = newDate.getFullYear()
+    const month = String(newDate.getMonth() + 1).padStart(2, '0')
+    const day = String(newDate.getDate()).padStart(2, '0')
+    const dateString = `${year}-${month}-${day}`
+    
+    const result = await trpc.calendar.isDateAvailable.query({ date: dateString })
+    dateAvailable.value = result.available
+  } catch (err) {
+    console.error('Failed to check availability:', err)
+    dateAvailable.value = true // Assume available on error
+  } finally {
+    isCheckingAvailability.value = false
+  }
 })
 
 // Methods
@@ -67,13 +136,23 @@ async function submitQuote() {
   error.value = null
   
   try {
+    // Format the event datetime
+    const eventDateTime = confirmedEventDate.value ? new Date(confirmedEventDate.value) : null
+    if (eventDateTime && confirmedEventTime.value) {
+      const [hours, minutes] = confirmedEventTime.value.split(':').map(Number)
+      eventDateTime.setHours(hours, minutes, 0, 0)
+    }
+    
     const result = await trpc.adminEnhancements.submitQuoteEnhanced.mutate({
       orderId: props.orderId,
       quoteAmount: amountInCents.value,
       adminNotes: adminNotes.value || undefined,
       includePaymentLink: includePaymentLink.value,
-      expirationDays: expirationDays.value
+      eventDateTime: eventDateTime?.toISOString(),
+      confirmDateTime: true
     })
+    
+    showSuccess('Quote submitted successfully!')
     
     emit('submitted', {
       orderId: props.orderId,
@@ -95,6 +174,12 @@ const quickAmounts = [250, 500, 750, 1000, 1500, 2000]
 
 function setQuickAmount(amount: number) {
   quoteAmount.value = amount.toFixed(2)
+}
+
+function useCustomerDate() {
+  if (props.eventDate) {
+    confirmedEventDate.value = new Date(props.eventDate)
+  }
 }
 </script>
 
@@ -136,10 +221,6 @@ function setQuickAmount(amount: number) {
               <span class="text-slate-400">Package:</span>
               <span class="ml-2 font-medium text-white">{{ packageName }}</span>
             </div>
-            <div v-if="eventDate">
-              <span class="text-slate-400">Event Date:</span>
-              <span class="ml-2 font-medium text-white">{{ eventDate }}</span>
-            </div>
             <div v-if="teamName">
               <span class="text-slate-400">Team:</span>
               <span class="ml-2 font-medium text-white">{{ teamName }}</span>
@@ -148,12 +229,82 @@ function setQuickAmount(amount: number) {
               <span class="text-slate-400">Sport:</span>
               <span class="ml-2 font-medium text-white">{{ sportType }}</span>
             </div>
+            <div>
+              <span class="text-slate-400">Requested Date:</span>
+              <span class="ml-2 font-medium text-amber-400">{{ customerRequestedDate }}</span>
+            </div>
           </div>
         </div>
         
         <!-- Error Message -->
         <div v-if="error" class="bg-error-500/10 border border-error-500/30 text-error-400 px-4 py-3 rounded-lg mb-6">
           {{ error }}
+        </div>
+        
+        <!-- Event Date/Time Confirmation -->
+        <div class="mb-6 bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-4">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-semibold text-white flex items-center gap-2">
+              <Icon name="mdi:calendar-clock" class="w-5 h-5 text-cyan-400" />
+              Confirm Event Date & Time
+            </h3>
+            <button
+              v-if="eventDate"
+              @click="useCustomerDate"
+              class="text-xs text-cyan-400 hover:text-cyan-300 underline"
+            >
+              Use customer's requested date
+            </button>
+          </div>
+          <p class="text-sm text-slate-400 mb-4">
+            Select the confirmed date and time for this event. This will be blocked on the calendar after payment.
+          </p>
+          
+          <div class="grid grid-cols-2 gap-4">
+            <!-- Date Picker -->
+            <div>
+              <label class="block text-sm font-medium text-slate-300 mb-2">Event Date</label>
+              <VueDatePicker 
+                v-model="confirmedEventDate"
+                :dark="true"
+                :min-date="new Date()"
+                placeholder="Select date"
+                format="MM/dd/yyyy"
+                :enable-time-picker="false"
+                auto-apply
+                class="w-full"
+              />
+            </div>
+            
+            <!-- Time Picker -->
+            <div>
+              <label class="block text-sm font-medium text-slate-300 mb-2">Event Time</label>
+              <select
+                v-model="confirmedEventTime"
+                class="w-full px-4 py-2.5 bg-dark-tertiary border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+              >
+                <option v-for="time in timeOptions" :key="time.value" :value="time.value">
+                  {{ time.label }}
+                </option>
+              </select>
+            </div>
+          </div>
+          
+          <!-- Availability Status -->
+          <div class="mt-3">
+            <div v-if="isCheckingAvailability" class="flex items-center gap-2 text-slate-400 text-sm">
+              <Icon name="mdi:loading" class="w-4 h-4 animate-spin" />
+              <span>Checking availability...</span>
+            </div>
+            <div v-else-if="confirmedEventDate && dateAvailable === true" class="flex items-center gap-2 text-emerald-400 text-sm">
+              <Icon name="mdi:check-circle" class="w-4 h-4" />
+              <span>{{ formattedEventDateTime }} is available</span>
+            </div>
+            <div v-else-if="confirmedEventDate && dateAvailable === false" class="flex items-center gap-2 text-red-400 text-sm">
+              <Icon name="mdi:alert-circle" class="w-4 h-4" />
+              <span>This date is already booked or blocked. Please select another date.</span>
+            </div>
+          </div>
         </div>
         
         <!-- Quote Amount -->
@@ -213,24 +364,6 @@ function setQuickAmount(amount: number) {
               <p class="text-sm text-slate-400">Customer can accept and pay directly from the email</p>
             </div>
           </label>
-          
-          <!-- Expiration Days -->
-          <div>
-            <label class="block text-sm font-medium text-slate-300 mb-2">
-              Quote Valid For
-            </label>
-            <select
-              v-model="expirationDays"
-              class="w-full px-4 py-2.5 bg-dark-tertiary border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-brand-500 focus:border-transparent"
-            >
-              <option :value="7">7 days</option>
-              <option :value="14">14 days</option>
-              <option :value="30">30 days</option>
-              <option :value="60">60 days</option>
-              <option :value="90">90 days</option>
-            </select>
-            <p class="text-sm text-slate-400 mt-1">Expires: {{ expirationDate }}</p>
-          </div>
         </div>
         
         <!-- Preview Toggle -->
@@ -258,7 +391,11 @@ function setQuickAmount(amount: number) {
               <div class="bg-brand-500/10 border-2 border-brand-500 rounded-lg p-4 text-center mb-4">
                 <p class="text-sm text-slate-400">Your Quote</p>
                 <p class="text-3xl font-bold text-brand-400">{{ formattedAmount }}</p>
-                <p class="text-sm text-slate-400">Valid until {{ expirationDate }}</p>
+              </div>
+              
+              <div class="bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-3 mb-4">
+                <p class="text-sm text-cyan-400 font-medium">Event Date & Time:</p>
+                <p class="text-white">{{ formattedEventDateTime }}</p>
               </div>
               
               <div v-if="adminNotes" class="bg-warning-500/10 border-l-4 border-warning-500 p-3 mb-4">
@@ -282,6 +419,12 @@ function setQuickAmount(amount: number) {
           <span v-if="currentQuote" class="text-warning-400">
             Updating existing quote (was ${{ (currentQuote / 100).toFixed(2) }})
           </span>
+          <span v-else-if="!confirmedEventDate" class="text-amber-400">
+            Please select an event date
+          </span>
+          <span v-else-if="dateAvailable === false" class="text-red-400">
+            Selected date is not available
+          </span>
         </div>
         <div class="flex gap-3">
           <UiButton
@@ -303,3 +446,25 @@ function setQuickAmount(amount: number) {
     </div>
   </div>
 </template>
+
+<style scoped>
+/* Override VueDatePicker styles for dark theme */
+:deep(.dp__theme_dark) {
+  --dp-background-color: #1e293b;
+  --dp-text-color: #ffffff;
+  --dp-hover-color: #334155;
+  --dp-hover-text-color: #ffffff;
+  --dp-primary-color: #06b6d4;
+  --dp-primary-text-color: #ffffff;
+  --dp-secondary-color: #475569;
+  --dp-border-color: rgba(255, 255, 255, 0.1);
+  --dp-menu-border-color: rgba(255, 255, 255, 0.1);
+  --dp-border-color-hover: #06b6d4;
+}
+
+:deep(.dp__input) {
+  background-color: #1e293b;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+</style>

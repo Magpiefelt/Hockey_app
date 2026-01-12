@@ -19,7 +19,8 @@ import { generateQuoteViewUrl, generateQuoteAcceptUrl, storeQuoteToken, generate
 
 export const adminEnhancementsRouter = router({
   /**
-   * Enhanced quote submission with payment link option
+   * Enhanced quote submission with payment link option and event datetime confirmation
+   * Updated: Now includes event datetime for calendar booking
    */
   submitQuoteEnhanced: adminProcedure
     .input(z.object({
@@ -27,7 +28,12 @@ export const adminEnhancementsRouter = router({
       quoteAmount: z.number().positive(),
       adminNotes: z.string().optional(),
       includePaymentLink: z.boolean().default(false),
-      expirationDays: z.number().default(30)
+      // New: Event datetime for calendar booking
+      eventDateTime: z.string().optional(), // ISO string
+      confirmDateTime: z.boolean().default(false),
+      // Tax fields (optional for now)
+      taxProvince: z.string().length(2).optional(),
+      taxAmount: z.number().optional()
     }))
     .mutation(async ({ input, ctx }) => {
       return transaction(async (client) => {
@@ -55,21 +61,46 @@ export const adminEnhancementsRouter = router({
         const order = orderResult.rows[0]
         const packageName = order.package_name || 'Service Request'
         
-        // Calculate expiration date
-        const expirationDate = new Date()
-        expirationDate.setDate(expirationDate.getDate() + input.expirationDays)
+        // Parse event datetime if provided
+        let eventDateTime: Date | null = null
+        let eventDateStr: string | null = null
+        let eventTimeStr: string | null = null
         
-        // Update order with quote
+        if (input.eventDateTime) {
+          eventDateTime = new Date(input.eventDateTime)
+          eventDateStr = eventDateTime.toISOString().split('T')[0]
+          // Format time as HH:MM:SS
+          const hours = String(eventDateTime.getHours()).padStart(2, '0')
+          const minutes = String(eventDateTime.getMinutes()).padStart(2, '0')
+          eventTimeStr = `${hours}:${minutes}:00`
+        }
+        
+        // Update order with quote and event datetime
         await client.query(
           `UPDATE quote_requests 
            SET quoted_amount = $1, 
                admin_notes = COALESCE($2, admin_notes),
                status = 'quoted',
-               quote_expires_at = $3,
                current_quote_version = COALESCE(current_quote_version, 0) + 1,
+               event_datetime = COALESCE($3, event_datetime),
+               event_date = COALESCE($4::date, event_date),
+               event_time = COALESCE($5::time, event_time),
+               admin_confirmed_datetime = $6,
+               tax_province = COALESCE($7, tax_province, 'AB'),
+               tax_amount = COALESCE($8, tax_amount, 0),
                updated_at = NOW()
-           WHERE id = $4`,
-          [input.quoteAmount, input.adminNotes, expirationDate, input.orderId]
+           WHERE id = $9`,
+          [
+            input.quoteAmount, 
+            input.adminNotes, 
+            eventDateTime?.toISOString() || null,
+            eventDateStr,
+            eventTimeStr,
+            input.confirmDateTime,
+            input.taxProvince || null,
+            input.taxAmount || 0,
+            input.orderId
+          ]
         )
         
         // Create quote revision record
@@ -93,15 +124,24 @@ export const adminEnhancementsRouter = router({
           [input.orderId, order.status, ctx.user.userId]
         )
         
-        // Format event date for email
+        // Format event date for email (use confirmed datetime if available)
         let eventDateFormatted: string | null = null
-        if (order.event_date) {
-          eventDateFormatted = new Date(order.event_date).toLocaleDateString('en-US', {
+        const dateToFormat = eventDateTime || (order.event_date ? new Date(order.event_date) : null)
+        if (dateToFormat) {
+          eventDateFormatted = dateToFormat.toLocaleDateString('en-US', {
             weekday: 'long',
             year: 'numeric',
             month: 'long',
             day: 'numeric'
           })
+          // Add time if we have it
+          if (eventDateTime) {
+            eventDateFormatted += ' at ' + dateToFormat.toLocaleTimeString('en-US', {
+              hour: 'numeric',
+              minute: '2-digit',
+              hour12: true
+            })
+          }
         }
         
         // Generate URLs for email
@@ -134,7 +174,7 @@ export const adminEnhancementsRouter = router({
             teamName: order.team_name,
             sportType: order.sport_type,
             adminNotes: input.adminNotes,
-            expirationDate
+            eventDateTime: eventDateTime?.toISOString()
           })
           logger.info('Enhanced quote email sent', { orderId: input.orderId, email: order.contact_email })
         } catch (emailError: any) {

@@ -26,6 +26,7 @@ export const quotePublicRouter = router({
           qr.id, qr.user_id, qr.contact_name, qr.contact_email,
           qr.status, qr.quoted_amount, qr.event_date, qr.sport_type,
           qr.quote_expires_at, qr.current_quote_version, qr.admin_notes,
+          qr.event_datetime, qr.event_time,
           p.name as package_name, p.description as package_description,
           fs.team_name
          FROM quote_requests qr
@@ -60,8 +61,8 @@ export const quotePublicRouter = router({
         })
       }
       
-      // Check expiration
-      const isExpired = order.quote_expires_at && new Date(order.quote_expires_at) < new Date()
+      // Note: Quote expiration is no longer enforced
+      const isExpired = false
       
       // Get latest quote notes from revisions if available
       let quoteNotes = null
@@ -90,6 +91,8 @@ export const quotePublicRouter = router({
         teamName: order.team_name,
         sportType: order.sport_type,
         eventDate: order.event_date?.toISOString(),
+        eventDateTime: order.event_datetime?.toISOString(),
+        eventTime: order.event_time,
         expiresAt: order.quote_expires_at?.toISOString(),
         isExpired,
         version: order.current_quote_version || 1,
@@ -129,6 +132,7 @@ export const quotePublicRouter = router({
           qr.id, qr.contact_name, qr.contact_email,
           qr.status, qr.quoted_amount, qr.event_date, qr.sport_type,
           qr.quote_expires_at, qr.current_quote_version,
+          qr.event_datetime, qr.event_time,
           p.name as package_name, p.description as package_description,
           fs.team_name
          FROM quote_requests qr
@@ -163,8 +167,8 @@ export const quotePublicRouter = router({
         })
       }
       
-      // Check expiration
-      const isExpired = order.quote_expires_at && new Date(order.quote_expires_at) < new Date()
+      // Note: Quote expiration is no longer enforced
+      const isExpired = false
       
       // Get latest quote notes from revisions if available
       let quoteNotes = null
@@ -195,6 +199,8 @@ export const quotePublicRouter = router({
         teamName: order.team_name,
         sportType: order.sport_type,
         eventDate: order.event_date?.toISOString(),
+        eventDateTime: order.event_datetime?.toISOString(),
+        eventTime: order.event_time,
         expiresAt: order.quote_expires_at?.toISOString(),
         isExpired,
         version: order.current_quote_version || 1,
@@ -514,13 +520,8 @@ async function acceptQuoteInternal(
       })
     }
     
-    // Check expiration
-    if (order.quote_expires_at && new Date(order.quote_expires_at) < new Date()) {
-      throw new TRPCError({
-        code: 'BAD_REQUEST',
-        message: 'This quote has expired. Please contact us for a new quote.'
-      })
-    }
+    // Note: Quote expiration check removed - quotes no longer expire
+    // The quote_expires_at field is kept for historical data but not enforced
     
     // Update order status
     await client.query(

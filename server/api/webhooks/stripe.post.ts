@@ -77,8 +77,15 @@ async function handleCheckoutCompleted(session: any) {
     amountTotal: session.amount_total 
   })
 
-  // Store order details for email (fetched inside transaction)
-  let orderDetails: { contact_name: string; contact_email: string; total_amount: number } | null = null
+  // Store order details for email and calendar blocking (fetched inside transaction)
+  let orderDetails: { 
+    contact_name: string
+    contact_email: string
+    total_amount: number
+    event_datetime: Date | null
+    event_date: Date | null
+    admin_confirmed_datetime: boolean
+  } | null = null
 
   try {
     // Use transaction to ensure all database updates succeed or fail together
@@ -115,9 +122,9 @@ async function handleCheckoutCompleted(session: any) {
         [orderId]
       )
 
-      // Get order details for email (inside transaction to ensure consistency)
+      // Get order details for email and calendar blocking (inside transaction to ensure consistency)
       const orderResult = await client.query(
-        `SELECT contact_name, contact_email, total_amount
+        `SELECT contact_name, contact_email, total_amount, event_datetime, event_date, admin_confirmed_datetime
          FROM quote_requests
          WHERE id = $1`,
         [orderId]
@@ -125,6 +132,43 @@ async function handleCheckoutCompleted(session: any) {
 
       if (orderResult.rows.length > 0) {
         orderDetails = orderResult.rows[0]
+      }
+      
+      // Auto-block calendar date when payment is successful
+      // Only block if admin confirmed the datetime when submitting quote
+      if (orderDetails && (orderDetails.event_datetime || orderDetails.event_date)) {
+        const eventDate = orderDetails.event_datetime || orderDetails.event_date
+        const dateStr = eventDate instanceof Date 
+          ? eventDate.toISOString().split('T')[0] 
+          : new Date(eventDate).toISOString().split('T')[0]
+        
+        // Check if a booking override already exists for this order
+        const existingOverride = await client.query(
+          `SELECT id FROM availability_overrides WHERE order_id = $1`,
+          [orderId]
+        )
+        
+        if (existingOverride.rows.length === 0) {
+          // Create availability override to block this date
+          await client.query(
+            `INSERT INTO availability_overrides 
+             (start_date, end_date, is_available, reason, override_type, order_id, notes, created_at, updated_at)
+             VALUES ($1, $2, false, $3, 'booking', $4, $5, NOW(), NOW())`,
+            [
+              dateStr,
+              dateStr,
+              `Booked: Order #${orderId}`,
+              orderId,
+              `Auto-blocked after payment for ${orderDetails.contact_name}`
+            ]
+          )
+          
+          logger.info('Calendar date auto-blocked after payment', { 
+            orderId, 
+            date: dateStr,
+            customerName: orderDetails.contact_name
+          })
+        }
       }
     })
 

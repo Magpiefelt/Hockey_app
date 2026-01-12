@@ -39,6 +39,8 @@ const quote = ref<{
   teamName: string | null
   sportType: string | null
   eventDate: string | null
+  eventDateTime: string | null
+  eventTime: string | null
   expiresAt: string | null
   isExpired: boolean
   version: number
@@ -215,6 +217,33 @@ function formatDate(dateStr: string | null): string {
   })
 }
 
+function formatEventDateTime(): string {
+  if (!quote.value) return ''
+  
+  // If we have a full event datetime, use it
+  if (quote.value.eventDateTime) {
+    return new Date(quote.value.eventDateTime).toLocaleString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    })
+  }
+  // If we have event date and time separately
+  if (quote.value.eventDate && quote.value.eventTime) {
+    const dateStr = formatDate(quote.value.eventDate)
+    return `${dateStr} at ${quote.value.eventTime}`
+  }
+  // Just event date
+  if (quote.value.eventDate) {
+    return formatDate(quote.value.eventDate)
+  }
+  return 'To be confirmed'
+}
+
 // Check if quote can be acted upon
 const canAct = computed(() => {
   if (!quote.value) return false
@@ -371,9 +400,9 @@ const statusDisplay = computed(() => {
                 <dt class="text-gray-500">Sport</dt>
                 <dd class="font-medium text-gray-900">{{ quote.sportType }}</dd>
               </div>
-              <div v-if="quote.eventDate" class="flex justify-between">
-                <dt class="text-gray-500">Event Date</dt>
-                <dd class="font-medium text-gray-900">{{ formatDate(quote.eventDate) }}</dd>
+              <div v-if="quote.eventDate || quote.eventDateTime" class="flex justify-between">
+                <dt class="text-gray-500">Event Date & Time</dt>
+                <dd class="font-medium text-gray-900">{{ formatEventDateTime() }}</dd>
               </div>
             </dl>
           </div>

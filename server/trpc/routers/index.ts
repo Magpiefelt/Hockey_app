@@ -10,6 +10,7 @@ import { calendarRouter } from './calendar'
 import { adminEnhancementsRouter } from './admin-enhancements'
 import { quotePublicRouter } from './quote-public'
 import { contactRouter } from './contact'
+import { financeRouter } from './finance'
 
 export const appRouter = router({
   auth: authRouter,
@@ -23,7 +24,9 @@ export const appRouter = router({
   // New enhanced routers
   adminEnhancements: adminEnhancementsRouter,
   quote: quotePublicRouter,
-  contact: contactRouter
+  contact: contactRouter,
+  // Enhanced finance router with tax calculations
+  finance: financeRouter
 })
 
 export type AppRouter = typeof appRouter

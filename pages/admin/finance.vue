@@ -1,215 +1,428 @@
 <template>
   <div class="max-w-7xl mx-auto">
-    <!-- Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+    <!-- Page Header -->
+    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-8">
       <div>
-        <h1 class="text-2xl lg:text-3xl font-bold text-white mb-1">Finance Dashboard</h1>
-        <p class="text-slate-400">Revenue metrics and payment analytics</p>
+        <h1 class="text-2xl lg:text-3xl font-bold text-white mb-2">Finance Dashboard</h1>
+        <p class="text-slate-400">Track revenue, taxes, and business performance</p>
       </div>
       <div class="flex items-center gap-3">
         <button
-          @click="fetchMetrics"
+          @click="refreshData"
           :disabled="loading"
-          class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white rounded-xl transition-all font-medium flex items-center gap-2"
+          class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors flex items-center gap-2"
         >
           <Icon :name="loading ? 'mdi:loading' : 'mdi:refresh'" :class="loading ? 'w-4 h-4 animate-spin' : 'w-4 h-4'" />
           Refresh
+        </button>
+        <button
+          @click="showTaxExport = true"
+          class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors flex items-center gap-2"
+        >
+          <Icon name="mdi:file-export" class="w-4 h-4" />
+          Export Tax Report
         </button>
       </div>
     </div>
 
     <!-- Loading State -->
-    <div v-if="loading" class="flex justify-center items-center py-20">
+    <div v-if="loading && !stats" class="flex justify-center items-center py-20">
       <div class="flex flex-col items-center gap-4">
         <div class="w-12 h-12 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin"></div>
-        <p class="text-slate-400">Loading financial data...</p>
+        <p class="text-slate-400">Loading finance data...</p>
       </div>
-    </div>
-
-    <!-- Error State -->
-    <div v-else-if="error" class="bg-red-500/10 border border-red-500/30 rounded-2xl p-8 text-center">
-      <div class="w-16 h-16 rounded-2xl bg-red-500/20 flex items-center justify-center mx-auto mb-4">
-        <Icon name="mdi:alert-circle" class="w-8 h-8 text-red-400" />
-      </div>
-      <p class="text-red-400 text-lg mb-4">{{ error }}</p>
-      <button 
-        @click="fetchMetrics"
-        class="px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-xl transition-all"
-      >
-        Try Again
-      </button>
     </div>
 
     <!-- Dashboard Content -->
-    <div v-else-if="metrics" class="space-y-6">
+    <div v-else-if="stats" class="space-y-8">
       <!-- Key Metrics Grid -->
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
-        <!-- Total Revenue -->
-        <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-5 lg:p-6 hover:border-slate-700 transition-all group">
-          <div class="flex items-center justify-between mb-4">
-            <div class="w-11 h-11 rounded-xl bg-emerald-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Icon name="mdi:currency-usd" class="w-6 h-6 text-emerald-400" />
-            </div>
-            <span class="text-xs font-medium text-slate-500 uppercase tracking-wide">All Time</span>
-          </div>
-          <p class="text-2xl lg:text-3xl font-bold text-white mb-1">{{ formatPrice(metrics.totalRevenue) }}</p>
-          <p class="text-sm text-slate-400">Total Revenue</p>
-        </div>
-
-        <!-- Monthly Revenue -->
-        <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-5 lg:p-6 hover:border-slate-700 transition-all group">
-          <div class="flex items-center justify-between mb-4">
-            <div class="w-11 h-11 rounded-xl bg-cyan-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Icon name="mdi:trending-up" class="w-6 h-6 text-cyan-400" />
-            </div>
-            <span class="text-xs font-medium text-slate-500 uppercase tracking-wide">This Month</span>
-          </div>
-          <p class="text-2xl lg:text-3xl font-bold text-white mb-1">{{ formatPrice(metrics.mtdRevenue) }}</p>
-          <p class="text-sm text-slate-400">Monthly Revenue</p>
-        </div>
-
-        <!-- Average Order Value -->
-        <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-5 lg:p-6 hover:border-slate-700 transition-all group">
-          <div class="flex items-center justify-between mb-4">
-            <div class="w-11 h-11 rounded-xl bg-purple-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Icon name="mdi:calculator" class="w-6 h-6 text-purple-400" />
-            </div>
-            <span class="text-xs font-medium text-slate-500 uppercase tracking-wide">Per Order</span>
-          </div>
-          <p class="text-2xl lg:text-3xl font-bold text-white mb-1">{{ formatPrice(metrics.avgOrderValue) }}</p>
-          <p class="text-sm text-slate-400">Avg Order Value</p>
-        </div>
-
-        <!-- Pending Payments -->
-        <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-5 lg:p-6 hover:border-slate-700 transition-all group">
-          <div class="flex items-center justify-between mb-4">
-            <div class="w-11 h-11 rounded-xl bg-amber-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Icon name="mdi:clock-outline" class="w-6 h-6 text-amber-400" />
-            </div>
-            <span class="text-xs font-medium text-slate-500 uppercase tracking-wide">Awaiting</span>
-          </div>
-          <p class="text-2xl lg:text-3xl font-bold text-white mb-1">{{ formatPrice(metrics.pendingPayments) }}</p>
-          <p class="text-sm text-slate-400">Pending Payments</p>
-        </div>
+        <UiMetricCard
+          icon="mdi:currency-usd"
+          color="emerald"
+          :value="stats.yearToDateRevenue"
+          format="currency"
+          title="Year to Date Revenue"
+          label="YTD"
+        />
+        <UiMetricCard
+          icon="mdi:trending-up"
+          color="cyan"
+          :value="stats.monthlyRevenue"
+          format="currency"
+          title="This Month"
+          label="MTD"
+          :trend="monthlyTrend"
+          trend-label="vs last month"
+        />
+        <UiMetricCard
+          icon="mdi:clock-outline"
+          color="amber"
+          :value="stats.pendingPayments"
+          format="currency"
+          title="Pending Payments"
+          label="Outstanding"
+        />
+        <UiMetricCard
+          icon="mdi:receipt"
+          color="purple"
+          :value="stats.taxCollected"
+          format="currency"
+          title="Tax Collected"
+          label="Estimated"
+        />
       </div>
 
-      <!-- Revenue by Package -->
-      <div class="bg-slate-900/50 border border-slate-800 rounded-2xl overflow-hidden">
-        <div class="p-6 border-b border-slate-800">
-          <h2 class="text-xl font-bold text-white flex items-center gap-2">
-            <Icon name="mdi:chart-bar" class="w-6 h-6 text-cyan-400" />
-            Revenue by Package
-          </h2>
-        </div>
-        <div class="p-6">
-          <div v-if="metrics.revenueByPackage.length === 0" class="text-center py-8">
-            <div class="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center mx-auto mb-3">
-              <Icon name="mdi:chart-bar" class="w-6 h-6 text-slate-600" />
+      <!-- Secondary Metrics -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+        <UiMetricCard
+          icon="mdi:cart-check"
+          color="blue"
+          :value="stats.paidOrderCount"
+          format="number"
+          title="Paid Orders"
+          label="All Time"
+          size="sm"
+        />
+        <UiMetricCard
+          icon="mdi:cash-multiple"
+          color="emerald"
+          :value="stats.avgOrderValue"
+          format="currency"
+          title="Avg Order Value"
+          label="Per Order"
+          size="sm"
+        />
+        <UiMetricCard
+          icon="mdi:percent"
+          color="cyan"
+          :value="stats.conversionRate + '%'"
+          title="Conversion Rate"
+          label="Quotes to Paid"
+          size="sm"
+        />
+        <UiMetricCard
+          icon="mdi:timer-sand"
+          color="slate"
+          :value="stats.averageDaysToPayment + ' days'"
+          title="Avg Days to Payment"
+          label="Quote to Paid"
+          size="sm"
+        />
+      </div>
+
+      <!-- Charts Row -->
+      <div class="grid lg:grid-cols-2 gap-6">
+        <!-- Revenue Trend Chart -->
+        <UiDataCard
+          title="Revenue Trend"
+          icon="mdi:chart-line"
+          icon-color="cyan"
+        >
+          <div class="p-5">
+            <AdminTrendChart
+              v-if="revenueTrend.length > 0"
+              :data="revenueTrendData"
+              type="line"
+              :height="250"
+              format-value="currency"
+              label="Revenue"
+              previous-label="Last Year"
+            />
+            <div v-else class="flex items-center justify-center h-64 text-slate-500">
+              No revenue data available
             </div>
-            <p class="text-slate-400">No revenue data available</p>
           </div>
-          <div v-else class="space-y-4">
-            <div v-for="pkg in metrics.revenueByPackage" :key="pkg.name" class="group">
-              <div class="flex items-center justify-between mb-2">
-                <span class="text-white font-medium">{{ pkg.name }}</span>
-                <span class="text-slate-300 font-semibold">{{ formatPrice(pkg.revenue) }}</span>
+        </UiDataCard>
+
+        <!-- Order Pipeline -->
+        <UiDataCard
+          title="Order Pipeline"
+          icon="mdi:funnel"
+          icon-color="purple"
+        >
+          <div class="p-5">
+            <AdminPipelineChart
+              v-if="stats.ordersByStatus.length > 0"
+              :stages="stats.ordersByStatus"
+              :show-value="true"
+            />
+            <div v-else class="flex items-center justify-center h-64 text-slate-500">
+              No orders to display
+            </div>
+          </div>
+        </UiDataCard>
+      </div>
+
+      <!-- Tax & Outstanding Row -->
+      <div class="grid lg:grid-cols-2 gap-6">
+        <!-- Tax Summary -->
+        <UiDataCard
+          title="Tax Summary"
+          icon="mdi:calculator"
+          icon-color="emerald"
+        >
+          <template #action>
+            <button
+              @click="showTaxExport = true"
+              class="text-sm text-emerald-400 hover:text-emerald-300 font-medium flex items-center gap-1"
+            >
+              Export Report
+              <Icon name="mdi:download" class="w-4 h-4" />
+            </button>
+          </template>
+          <div class="p-5 space-y-4">
+            <div v-if="taxSummary" class="space-y-3">
+              <div class="flex items-center justify-between py-2 border-b border-slate-800">
+                <span class="text-slate-400">GST Collected (5%)</span>
+                <span class="font-semibold text-white">{{ formatCurrency(taxSummary.totals.gst) }}</span>
               </div>
-              <div class="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden">
-                <div 
-                  class="h-2.5 rounded-full transition-all duration-500 group-hover:opacity-80"
-                  :class="pkg.color"
-                  :style="{ width: `${Math.max((pkg.revenue / metrics.totalRevenue) * 100, 2)}%` }"
-                ></div>
+              <div v-if="taxSummary.totals.pst > 0" class="flex items-center justify-between py-2 border-b border-slate-800">
+                <span class="text-slate-400">PST Collected</span>
+                <span class="font-semibold text-white">{{ formatCurrency(taxSummary.totals.pst) }}</span>
+              </div>
+              <div v-if="taxSummary.totals.hst > 0" class="flex items-center justify-between py-2 border-b border-slate-800">
+                <span class="text-slate-400">HST Collected</span>
+                <span class="font-semibold text-white">{{ formatCurrency(taxSummary.totals.hst) }}</span>
+              </div>
+              <div class="flex items-center justify-between py-2 bg-emerald-500/10 rounded-lg px-3">
+                <span class="font-medium text-emerald-400">Total Tax Collected</span>
+                <span class="font-bold text-emerald-400 text-lg">{{ formatCurrency(taxSummary.totals.taxCollected) }}</span>
+              </div>
+              <p class="text-xs text-slate-500 mt-2">
+                Based on {{ taxSummary.totals.orderCount }} orders in {{ taxSummary.year }}
+              </p>
+            </div>
+            <div v-else class="text-center py-8 text-slate-500">
+              Loading tax data...
+            </div>
+          </div>
+        </UiDataCard>
+
+        <!-- Outstanding Invoices Aging -->
+        <UiDataCard
+          title="Outstanding Invoices"
+          icon="mdi:file-clock"
+          icon-color="amber"
+        >
+          <div class="p-5 space-y-4">
+            <!-- Aging buckets -->
+            <div class="space-y-3">
+              <div class="flex items-center justify-between p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
+                <div class="flex items-center gap-3">
+                  <div class="w-3 h-3 rounded-full bg-emerald-500"></div>
+                  <span class="text-slate-300">Current (0-30 days)</span>
+                </div>
+                <div class="text-right">
+                  <span class="font-bold text-white">{{ formatCurrency(stats.outstandingByAge.current.amount) }}</span>
+                  <span class="text-xs text-slate-500 ml-2">({{ stats.outstandingByAge.current.count }} orders)</span>
+                </div>
+              </div>
+              
+              <div class="flex items-center justify-between p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                <div class="flex items-center gap-3">
+                  <div class="w-3 h-3 rounded-full bg-amber-500"></div>
+                  <span class="text-slate-300">31-60 days</span>
+                </div>
+                <div class="text-right">
+                  <span class="font-bold text-white">{{ formatCurrency(stats.outstandingByAge.thirtyDays.amount) }}</span>
+                  <span class="text-xs text-slate-500 ml-2">({{ stats.outstandingByAge.thirtyDays.count }} orders)</span>
+                </div>
+              </div>
+              
+              <div class="flex items-center justify-between p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+                <div class="flex items-center gap-3">
+                  <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                  <span class="text-slate-300">60+ days</span>
+                </div>
+                <div class="text-right">
+                  <span class="font-bold text-white">{{ formatCurrency(stats.outstandingByAge.sixtyPlus.amount) }}</span>
+                  <span class="text-xs text-slate-500 ml-2">({{ stats.outstandingByAge.sixtyPlus.count }} orders)</span>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Total outstanding -->
+            <div class="pt-3 border-t border-slate-800">
+              <div class="flex items-center justify-between">
+                <span class="font-medium text-slate-300">Total Outstanding</span>
+                <span class="font-bold text-xl text-white">{{ formatCurrency(totalOutstanding) }}</span>
               </div>
             </div>
           </div>
-        </div>
+        </UiDataCard>
+      </div>
+
+      <!-- Revenue by Service & Top Customers -->
+      <div class="grid lg:grid-cols-2 gap-6">
+        <!-- Revenue by Service -->
+        <UiDataCard
+          title="Revenue by Package"
+          icon="mdi:package-variant"
+          icon-color="blue"
+        >
+          <div class="divide-y divide-slate-800">
+            <div
+              v-for="(service, index) in stats.revenueByService"
+              :key="service.service"
+              class="p-4 flex items-center justify-between"
+            >
+              <div class="flex items-center gap-3">
+                <span class="text-slate-500 text-sm w-6">{{ index + 1 }}.</span>
+                <span class="text-white font-medium">{{ service.service }}</span>
+              </div>
+              <div class="text-right">
+                <span class="font-bold text-white">{{ formatCurrency(service.revenue) }}</span>
+                <span class="text-xs text-slate-500 ml-2">({{ service.orderCount }} orders)</span>
+              </div>
+            </div>
+            <div v-if="stats.revenueByService.length === 0" class="p-8 text-center text-slate-500">
+              No revenue data available
+            </div>
+          </div>
+        </UiDataCard>
+
+        <!-- Top Customers -->
+        <UiDataCard
+          title="Top Customers"
+          icon="mdi:account-star"
+          icon-color="amber"
+          action-text="View All"
+          action-to="/admin/customers"
+        >
+          <div class="divide-y divide-slate-800">
+            <div
+              v-for="(customer, index) in stats.topCustomers"
+              :key="customer.email"
+              class="p-4 flex items-center justify-between"
+            >
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-sm font-bold text-slate-300">
+                  {{ index + 1 }}
+                </div>
+                <div>
+                  <p class="text-white font-medium">{{ customer.name }}</p>
+                  <p class="text-xs text-slate-500">{{ customer.orderCount }} orders</p>
+                </div>
+              </div>
+              <span class="font-bold text-emerald-400">{{ formatCurrency(customer.totalSpent) }}</span>
+            </div>
+            <div v-if="stats.topCustomers.length === 0" class="p-8 text-center text-slate-500">
+              No customer data available
+            </div>
+          </div>
+        </UiDataCard>
       </div>
 
       <!-- Recent Transactions -->
-      <div class="bg-slate-900/50 border border-slate-800 rounded-2xl overflow-hidden">
-        <div class="flex items-center justify-between p-6 border-b border-slate-800">
-          <h2 class="text-xl font-bold text-white flex items-center gap-2">
-            <Icon name="mdi:receipt-text" class="w-6 h-6 text-emerald-400" />
-            Recent Transactions
-          </h2>
-          <NuxtLink 
-            v-if="metrics.recentTransactions.length > 0"
-            to="/admin/orders"
-            class="text-sm text-cyan-400 hover:text-cyan-300 font-medium flex items-center gap-1 transition-colors"
-          >
-            View All
-            <Icon name="mdi:arrow-right" class="w-4 h-4" />
-          </NuxtLink>
-        </div>
-
-        <div v-if="metrics.recentTransactions.length === 0" class="p-12 text-center">
-          <div class="w-16 h-16 rounded-2xl bg-slate-800 flex items-center justify-center mx-auto mb-4">
-            <Icon name="mdi:receipt-text-outline" class="w-8 h-8 text-slate-600" />
-          </div>
-          <p class="text-slate-400 mb-1">No recent transactions</p>
-          <p class="text-sm text-slate-500">Transactions will appear here once payments are processed</p>
-        </div>
-
-        <div v-else class="overflow-x-auto">
+      <UiDataCard
+        title="Recent Transactions"
+        icon="mdi:history"
+        icon-color="cyan"
+        action-text="View All Payments"
+        action-to="/admin/payments"
+      >
+        <div class="overflow-x-auto">
           <table class="w-full">
-            <thead>
-              <tr class="border-b border-slate-800 bg-slate-800/30">
-                <th class="text-left py-4 px-6 text-slate-300 font-semibold text-xs uppercase tracking-wide">Date</th>
-                <th class="text-left py-4 px-6 text-slate-300 font-semibold text-xs uppercase tracking-wide">Customer</th>
-                <th class="text-left py-4 px-6 text-slate-300 font-semibold text-xs uppercase tracking-wide">Package</th>
-                <th class="text-left py-4 px-6 text-slate-300 font-semibold text-xs uppercase tracking-wide">Amount</th>
-                <th class="text-left py-4 px-6 text-slate-300 font-semibold text-xs uppercase tracking-wide">Status</th>
-                <th class="text-left py-4 px-6 text-slate-300 font-semibold text-xs uppercase tracking-wide">Action</th>
+            <thead class="bg-slate-800/50">
+              <tr>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Date</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Customer</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Package</th>
+                <th class="px-4 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">Amount</th>
+                <th class="px-4 py-3 text-center text-xs font-semibold text-slate-400 uppercase tracking-wider">Status</th>
+                <th class="px-4 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">Order</th>
               </tr>
             </thead>
-            <tbody>
-              <tr 
-                v-for="transaction in metrics.recentTransactions" 
+            <tbody class="divide-y divide-slate-800">
+              <tr
+                v-for="transaction in stats.recentTransactions"
                 :key="transaction.id"
-                class="border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors group"
+                class="hover:bg-slate-800/30 transition-colors"
               >
-                <td class="py-4 px-6 text-slate-400">{{ formatDate(transaction.date) }}</td>
-                <td class="py-4 px-6 text-white font-medium">{{ transaction.customerName }}</td>
-                <td class="py-4 px-6 text-slate-300">{{ transaction.packageName }}</td>
-                <td class="py-4 px-6 text-white font-semibold">{{ formatCurrency(transaction.amount) }}</td>
-                <td class="py-4 px-6">
-                  <span 
-                    :class="[
-                      'px-3 py-1 text-xs font-semibold rounded-full',
-                      getTransactionStatusClasses(transaction.status)
-                    ]"
-                  >
-                    {{ transaction.status.toUpperCase() }}
+                <td class="px-4 py-3 text-sm text-slate-300">
+                  {{ formatDate(transaction.date) }}
+                </td>
+                <td class="px-4 py-3 text-sm text-white font-medium">
+                  {{ transaction.customerName }}
+                </td>
+                <td class="px-4 py-3 text-sm text-slate-300">
+                  {{ transaction.packageName }}
+                </td>
+                <td class="px-4 py-3 text-sm text-right font-semibold text-emerald-400">
+                  {{ formatCurrency(transaction.amount) }}
+                </td>
+                <td class="px-4 py-3 text-center">
+                  <span class="px-2 py-1 text-xs font-semibold rounded-full bg-emerald-500/20 text-emerald-400">
+                    {{ transaction.status }}
                   </span>
                 </td>
-                <td class="py-4 px-6">
-                  <NuxtLink 
+                <td class="px-4 py-3 text-right">
+                  <NuxtLink
                     :to="`/admin/orders/${transaction.orderId}`"
-                    class="text-cyan-400 hover:text-cyan-300 text-sm font-medium transition-colors flex items-center gap-1 opacity-0 group-hover:opacity-100"
+                    class="text-cyan-400 hover:text-cyan-300 text-sm font-medium"
                   >
-                    View Order
-                    <Icon name="mdi:arrow-right" class="w-4 h-4" />
+                    #{{ transaction.orderId }}
                   </NuxtLink>
+                </td>
+              </tr>
+              <tr v-if="stats.recentTransactions.length === 0">
+                <td colspan="6" class="px-4 py-8 text-center text-slate-500">
+                  No transactions yet
                 </td>
               </tr>
             </tbody>
           </table>
         </div>
-      </div>
+      </UiDataCard>
     </div>
 
-    <!-- Info Section -->
-    <div class="mt-6 bg-blue-500/10 border border-blue-500/30 rounded-2xl p-6">
-      <div class="flex gap-3">
-        <Icon name="mdi:information" class="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
-        <div class="text-sm text-slate-300 space-y-2">
-          <p>
-            <strong class="text-white">Note:</strong> Revenue figures are based on completed payments processed through Stripe.
-          </p>
-          <p>
-            Pending payments represent quotes that have been accepted but not yet paid.
-          </p>
+    <!-- Tax Export Modal -->
+    <div v-if="showTaxExport" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+      <div class="bg-slate-900 border border-slate-800 rounded-xl shadow-2xl max-w-md w-full">
+        <div class="p-6 border-b border-slate-800">
+          <h3 class="text-lg font-bold text-white">Export Tax Report</h3>
+          <p class="text-sm text-slate-400 mt-1">Generate a tax report for your records</p>
+        </div>
+        <div class="p-6 space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-slate-300 mb-2">Year</label>
+            <select
+              v-model="exportYear"
+              class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white"
+            >
+              <option v-for="year in availableYears" :key="year" :value="year">{{ year }}</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-300 mb-2">Quarter (Optional)</label>
+            <select
+              v-model="exportQuarter"
+              class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white"
+            >
+              <option :value="null">Full Year</option>
+              <option :value="1">Q1 (Jan - Mar)</option>
+              <option :value="2">Q2 (Apr - Jun)</option>
+              <option :value="3">Q3 (Jul - Sep)</option>
+              <option :value="4">Q4 (Oct - Dec)</option>
+            </select>
+          </div>
+        </div>
+        <div class="p-6 border-t border-slate-800 flex justify-end gap-3">
+          <button
+            @click="showTaxExport = false"
+            class="px-4 py-2 text-slate-400 hover:text-white transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            @click="exportTaxReport"
+            :disabled="exporting"
+            class="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg transition-colors flex items-center gap-2"
+          >
+            <Icon :name="exporting ? 'mdi:loading' : 'mdi:download'" :class="exporting ? 'w-4 h-4 animate-spin' : 'w-4 h-4'" />
+            {{ exporting ? 'Generating...' : 'Download Report' }}
+          </button>
         </div>
       </div>
     </div>
@@ -217,91 +430,172 @@
 </template>
 
 <script setup lang="ts">
-import type { FinanceData } from '~/types/trpc'
-
 definePageMeta({
   layout: 'admin',
-  middleware: 'admin'
+  middleware: ['auth', 'admin']
 })
 
-const { showError } = useNotification()
-const { formatDate } = useUtils()
+const { showSuccess, showError } = useNotification()
 const trpc = useTrpc()
-const router = useRouter()
 
+// State
 const loading = ref(true)
-const error = ref<string | null>(null)
-const financeData = ref<FinanceData | null>(null)
+const stats = ref<any>(null)
+const revenueTrend = ref<any[]>([])
+const taxSummary = ref<any>(null)
+const showTaxExport = ref(false)
+const exporting = ref(false)
+const exportYear = ref(new Date().getFullYear())
+const exportQuarter = ref<number | null>(null)
 
-const metrics = computed(() => {
-  if (!financeData.value) return null
-  
-  return {
-    totalRevenue: financeData.value.totalRevenue,
-    mtdRevenue: financeData.value.monthlyRevenue,
-    avgOrderValue: financeData.value.paidOrderCount > 0 ? Math.round(financeData.value.totalRevenue / financeData.value.paidOrderCount) : 0,
-    pendingPayments: financeData.value.pendingPayments,
-    revenueByPackage: financeData.value.revenueByService.map((item, idx) => ({
-      name: item.service,
-      revenue: item.revenue,
-      color: ['bg-cyan-500', 'bg-purple-500', 'bg-emerald-500', 'bg-amber-500', 'bg-blue-500', 'bg-pink-500'][idx % 6]
-    })),
-    recentTransactions: financeData.value.recentTransactions || []
-  }
+// Computed
+const monthlyTrend = computed(() => {
+  if (!stats.value) return undefined
+  const { monthlyRevenue, lastMonthRevenue } = stats.value
+  if (lastMonthRevenue === 0) return monthlyRevenue > 0 ? 100 : 0
+  return Math.round(((monthlyRevenue - lastMonthRevenue) / lastMonthRevenue) * 100)
 })
 
-const fetchMetrics = async () => {
+const totalOutstanding = computed(() => {
+  if (!stats.value) return 0
+  const { current, thirtyDays, sixtyPlus } = stats.value.outstandingByAge
+  return current.amount + thirtyDays.amount + sixtyPlus.amount
+})
+
+const revenueTrendData = computed(() => {
+  return revenueTrend.value.map(item => ({
+    label: item.monthShort,
+    value: item.revenue,
+    previousValue: item.previousYearRevenue
+  }))
+})
+
+const availableYears = computed(() => {
+  const currentYear = new Date().getFullYear()
+  return [currentYear, currentYear - 1, currentYear - 2, currentYear - 3]
+})
+
+// Methods
+function formatCurrency(cents: number): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(cents / 100)
+}
+
+function formatDate(dateStr: string | null): string {
+  if (!dateStr) return 'N/A'
+  return new Date(dateStr).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  })
+}
+
+async function fetchData() {
   loading.value = true
-  error.value = null
-  
   try {
-    const response = await trpc.admin.finance.stats.query()
-    financeData.value = response
-  } catch (err: any) {
-    const { handleTrpcError } = await import('~/composables/useTrpc')
-    error.value = handleTrpcError(err)
-    showError('Failed to load financial metrics')
-    console.error('Error loading finance data:', err)
+    // Fetch all data in parallel
+    const [statsData, trendData, taxData] = await Promise.all([
+      trpc.finance.stats.query(),
+      trpc.finance.revenueTrend.query({ months: 12 }),
+      trpc.finance.taxSummary.query({ year: new Date().getFullYear() })
+    ])
+    
+    stats.value = statsData
+    revenueTrend.value = trendData
+    taxSummary.value = taxData
+  } catch (error: any) {
+    console.error('Failed to fetch finance data:', error)
+    showError('Failed to load finance data')
   } finally {
     loading.value = false
   }
 }
 
-const formatPrice = (amount: number | null) => {
-  if (amount === null || amount === undefined) return '$0'
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0
-  }).format(amount)
+async function refreshData() {
+  await fetchData()
+  showSuccess('Data refreshed')
 }
 
-const formatCurrency = (amountInCents: number | null) => {
-  if (amountInCents === null || amountInCents === undefined) return '$0.00'
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2
-  }).format(amountInCents / 100)
-}
-
-const getTransactionStatusClasses = (status: string) => {
-  const classes: Record<string, string> = {
-    succeeded: 'bg-emerald-500/20 text-emerald-400',
-    pending: 'bg-amber-500/20 text-amber-400',
-    failed: 'bg-red-500/20 text-red-400'
+async function exportTaxReport() {
+  exporting.value = true
+  try {
+    const report = await trpc.finance.exportTaxReport.query({
+      year: exportYear.value,
+      quarter: exportQuarter.value || undefined,
+      format: 'json'
+    })
+    
+    // Convert to CSV
+    const headers = [
+      'Order ID', 'Customer Name', 'Customer Email', 'Order Date', 'Payment Date',
+      'Province', 'Service', 'Subtotal', 'GST', 'PST', 'HST', 'Total Tax', 'Total'
+    ]
+    
+    const rows = report.orders.map((order: any) => [
+      order.orderId,
+      order.customerName,
+      order.customerEmail,
+      order.orderDate,
+      order.paymentDate,
+      order.provinceName,
+      order.service,
+      (order.subtotal / 100).toFixed(2),
+      (order.gst / 100).toFixed(2),
+      (order.pst / 100).toFixed(2),
+      (order.hst / 100).toFixed(2),
+      (order.totalTax / 100).toFixed(2),
+      (order.total / 100).toFixed(2)
+    ])
+    
+    // Add summary row
+    rows.push([])
+    rows.push(['SUMMARY'])
+    rows.push(['Total Orders', report.summary.orderCount])
+    rows.push(['Subtotal', '', '', '', '', '', '', (report.summary.subtotal / 100).toFixed(2)])
+    rows.push(['GST', '', '', '', '', '', '', '', (report.summary.gst / 100).toFixed(2)])
+    rows.push(['PST', '', '', '', '', '', '', '', '', (report.summary.pst / 100).toFixed(2)])
+    rows.push(['HST', '', '', '', '', '', '', '', '', '', (report.summary.hst / 100).toFixed(2)])
+    rows.push(['Total Tax', '', '', '', '', '', '', '', '', '', '', (report.summary.totalTax / 100).toFixed(2)])
+    rows.push(['Grand Total', '', '', '', '', '', '', '', '', '', '', '', (report.summary.total / 100).toFixed(2)])
+    
+    // Create CSV content
+    const csvContent = [
+      headers.join(','),
+      ...rows.map((row: any[]) => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n')
+    
+    // Download file
+    const blob = new Blob([csvContent], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `tax-report-${report.period.replace(' ', '-')}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+    
+    showSuccess('Tax report downloaded')
+    showTaxExport.value = false
+  } catch (error: any) {
+    console.error('Failed to export tax report:', error)
+    showError('Failed to generate tax report')
+  } finally {
+    exporting.value = false
   }
-  return classes[status] || 'bg-slate-500/20 text-slate-400'
 }
 
+// Fetch data on mount
 onMounted(() => {
-  fetchMetrics()
+  fetchData()
 })
 
 useHead({
   title: 'Finance Dashboard - Elite Sports DJ Admin',
   meta: [
-    { name: 'description', content: 'View revenue metrics and payment analytics' }
+    { name: 'description', content: 'Track revenue, taxes, and business performance' }
   ]
 })
 </script>

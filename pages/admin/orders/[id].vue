@@ -136,9 +136,13 @@
                   {{ getStatusLabel(orderData.order.status) }}
                 </span>
               </div>
-              <div v-if="orderData.order.eventDate">
+              <div v-if="orderData.order.eventDate || orderData.order.eventDateTime">
                 <p class="text-sm text-slate-400 mb-1">Event Date</p>
-                <p class="text-white font-medium">{{ formatDate(orderData.order.eventDate) }}</p>
+                <p class="text-white font-medium">{{ formatEventDateTime(orderData.order) }}</p>
+              </div>
+              <div v-if="orderData.order.eventTime && !orderData.order.eventDateTime">
+                <p class="text-sm text-slate-400 mb-1">Event Time</p>
+                <p class="text-white font-medium">{{ orderData.order.eventTime }}</p>
               </div>
               <div v-if="orderData.order.formData?.teamName">
                 <p class="text-sm text-slate-400 mb-1">Team Name</p>
@@ -454,6 +458,8 @@
       :customer-email="orderData.order.emailSnapshot"
       :package-name="orderData.order.serviceType || 'Custom'"
       :event-date="orderData.order.eventDate"
+      :event-date-time="orderData.order.eventDateTime"
+      :event-time="orderData.order.eventTime"
       :team-name="orderData.order.formData?.teamName"
       :sport-type="orderData.order.sportType"
       :current-quote="orderData.order.quotedAmount"
@@ -544,6 +550,31 @@ const formatSongInfo = (songData: any) => {
   if (songData.title && songData.artist) return `${songData.title} by ${songData.artist}`
   if (songData.title) return songData.title
   return JSON.stringify(songData)
+}
+
+const formatEventDateTime = (order: any) => {
+  // If we have a full event datetime, use it
+  if (order.eventDateTime) {
+    return new Date(order.eventDateTime).toLocaleString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    })
+  }
+  // If we have event date and time separately
+  if (order.eventDate && order.eventTime) {
+    const dateStr = formatDate(order.eventDate)
+    return `${dateStr} at ${order.eventTime}`
+  }
+  // Just event date
+  if (order.eventDate) {
+    return formatDate(order.eventDate)
+  }
+  return 'Not specified'
 }
 
 // State
