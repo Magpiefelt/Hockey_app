@@ -1,193 +1,230 @@
 <template>
-  <div class="px-6 py-8">
-    <div class="container mx-auto max-w-7xl">
-      <!-- Header -->
-      <div class="mb-8">
-        <h1 class="text-3xl md:text-4xl font-bold text-white mb-2">
-          Admin <span class="gradient-text">Dashboard</span>
-        </h1>
-        <p class="text-lg text-slate-400">
-          Overview of your business performance
-        </p>
+  <div class="max-w-7xl mx-auto">
+    <!-- Welcome Header -->
+    <div class="mb-8">
+      <h1 class="text-2xl lg:text-3xl font-bold text-white mb-2">
+        Welcome back, <span class="text-cyan-400">{{ userName }}</span>
+      </h1>
+      <p class="text-slate-400">
+        Here's what's happening with your business today.
+      </p>
+    </div>
+
+    <!-- Loading State -->
+    <div v-if="loading" class="flex justify-center items-center py-20">
+      <div class="flex flex-col items-center gap-4">
+        <div class="w-12 h-12 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin"></div>
+        <p class="text-slate-400">Loading dashboard...</p>
       </div>
+    </div>
 
-      <!-- Loading State -->
-      <div v-if="loading" class="flex justify-center items-center py-20">
-        <div class="animate-spin h-12 w-12 border-4 border-brand-600 border-t-transparent rounded-full"></div>
-      </div>
-
-      <!-- Dashboard Content -->
-      <div v-else class="space-y-6">
-        <!-- Analytics Dashboard Component -->
-        <AdminAnalyticsDashboard />
-
-        <!-- Financial Summary -->
-        <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <!-- Total Revenue -->
-          <div class="card p-6 bg-gradient-to-br from-brand-500/10 to-brand-600/5 border-brand-500/20">
-            <div class="flex items-center justify-between mb-2">
-              <h3 class="text-sm font-medium text-slate-400 uppercase">Total Revenue</h3>
-              <svg class="w-6 h-6 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <p class="text-3xl font-bold text-white">{{ formatPrice(financeStats.totalRevenue) }}</p>
-            <p class="text-sm text-brand-400 mt-1">All time</p>
+    <!-- Dashboard Content -->
+    <div v-else class="space-y-8">
+      <!-- Action Required Banner -->
+      <div 
+        v-if="stats.pendingOrders > 0"
+        class="bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+      >
+        <div class="flex items-center gap-4">
+          <div class="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+            <Icon name="mdi:alert-circle" class="w-6 h-6 text-amber-400" />
           </div>
-
-          <!-- MTD Revenue -->
-          <div class="card p-6 bg-gradient-to-br from-green-500/10 to-green-600/5 border-green-500/20">
-            <div class="flex items-center justify-between mb-2">
-              <h3 class="text-sm font-medium text-slate-400 uppercase">MTD Revenue</h3>
-              <svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-              </svg>
-            </div>
-            <p class="text-3xl font-bold text-white">{{ formatPrice(financeStats.monthlyRevenue) }}</p>
-            <p class="text-sm text-green-400 mt-1">This month</p>
-          </div>
-
-          <!-- Pending Payments -->
-          <div class="card p-6 bg-gradient-to-br from-yellow-500/10 to-yellow-600/5 border-yellow-500/20">
-            <div class="flex items-center justify-between mb-2">
-              <h3 class="text-sm font-medium text-slate-400 uppercase">Pending Payments</h3>
-              <svg class="w-6 h-6 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <p class="text-3xl font-bold text-white">{{ formatPrice(financeStats.pendingPayments) }}</p>
-            <p class="text-sm text-yellow-400 mt-1">Awaiting payment</p>
-          </div>
-
-          <!-- Avg Order Value -->
-          <div class="card p-6 bg-gradient-to-br from-purple-500/10 to-purple-600/5 border-purple-500/20">
-            <div class="flex items-center justify-between mb-2">
-              <h3 class="text-sm font-medium text-slate-400 uppercase">Avg Order Value</h3>
-              <svg class="w-6 h-6 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-              </svg>
-            </div>
-            <p class="text-3xl font-bold text-white">{{ formatPrice(avgOrderValue) }}</p>
-            <p class="text-sm text-purple-400 mt-1">Per order</p>
+          <div>
+            <h3 class="font-semibold text-white">{{ stats.pendingOrders }} orders need attention</h3>
+            <p class="text-sm text-slate-400">Review and respond to pending orders</p>
           </div>
         </div>
+        <NuxtLink
+          to="/admin/orders?status=submitted"
+          class="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-semibold rounded-xl transition-all shadow-lg shadow-amber-500/20 flex items-center gap-2"
+        >
+          <Icon name="mdi:eye" class="w-4 h-4" />
+          View Orders
+        </NuxtLink>
+      </div>
 
-        <!-- Order Stats Cards -->
-        <div class="grid md:grid-cols-4 gap-6">
-          <!-- Total Orders -->
-          <div class="card p-6">
-            <div class="flex items-center justify-between mb-2">
-              <h3 class="text-sm font-medium text-slate-400 uppercase">Total Orders</h3>
-              <Icon name="mdi:file-document-multiple" class="w-6 h-6 text-brand-500" />
+      <!-- Stats Grid -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+        <!-- Total Revenue -->
+        <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-5 lg:p-6 hover:border-slate-700 transition-all group">
+          <div class="flex items-center justify-between mb-4">
+            <div class="w-11 h-11 rounded-xl bg-emerald-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Icon name="mdi:currency-usd" class="w-6 h-6 text-emerald-400" />
             </div>
-            <p class="text-3xl font-bold text-white">{{ stats.totalOrders }}</p>
-            <p class="text-sm text-slate-400 mt-1">All time</p>
+            <span class="text-xs font-medium text-slate-500 uppercase tracking-wide">All Time</span>
           </div>
-
-          <!-- Pending Orders -->
-          <div class="card p-6">
-            <div class="flex items-center justify-between mb-2">
-              <h3 class="text-sm font-medium text-slate-400 uppercase">Pending</h3>
-              <Icon name="mdi:clock-outline" class="w-6 h-6 text-yellow-500" />
-            </div>
-            <p class="text-3xl font-bold text-white">{{ stats.pendingOrders }}</p>
-            <p class="text-sm text-slate-400 mt-1">Awaiting action</p>
-          </div>
-
-          <!-- In Progress -->
-          <div class="card p-6">
-            <div class="flex items-center justify-between mb-2">
-              <h3 class="text-sm font-medium text-slate-400 uppercase">In Progress</h3>
-              <Icon name="mdi:progress-clock" class="w-6 h-6 text-cyan-500" />
-            </div>
-            <p class="text-3xl font-bold text-white">{{ stats.inProgressOrders }}</p>
-            <p class="text-sm text-slate-400 mt-1">Being processed</p>
-          </div>
-
-          <!-- Completed -->
-          <div class="card p-6">
-            <div class="flex items-center justify-between mb-2">
-              <h3 class="text-sm font-medium text-slate-400 uppercase">Completed</h3>
-              <Icon name="mdi:check-circle" class="w-6 h-6 text-green-500" />
-            </div>
-            <p class="text-3xl font-bold text-white">{{ stats.completedOrders }}</p>
-            <p class="text-sm text-slate-400 mt-1">This month</p>
-          </div>
+          <p class="text-2xl lg:text-3xl font-bold text-white mb-1">{{ formatPrice(financeStats.totalRevenue) }}</p>
+          <p class="text-sm text-slate-400">Total Revenue</p>
         </div>
 
-        <!-- Recent Orders -->
-        <div class="card p-6">
-          <div class="flex items-center justify-between mb-6">
-            <h2 class="text-xl font-bold text-white">Recent Orders</h2>
-            <NuxtLink to="/admin/orders" class="text-brand-500 hover:text-brand-400 text-sm font-medium">
-              View All →
+        <!-- Monthly Revenue -->
+        <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-5 lg:p-6 hover:border-slate-700 transition-all group">
+          <div class="flex items-center justify-between mb-4">
+            <div class="w-11 h-11 rounded-xl bg-cyan-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Icon name="mdi:trending-up" class="w-6 h-6 text-cyan-400" />
+            </div>
+            <span class="text-xs font-medium text-slate-500 uppercase tracking-wide">This Month</span>
+          </div>
+          <p class="text-2xl lg:text-3xl font-bold text-white mb-1">{{ formatPrice(financeStats.monthlyRevenue) }}</p>
+          <p class="text-sm text-slate-400">Monthly Revenue</p>
+        </div>
+
+        <!-- Total Orders -->
+        <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-5 lg:p-6 hover:border-slate-700 transition-all group">
+          <div class="flex items-center justify-between mb-4">
+            <div class="w-11 h-11 rounded-xl bg-blue-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Icon name="mdi:clipboard-list" class="w-6 h-6 text-blue-400" />
+            </div>
+            <span class="text-xs font-medium text-slate-500 uppercase tracking-wide">All Time</span>
+          </div>
+          <p class="text-2xl lg:text-3xl font-bold text-white mb-1">{{ stats.totalOrders }}</p>
+          <p class="text-sm text-slate-400">Total Orders</p>
+        </div>
+
+        <!-- Pending Payments -->
+        <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-5 lg:p-6 hover:border-slate-700 transition-all group">
+          <div class="flex items-center justify-between mb-4">
+            <div class="w-11 h-11 rounded-xl bg-amber-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Icon name="mdi:clock-outline" class="w-6 h-6 text-amber-400" />
+            </div>
+            <span class="text-xs font-medium text-slate-500 uppercase tracking-wide">Awaiting</span>
+          </div>
+          <p class="text-2xl lg:text-3xl font-bold text-white mb-1">{{ formatPrice(financeStats.pendingPayments) }}</p>
+          <p class="text-sm text-slate-400">Pending Payments</p>
+        </div>
+      </div>
+
+      <!-- Main Content Grid -->
+      <div class="grid lg:grid-cols-3 gap-6 lg:gap-8">
+        <!-- Recent Orders - Takes 2 columns -->
+        <div class="lg:col-span-2 bg-slate-900/50 border border-slate-800 rounded-2xl overflow-hidden">
+          <div class="flex items-center justify-between p-5 lg:p-6 border-b border-slate-800">
+            <h2 class="text-lg font-bold text-white">Recent Orders</h2>
+            <NuxtLink 
+              to="/admin/orders" 
+              class="text-sm text-cyan-400 hover:text-cyan-300 font-medium flex items-center gap-1 transition-colors"
+            >
+              View All
+              <Icon name="mdi:arrow-right" class="w-4 h-4" />
             </NuxtLink>
           </div>
 
-          <div v-if="recentOrders.length === 0" class="text-center py-12 text-slate-400">
-            No recent orders
+          <div v-if="recentOrders.length === 0" class="p-12 text-center">
+            <div class="w-16 h-16 rounded-2xl bg-slate-800 flex items-center justify-center mx-auto mb-4">
+              <Icon name="mdi:clipboard-text-outline" class="w-8 h-8 text-slate-600" />
+            </div>
+            <p class="text-slate-400 mb-2">No orders yet</p>
+            <p class="text-sm text-slate-500">Orders will appear here once customers submit requests</p>
           </div>
 
-          <div v-else class="space-y-3">
+          <div v-else class="divide-y divide-slate-800">
             <div
               v-for="order in recentOrders"
               :key="order.id"
-              class="flex items-center justify-between p-4 rounded-lg bg-dark-secondary border border-white/10 hover:border-brand-500/30 transition-colors cursor-pointer"
+              class="p-4 lg:p-5 hover:bg-slate-800/30 transition-colors cursor-pointer group"
               @click="navigateTo(`/admin/orders/${order.id}`)"
             >
-              <div class="flex-1">
-                <div class="flex items-center gap-3 mb-1">
-                  <span class="text-white font-bold">Order #{{ order.id }}</span>
-                  <UiBadge :variant="getStatusVariant(order.status)" size="sm">
-                    {{ getStatusLabel(order.status) }}
-                  </UiBadge>
+              <div class="flex items-center justify-between gap-4">
+                <div class="flex items-center gap-4 min-w-0">
+                  <div class="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center flex-shrink-0 group-hover:bg-slate-700 transition-colors">
+                    <span class="text-sm font-bold text-slate-400">#{{ order.id }}</span>
+                  </div>
+                  <div class="min-w-0">
+                    <p class="font-medium text-white truncate">{{ order.name }}</p>
+                    <p class="text-sm text-slate-400 truncate">{{ order.email }}</p>
+                  </div>
                 </div>
-                <p class="text-sm text-slate-400">{{ order.name }} • {{ order.email }}</p>
-              </div>
-              <div class="text-right">
-                <p class="text-sm text-slate-400">{{ formatDate(order.createdAt) }}</p>
+                <div class="flex items-center gap-3 flex-shrink-0">
+                  <span 
+                    :class="[
+                      'px-3 py-1 text-xs font-semibold rounded-full',
+                      getStatusClasses(order.status)
+                    ]"
+                  >
+                    {{ getStatusLabel(order.status) }}
+                  </span>
+                  <Icon name="mdi:chevron-right" class="w-5 h-5 text-slate-600 group-hover:text-slate-400 transition-colors" />
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Quick Actions -->
-        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <NuxtLink to="/admin/orders" class="card p-6 hover:border-brand-500/30 transition-colors">
-            <Icon name="mdi:file-document-multiple" class="w-8 h-8 text-brand-500 mb-3" />
-            <h3 class="text-lg font-bold text-white mb-1">Manage Orders</h3>
-            <p class="text-sm text-slate-400">View and update order statuses</p>
-          </NuxtLink>
+        <!-- Quick Actions Sidebar -->
+        <div class="space-y-6">
+          <!-- Order Status Summary -->
+          <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-5 lg:p-6">
+            <h3 class="text-lg font-bold text-white mb-4">Order Status</h3>
+            <div class="space-y-3">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <div class="w-2 h-2 rounded-full bg-amber-400"></div>
+                  <span class="text-slate-300">Pending</span>
+                </div>
+                <span class="font-semibold text-white">{{ stats.pendingOrders }}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <div class="w-2 h-2 rounded-full bg-cyan-400"></div>
+                  <span class="text-slate-300">In Progress</span>
+                </div>
+                <span class="font-semibold text-white">{{ stats.inProgressOrders }}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <div class="w-2 h-2 rounded-full bg-emerald-400"></div>
+                  <span class="text-slate-300">Completed</span>
+                </div>
+                <span class="font-semibold text-white">{{ stats.completedOrders }}</span>
+              </div>
+            </div>
+          </div>
 
-          <NuxtLink to="/admin/customers" class="card p-6 hover:border-accent-500/30 transition-colors">
-            <Icon name="mdi:account-multiple" class="w-8 h-8 text-accent-500 mb-3" />
-            <h3 class="text-lg font-bold text-white mb-1">View Customers</h3>
-            <p class="text-sm text-slate-400">Manage customer information</p>
-          </NuxtLink>
-
-          <NuxtLink to="/admin/contact" class="card p-6 hover:border-purple-500/30 transition-colors">
-            <Icon name="mdi:email-multiple" class="w-8 h-8 text-purple-500 mb-3" />
-            <h3 class="text-lg font-bold text-white mb-1">Contact Messages</h3>
-            <p class="text-sm text-slate-400">View contact form submissions</p>
-          </NuxtLink>
-
-          <NuxtLink to="/admin/finance" class="card p-6 hover:border-success-500/30 transition-colors">
-            <Icon name="mdi:chart-line" class="w-8 h-8 text-success-500 mb-3" />
-            <h3 class="text-lg font-bold text-white mb-1">Finance Reports</h3>
-            <p class="text-sm text-slate-400">View revenue and analytics</p>
-          </NuxtLink>
-
-          <NuxtLink to="/admin/calendar" class="card p-6 hover:border-cyan-500/30 transition-colors">
-            <Icon name="mdi:calendar-edit" class="w-8 h-8 text-cyan-500 mb-3" />
-            <h3 class="text-lg font-bold text-white mb-1">Manage Calendar</h3>
-            <p class="text-sm text-slate-400">Block dates and manage availability</p>
-          </NuxtLink>
-
-          <NuxtLink to="/admin/packages" class="card p-6 hover:border-orange-500/30 transition-colors">
-            <Icon name="mdi:package-variant" class="w-8 h-8 text-orange-500 mb-3" />
-            <h3 class="text-lg font-bold text-white mb-1">Manage Packages</h3>
-            <p class="text-sm text-slate-400">Create and edit service packages</p>
-          </NuxtLink>
+          <!-- Quick Actions -->
+          <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-5 lg:p-6">
+            <h3 class="text-lg font-bold text-white mb-4">Quick Actions</h3>
+            <div class="space-y-2">
+              <NuxtLink
+                to="/admin/orders"
+                class="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-800 transition-colors group"
+              >
+                <div class="w-10 h-10 rounded-lg bg-cyan-500/10 flex items-center justify-center group-hover:bg-cyan-500/20 transition-colors">
+                  <Icon name="mdi:clipboard-list" class="w-5 h-5 text-cyan-400" />
+                </div>
+                <span class="font-medium text-slate-300 group-hover:text-white transition-colors">Manage Orders</span>
+              </NuxtLink>
+              
+              <NuxtLink
+                to="/admin/packages"
+                class="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-800 transition-colors group"
+              >
+                <div class="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center group-hover:bg-purple-500/20 transition-colors">
+                  <Icon name="mdi:package-variant" class="w-5 h-5 text-purple-400" />
+                </div>
+                <span class="font-medium text-slate-300 group-hover:text-white transition-colors">Edit Packages</span>
+              </NuxtLink>
+              
+              <NuxtLink
+                to="/admin/calendar"
+                class="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-800 transition-colors group"
+              >
+                <div class="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
+                  <Icon name="mdi:calendar-month" class="w-5 h-5 text-blue-400" />
+                </div>
+                <span class="font-medium text-slate-300 group-hover:text-white transition-colors">Block Dates</span>
+              </NuxtLink>
+              
+              <NuxtLink
+                to="/admin/finance"
+                class="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-800 transition-colors group"
+              >
+                <div class="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center group-hover:bg-emerald-500/20 transition-colors">
+                  <Icon name="mdi:chart-line" class="w-5 h-5 text-emerald-400" />
+                </div>
+                <span class="font-medium text-slate-300 group-hover:text-white transition-colors">View Reports</span>
+              </NuxtLink>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -200,8 +237,14 @@ definePageMeta({
   middleware: 'admin'
 })
 
+const authStore = useAuthStore()
 const trpc = useTrpc()
 const { formatDate, getStatusLabel } = useUtils()
+
+const userName = computed(() => {
+  const name = authStore.user?.name || authStore.user?.email?.split('@')[0] || 'Admin'
+  return name.split(' ')[0] // First name only
+})
 
 const loading = ref(true)
 const stats = ref({
@@ -218,13 +261,6 @@ const financeStats = ref({
 })
 const recentOrders = ref<any[]>([])
 
-const avgOrderValue = computed(() => {
-  if (financeStats.value.paidOrderCount > 0) {
-    return Math.round(financeStats.value.totalRevenue / financeStats.value.paidOrderCount)
-  }
-  return 0
-})
-
 const formatPrice = (amount: number | null) => {
   if (amount === null || amount === undefined) return '$0'
   return new Intl.NumberFormat('en-US', {
@@ -234,16 +270,18 @@ const formatPrice = (amount: number | null) => {
   }).format(amount)
 }
 
-const getStatusVariant = (status: string) => {
-  const variants: Record<string, 'brand' | 'warning' | 'success' | 'neutral'> = {
-    submitted: 'brand',
-    quoted: 'warning',
-    in_progress: 'warning',
-    ready: 'success',
-    delivered: 'success',
-    completed: 'neutral'
+const getStatusClasses = (status: string) => {
+  const classes: Record<string, string> = {
+    submitted: 'bg-blue-500/20 text-blue-400',
+    quoted: 'bg-purple-500/20 text-purple-400',
+    invoiced: 'bg-amber-500/20 text-amber-400',
+    paid: 'bg-emerald-500/20 text-emerald-400',
+    in_progress: 'bg-cyan-500/20 text-cyan-400',
+    completed: 'bg-emerald-500/20 text-emerald-400',
+    delivered: 'bg-teal-500/20 text-teal-400',
+    cancelled: 'bg-red-500/20 text-red-400'
   }
-  return variants[status] || 'neutral'
+  return classes[status] || 'bg-slate-500/20 text-slate-400'
 }
 
 const fetchDashboardData = async () => {
@@ -265,7 +303,6 @@ const fetchDashboardData = async () => {
       }
     } catch (financeError) {
       console.error('Failed to fetch finance data:', financeError)
-      // Continue without finance data - don't block the dashboard
     }
     
     // Fetch recent orders (limit 5)
@@ -284,7 +321,7 @@ onMounted(() => {
 })
 
 useHead({
-  title: 'Admin Dashboard - Elite Sports DJ',
+  title: 'Dashboard - Elite Sports DJ Admin',
   meta: [
     { name: 'description', content: 'Admin dashboard for Elite Sports DJ' }
   ]

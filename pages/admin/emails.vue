@@ -1,82 +1,89 @@
 <template>
-  <div class="px-6 py-8">
-    <div class="container mx-auto max-w-7xl">
-      <!-- Header -->
-      <div class="mb-8">
-        <h1 class="text-3xl md:text-4xl font-bold text-white mb-2">
-          Email <span class="gradient-text">Management</span>
-        </h1>
-        <p class="text-lg text-slate-400">
-          Monitor email delivery and manage communications
-        </p>
+  <div class="max-w-7xl mx-auto">
+    <!-- Header -->
+    <div class="mb-8">
+      <h1 class="text-2xl lg:text-3xl font-bold text-white mb-1">Emails</h1>
+      <p class="text-slate-400">Monitor email delivery and manage communications</p>
+    </div>
+
+    <!-- Stats Summary -->
+    <div v-if="stats" class="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-8">
+      <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-5 lg:p-6 hover:border-slate-700 transition-all group">
+        <div class="flex items-center justify-between mb-4">
+          <div class="w-11 h-11 rounded-xl bg-cyan-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+            <Icon name="mdi:email-multiple" class="w-6 h-6 text-cyan-400" />
+          </div>
+          <span class="text-xs font-medium text-slate-500 uppercase tracking-wide">Total</span>
+        </div>
+        <p class="text-2xl lg:text-3xl font-bold text-white mb-1">{{ stats.total }}</p>
+        <p class="text-sm text-slate-400">Emails</p>
       </div>
 
-      <!-- Stats Summary -->
-      <div v-if="stats" class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div class="bg-dark-secondary border border-white/10 rounded-lg p-6">
-          <div class="flex items-center justify-between mb-2">
-            <p class="text-slate-400 text-sm font-medium">Total Emails</p>
-            <Icon name="mdi:email-multiple" class="w-6 h-6 text-brand-500" />
+      <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-5 lg:p-6 hover:border-slate-700 transition-all group">
+        <div class="flex items-center justify-between mb-4">
+          <div class="w-11 h-11 rounded-xl bg-emerald-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+            <Icon name="mdi:check-circle" class="w-6 h-6 text-emerald-400" />
           </div>
-          <p class="text-3xl font-bold text-white">{{ stats.total }}</p>
+          <span class="text-xs font-medium text-slate-500 uppercase tracking-wide">Sent</span>
         </div>
+        <p class="text-2xl lg:text-3xl font-bold text-white mb-1">{{ stats.sent }}</p>
+        <p class="text-sm text-slate-400">Delivered</p>
+      </div>
 
-        <div class="bg-gradient-to-br from-green-500/10 to-green-600/10 border border-green-500/30 rounded-lg p-6">
-          <div class="flex items-center justify-between mb-2">
-            <p class="text-slate-400 text-sm font-medium">Sent</p>
-            <Icon name="mdi:check-circle" class="w-6 h-6 text-green-400" />
-          </div>
-          <p class="text-3xl font-bold text-white">{{ stats.sent }}</p>
-        </div>
-
-        <div class="bg-gradient-to-br from-red-500/10 to-red-600/10 border border-red-500/30 rounded-lg p-6">
-          <div class="flex items-center justify-between mb-2">
-            <p class="text-slate-400 text-sm font-medium">Failed</p>
+      <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-5 lg:p-6 hover:border-slate-700 transition-all group">
+        <div class="flex items-center justify-between mb-4">
+          <div class="w-11 h-11 rounded-xl bg-red-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
             <Icon name="mdi:alert-circle" class="w-6 h-6 text-red-400" />
           </div>
-          <p class="text-3xl font-bold text-white">{{ stats.failed }}</p>
+          <span class="text-xs font-medium text-slate-500 uppercase tracking-wide">Failed</span>
         </div>
-
-        <div class="bg-gradient-to-br from-blue-500/10 to-blue-600/10 border border-blue-500/30 rounded-lg p-6">
-          <div class="flex items-center justify-between mb-2">
-            <p class="text-slate-400 text-sm font-medium">Success Rate</p>
-            <Icon name="mdi:chart-line" class="w-6 h-6 text-blue-400" />
-          </div>
-          <p class="text-3xl font-bold text-white">{{ stats.successRate }}%</p>
-        </div>
+        <p class="text-2xl lg:text-3xl font-bold text-white mb-1">{{ stats.failed }}</p>
+        <p class="text-sm text-slate-400">Errors</p>
       </div>
 
-      <!-- Filters -->
-      <div class="bg-dark-secondary border border-white/10 rounded-lg p-6 mb-6">
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <!-- Status Filter -->
-          <div>
-            <label for="status-filter" class="block text-sm font-medium text-slate-300 mb-2">
-              Status
-            </label>
-            <select
-              id="status-filter"
-              v-model="filters.status"
-              @change="fetchEmails"
-              class="w-full px-4 py-2.5 bg-dark-primary border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
-            >
-              <option value="all">All Statuses</option>
-              <option value="sent">Sent</option>
-              <option value="failed">Failed</option>
-              <option value="queued">Queued</option>
-            </select>
+      <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-5 lg:p-6 hover:border-slate-700 transition-all group">
+        <div class="flex items-center justify-between mb-4">
+          <div class="w-11 h-11 rounded-xl bg-blue-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+            <Icon name="mdi:chart-line" class="w-6 h-6 text-blue-400" />
           </div>
+          <span class="text-xs font-medium text-slate-500 uppercase tracking-wide">Rate</span>
+        </div>
+        <p class="text-2xl lg:text-3xl font-bold text-white mb-1">{{ stats.successRate }}%</p>
+        <p class="text-sm text-slate-400">Success Rate</p>
+      </div>
+    </div>
 
-          <!-- Template Filter -->
-          <div>
-            <label for="template-filter" class="block text-sm font-medium text-slate-300 mb-2">
-              Template
-            </label>
-            <select
-              id="template-filter"
-              v-model="filters.template"
-              @change="fetchEmails"
-              class="w-full px-4 py-2.5 bg-dark-primary border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+    <!-- Filters -->
+    <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-5 mb-6">
+      <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Status Filter -->
+        <div>
+          <label for="status-filter" class="block text-sm font-medium text-slate-400 mb-2">
+            Status
+          </label>
+          <select
+            id="status-filter"
+            v-model="filters.status"
+            @change="fetchEmails"
+            class="w-full px-4 py-2.5 bg-slate-800/50 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
+          >
+            <option value="all">All Statuses</option>
+            <option value="sent">Sent</option>
+            <option value="failed">Failed</option>
+            <option value="queued">Queued</option>
+          </select>
+        </div>
+
+        <!-- Template Filter -->
+        <div>
+          <label for="template-filter" class="block text-sm font-medium text-slate-400 mb-2">
+            Template
+          </label>
+          <select
+            id="template-filter"
+            v-model="filters.template"
+            @change="fetchEmails"
+            class="w-full px-4 py-2.5 bg-slate-800/50 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
             >
               <option value="">All Templates</option>
               <option value="order_confirmation">Order Confirmation</option>

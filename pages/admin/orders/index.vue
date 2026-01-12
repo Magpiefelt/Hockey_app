@@ -1,83 +1,104 @@
 <template>
-  <div class="px-6 py-8">
-    <div class="container mx-auto max-w-7xl">
-      <!-- Header -->
-      <div class="mb-8">
-        <h1 class="text-3xl md:text-4xl font-bold text-white mb-2">
-          Orders <span class="gradient-text">Management</span>
-        </h1>
-        <p class="text-lg text-slate-400">
-          View and manage all service requests
-        </p>
+  <div class="max-w-7xl mx-auto">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+      <div>
+        <h1 class="text-2xl lg:text-3xl font-bold text-white mb-1">Orders</h1>
+        <p class="text-slate-400">Manage and track all service requests</p>
       </div>
+      <div class="flex items-center gap-3">
+        <span class="text-sm text-slate-400">
+          <span class="font-semibold text-white">{{ filteredOrders.length }}</span> orders
+        </span>
+      </div>
+    </div>
 
-      <!-- Bulk Actions Toolbar -->
-      <AdminBulkActionsToolbar
-        v-if="selectedOrderIds.length > 0"
-        :selected-ids="selectedOrderIds"
-        :total-count="filteredOrders.length"
-        @clear-selection="clearSelection"
-        @select-all="selectAll"
-        @action-complete="handleBulkActionComplete"
-        class="mb-6"
-      />
+    <!-- Bulk Actions Toolbar -->
+    <AdminBulkActionsToolbar
+      v-if="selectedOrderIds.length > 0"
+      :selected-ids="selectedOrderIds"
+      :total-count="filteredOrders.length"
+      @clear-selection="clearSelection"
+      @select-all="selectAll"
+      @action-complete="handleBulkActionComplete"
+      class="mb-6"
+    />
 
-      <!-- Filters -->
-      <div class="card p-6 mb-6">
-        <div class="grid md:grid-cols-4 gap-4">
-          <UiSelect
+    <!-- Filters -->
+    <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-5 mb-6">
+      <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-slate-400 mb-2">Status</label>
+          <select
             v-model="filters.status"
-            label="Status"
-            :options="statusOptions"
-          />
-          
-          <UiSelect
+            class="w-full px-4 py-2.5 bg-slate-800/50 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
+          >
+            <option v-for="opt in statusOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+          </select>
+        </div>
+        
+        <div>
+          <label class="block text-sm font-medium text-slate-400 mb-2">Package</label>
+          <select
             v-model="filters.packageId"
-            label="Package"
-            :options="packageOptions"
-          />
-          
-          <UiInput
-            v-model="filters.search"
-            label="Search"
-            type="text"
-            placeholder="Email or name..."
-          />
-          
-          <div class="flex items-end">
-            <UiButton
-              @click="resetFilters"
-              variant="outline"
-              full-width
-            >
-              Reset Filters
-            </UiButton>
+            class="w-full px-4 py-2.5 bg-slate-800/50 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
+          >
+            <option v-for="opt in packageOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+          </select>
+        </div>
+        
+        <div>
+          <label class="block text-sm font-medium text-slate-400 mb-2">Search</label>
+          <div class="relative">
+            <Icon name="mdi:magnify" class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+            <input
+              v-model="filters.search"
+              type="text"
+              placeholder="Email or name..."
+              class="w-full pl-10 pr-4 py-2.5 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
+            />
           </div>
         </div>
+        
+        <div class="flex items-end">
+          <button
+            @click="resetFilters"
+            class="w-full px-4 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white rounded-xl transition-all font-medium"
+          >
+            Reset Filters
+          </button>
+        </div>
       </div>
+    </div>
 
-      <!-- Loading State -->
-      <div v-if="loading" class="flex justify-center items-center py-20">
-        <div class="animate-spin h-12 w-12 border-4 border-brand-600 border-t-transparent rounded-full"></div>
+    <!-- Loading State -->
+    <div v-if="loading" class="flex justify-center items-center py-20">
+      <div class="flex flex-col items-center gap-4">
+        <div class="w-12 h-12 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin"></div>
+        <p class="text-slate-400">Loading orders...</p>
       </div>
+    </div>
 
-      <!-- Error State -->
-      <div v-else-if="error" class="p-6 rounded-xl border border-error-500/30 bg-error-500/10 text-center">
-        <p class="text-error-400 text-lg mb-4">{{ error }}</p>
-        <UiButton 
-          @click="fetchOrders"
-          variant="outline"
-        >
-          Try Again
-        </UiButton>
+    <!-- Error State -->
+    <div v-else-if="error" class="bg-red-500/10 border border-red-500/30 rounded-2xl p-8 text-center">
+      <div class="w-16 h-16 rounded-2xl bg-red-500/20 flex items-center justify-center mx-auto mb-4">
+        <Icon name="mdi:alert-circle" class="w-8 h-8 text-red-400" />
       </div>
+      <p class="text-red-400 text-lg mb-4">{{ error }}</p>
+      <button 
+        @click="fetchOrders"
+        class="px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-xl transition-all"
+      >
+        Try Again
+      </button>
+    </div>
 
-      <!-- Orders Table -->
-      <div v-else class="card overflow-hidden">
-        <div class="overflow-x-auto">
-          <table class="w-full">
-            <thead>
-              <tr class="border-b border-white/10">
+    <!-- Orders Table -->
+    <div v-else class="bg-slate-900/50 border border-slate-800 rounded-2xl overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead>
+            <tr class="border-b border-slate-800 bg-slate-800/30">
                 <th class="text-left py-4 px-4 text-slate-200 font-semibold text-xs uppercase">
                   <input
                     type="checkbox"
@@ -148,12 +169,12 @@
                   No orders found
                 </td>
               </tr>
-              <tr 
-                v-for="order in paginatedOrders" 
-                :key="order.id"
-                class="border-b border-white/5 hover:bg-dark-secondary transition-colors"
-                :class="{ 'bg-brand-500/5': selectedOrderIds.includes(order.id) }"
-              >
+            <tr 
+              v-for="order in paginatedOrders" 
+              :key="order.id"
+              class="border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors group"
+              :class="{ 'bg-cyan-500/5': selectedOrderIds.includes(order.id) }"
+            >
                 <td class="py-4 px-4" @click.stop>
                   <input
                     type="checkbox"
@@ -213,22 +234,20 @@
                   {{ formatDate(order.createdAt) }}
                 </td>
                 <td class="py-4 px-6" @click.stop>
-                  <div class="flex items-center gap-2">
+                  <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
                       @click="openEditModal(order)"
-                      class="px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-md transition-colors flex items-center gap-1"
+                      class="p-2 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 rounded-lg transition-colors"
                       title="Edit order"
                     >
                       <Icon name="mdi:pencil" class="w-4 h-4" />
-                      Edit
                     </button>
                     <button
                       @click="navigateTo(`/admin/orders/${order.id}`)"
-                      class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-sm font-semibold rounded-md transition-colors flex items-center gap-1"
+                      class="p-2 bg-slate-700/50 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg transition-colors"
                       title="View details"
                     >
                       <Icon name="mdi:eye" class="w-4 h-4" />
-                      View
                     </button>
                   </div>
                 </td>
@@ -237,29 +256,28 @@
           </table>
         </div>
 
-        <!-- Pagination -->
-        <div v-if="totalPages > 1" class="flex items-center justify-between px-6 py-4 border-t border-white/10">
-          <div class="text-slate-400 text-sm">
-            Showing {{ (currentPage - 1) * pageSize + 1 }} to {{ Math.min(currentPage * pageSize, totalOrders) }} of {{ totalOrders }} orders
-          </div>
-          <div class="flex gap-2">
-            <UiButton
-              @click="goToPage(currentPage - 1)"
-              :disabled="currentPage === 1"
-              variant="outline"
-              size="sm"
-            >
-              Previous
-            </UiButton>
-            <UiButton
-              @click="goToPage(currentPage + 1)"
-              :disabled="currentPage === totalPages"
-              variant="outline"
-              size="sm"
-            >
-              Next
-            </UiButton>
-          </div>
+      <!-- Pagination -->
+      <div v-if="totalPages > 1" class="flex items-center justify-between px-6 py-4 border-t border-slate-800">
+        <div class="text-slate-400 text-sm">
+          Showing <span class="font-medium text-white">{{ (currentPage - 1) * pageSize + 1 }}</span> to <span class="font-medium text-white">{{ Math.min(currentPage * pageSize, totalOrders) }}</span> of <span class="font-medium text-white">{{ totalOrders }}</span> orders
+        </div>
+        <div class="flex gap-2">
+          <button
+            @click="goToPage(currentPage - 1)"
+            :disabled="currentPage === 1"
+            class="px-4 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-slate-300 hover:text-white rounded-lg transition-all text-sm font-medium flex items-center gap-1"
+          >
+            <Icon name="mdi:chevron-left" class="w-4 h-4" />
+            Previous
+          </button>
+          <button
+            @click="goToPage(currentPage + 1)"
+            :disabled="currentPage === totalPages"
+            class="px-4 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-slate-300 hover:text-white rounded-lg transition-all text-sm font-medium flex items-center gap-1"
+          >
+            Next
+            <Icon name="mdi:chevron-right" class="w-4 h-4" />
+          </button>
         </div>
       </div>
     </div>
