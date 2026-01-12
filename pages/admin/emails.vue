@@ -91,207 +91,214 @@
               <option value="invoice">Invoice</option>
               <option value="payment_receipt">Payment Receipt</option>
               <option value="custom">Custom</option>
-            </select>
-          </div>
-
-          <!-- Search -->
-          <div class="md:col-span-2">
-            <label for="search" class="block text-sm font-medium text-slate-300 mb-2">
-              Search
-            </label>
-            <div class="relative">
-              <Icon name="mdi:magnify" class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-              <input
-                id="search"
-                v-model="filters.search"
-                @input="debouncedSearch"
-                type="text"
-                placeholder="Search by email or subject..."
-                class="w-full pl-10 pr-4 py-2.5 bg-dark-primary border border-white/10 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
-              />
-            </div>
-          </div>
+          </select>
         </div>
 
-        <!-- Active Filters -->
-        <div v-if="hasActiveFilters" class="flex items-center gap-2 mt-4 pt-4 border-t border-white/10">
-          <span class="text-sm text-slate-400">Active filters:</span>
-          <button
-            v-if="filters.status !== 'all'"
-            @click="clearFilter('status')"
-            class="px-3 py-1 bg-brand-600/20 text-brand-400 text-sm rounded-full flex items-center gap-1 hover:bg-brand-600/30 transition-colors"
-          >
-            Status: {{ filters.status }}
-            <Icon name="mdi:close" class="w-4 h-4" />
-          </button>
-          <button
-            v-if="filters.template"
-            @click="clearFilter('template')"
-            class="px-3 py-1 bg-brand-600/20 text-brand-400 text-sm rounded-full flex items-center gap-1 hover:bg-brand-600/30 transition-colors"
-          >
-            Template: {{ filters.template }}
-            <Icon name="mdi:close" class="w-4 h-4" />
-          </button>
-          <button
-            v-if="filters.search"
-            @click="clearFilter('search')"
-            class="px-3 py-1 bg-brand-600/20 text-brand-400 text-sm rounded-full flex items-center gap-1 hover:bg-brand-600/30 transition-colors"
-          >
-            Search: "{{ filters.search }}"
-            <Icon name="mdi:close" class="w-4 h-4" />
-          </button>
-          <button
-            @click="clearAllFilters"
-            class="ml-auto px-3 py-1 text-slate-400 text-sm hover:text-white transition-colors"
-          >
-            Clear all
-          </button>
+        <!-- Search -->
+        <div class="lg:col-span-2">
+          <label for="search" class="block text-sm font-medium text-slate-400 mb-2">
+            Search
+          </label>
+          <div class="relative">
+            <Icon name="mdi:magnify" class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+            <input
+              id="search"
+              v-model="filters.search"
+              @input="debouncedSearch"
+              type="text"
+              placeholder="Search by email or subject..."
+              class="w-full pl-10 pr-4 py-2.5 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
+            />
+          </div>
         </div>
       </div>
 
-      <!-- Loading State -->
-      <div v-if="loading" class="flex justify-center items-center py-20">
-        <div class="animate-spin h-12 w-12 border-4 border-brand-600 border-t-transparent rounded-full"></div>
-      </div>
-
-      <!-- Error State -->
-      <div v-else-if="error" class="p-6 rounded-xl border border-red-500/30 bg-red-500/10 text-center">
-        <Icon name="mdi:alert-circle" class="w-12 h-12 text-red-400 mx-auto mb-4" />
-        <p class="text-red-400 text-lg mb-4">{{ error }}</p>
+      <!-- Active Filters -->
+      <div v-if="hasActiveFilters" class="flex items-center gap-2 mt-4 pt-4 border-t border-slate-800">
+        <span class="text-sm text-slate-400">Active filters:</span>
         <button
-          @click="fetchEmails"
-          class="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors"
+          v-if="filters.status !== 'all'"
+          @click="clearFilter('status')"
+          class="px-3 py-1 bg-cyan-500/20 text-cyan-400 text-sm rounded-full flex items-center gap-1 hover:bg-cyan-500/30 transition-colors"
         >
-          Try Again
+          Status: {{ filters.status }}
+          <Icon name="mdi:close" class="w-4 h-4" />
+        </button>
+        <button
+          v-if="filters.template"
+          @click="clearFilter('template')"
+          class="px-3 py-1 bg-cyan-500/20 text-cyan-400 text-sm rounded-full flex items-center gap-1 hover:bg-cyan-500/30 transition-colors"
+        >
+          Template: {{ filters.template }}
+          <Icon name="mdi:close" class="w-4 h-4" />
+        </button>
+        <button
+          v-if="filters.search"
+          @click="clearFilter('search')"
+          class="px-3 py-1 bg-cyan-500/20 text-cyan-400 text-sm rounded-full flex items-center gap-1 hover:bg-cyan-500/30 transition-colors"
+        >
+          Search: "{{ filters.search }}"
+          <Icon name="mdi:close" class="w-4 h-4" />
+        </button>
+        <button
+          @click="clearAllFilters"
+          class="ml-auto px-3 py-1 text-slate-400 text-sm hover:text-white transition-colors"
+        >
+          Clear all
         </button>
       </div>
+    </div>
 
-      <!-- Email Logs Table -->
-      <div v-else class="bg-dark-secondary border border-white/10 rounded-lg overflow-hidden">
-        <div class="overflow-x-auto">
-          <table class="w-full">
-            <thead>
-              <tr class="border-b border-white/10">
-                <th class="text-left py-4 px-6 text-slate-400 font-semibold text-xs uppercase">ID</th>
-                <th class="text-left py-4 px-6 text-slate-400 font-semibold text-xs uppercase">Recipient</th>
-                <th class="text-left py-4 px-6 text-slate-400 font-semibold text-xs uppercase">Subject</th>
-                <th class="text-left py-4 px-6 text-slate-400 font-semibold text-xs uppercase">Template</th>
-                <th class="text-left py-4 px-6 text-slate-400 font-semibold text-xs uppercase">Status</th>
-                <th class="text-left py-4 px-6 text-slate-400 font-semibold text-xs uppercase">Date</th>
-                <th class="text-left py-4 px-6 text-slate-400 font-semibold text-xs uppercase">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-if="emails.length === 0">
-                <td colspan="7" class="py-12 text-center text-slate-400">
-                  <Icon name="mdi:email-off" class="w-16 h-16 mx-auto mb-4 opacity-50" />
-                  <p>No emails found</p>
-                </td>
-              </tr>
-              <tr
-                v-for="email in emails"
-                :key="email.id"
-                class="border-b border-white/5 hover:bg-dark-primary/50 transition-colors"
-              >
-                <td class="py-4 px-6 text-white font-mono text-sm">#{{ email.id }}</td>
-                <td class="py-4 px-6">
-                  <div>
-                    <p class="text-white font-medium">{{ email.toEmail }}</p>
-                    <p v-if="email.contactName" class="text-slate-400 text-sm">{{ email.contactName }}</p>
-                  </div>
-                </td>
-                <td class="py-4 px-6 text-slate-300 max-w-xs truncate">{{ email.subject }}</td>
-                <td class="py-4 px-6">
-                  <span class="inline-flex items-center gap-1 px-2 py-1 bg-slate-700 text-slate-300 text-xs rounded-md">
-                    <Icon :name="getTemplateIcon(email.template)" class="w-3 h-3" />
-                    {{ formatTemplate(email.template) }}
-                  </span>
-                </td>
-                <td class="py-4 px-6">
-                  <span
-                    :class="[
-                      'inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-md',
-                      getStatusClass(email.status)
-                    ]"
+    <!-- Loading State -->
+    <div v-if="loading" class="flex justify-center items-center py-20">
+      <div class="flex flex-col items-center gap-4">
+        <div class="w-12 h-12 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin"></div>
+        <p class="text-slate-400">Loading emails...</p>
+      </div>
+    </div>
+
+    <!-- Error State -->
+    <div v-else-if="error" class="bg-red-500/10 border border-red-500/30 rounded-2xl p-8 text-center">
+      <div class="w-16 h-16 rounded-2xl bg-red-500/20 flex items-center justify-center mx-auto mb-4">
+        <Icon name="mdi:alert-circle" class="w-8 h-8 text-red-400" />
+      </div>
+      <p class="text-red-400 text-lg mb-4">{{ error }}</p>
+      <button
+        @click="fetchEmails"
+        class="px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-xl transition-all"
+      >
+        Try Again
+      </button>
+    </div>
+
+    <!-- Email Logs Table -->
+    <div v-else class="bg-slate-900/50 border border-slate-800 rounded-2xl overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead>
+            <tr class="border-b border-slate-800 bg-slate-800/30">
+              <th class="text-left py-4 px-6 text-slate-300 font-semibold text-xs uppercase tracking-wide">ID</th>
+              <th class="text-left py-4 px-6 text-slate-300 font-semibold text-xs uppercase tracking-wide">Recipient</th>
+              <th class="text-left py-4 px-6 text-slate-300 font-semibold text-xs uppercase tracking-wide">Subject</th>
+              <th class="text-left py-4 px-6 text-slate-300 font-semibold text-xs uppercase tracking-wide">Template</th>
+              <th class="text-left py-4 px-6 text-slate-300 font-semibold text-xs uppercase tracking-wide">Status</th>
+              <th class="text-left py-4 px-6 text-slate-300 font-semibold text-xs uppercase tracking-wide">Date</th>
+              <th class="text-left py-4 px-6 text-slate-300 font-semibold text-xs uppercase tracking-wide">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-if="emails.length === 0">
+              <td colspan="7" class="py-16 text-center">
+                <div class="w-16 h-16 rounded-2xl bg-slate-800 flex items-center justify-center mx-auto mb-4">
+                  <Icon name="mdi:email-off" class="w-8 h-8 text-slate-600" />
+                </div>
+                <p class="text-slate-400 mb-1">No emails found</p>
+                <p class="text-sm text-slate-500">Try adjusting your filters</p>
+              </td>
+            </tr>
+            <tr
+              v-for="email in emails"
+              :key="email.id"
+              class="border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors group"
+            >
+              <td class="py-4 px-6 text-white font-mono text-sm">#{{ email.id }}</td>
+              <td class="py-4 px-6">
+                <div>
+                  <p class="text-white font-medium">{{ email.toEmail }}</p>
+                  <p v-if="email.contactName" class="text-slate-400 text-sm">{{ email.contactName }}</p>
+                </div>
+              </td>
+              <td class="py-4 px-6 text-slate-300 max-w-xs truncate">{{ email.subject }}</td>
+              <td class="py-4 px-6">
+                <span class="inline-flex items-center gap-1 px-2 py-1 bg-slate-700/50 text-slate-300 text-xs rounded-lg">
+                  <Icon :name="getTemplateIcon(email.template)" class="w-3 h-3" />
+                  {{ formatTemplate(email.template) }}
+                </span>
+              </td>
+              <td class="py-4 px-6">
+                <span
+                  :class="[
+                    'inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-lg',
+                    getStatusClass(email.status)
+                  ]"
+                >
+                  <Icon :name="getStatusIcon(email.status)" class="w-3 h-3" />
+                  {{ email.status }}
+                </span>
+              </td>
+              <td class="py-4 px-6 text-slate-400 text-sm">
+                {{ formatDate(email.createdAt) }}
+              </td>
+              <td class="py-4 px-6">
+                <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    @click="viewEmail(email)"
+                    class="p-2 bg-slate-700/50 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg transition-colors"
+                    title="View details"
                   >
-                    <Icon :name="getStatusIcon(email.status)" class="w-3 h-3" />
-                    {{ email.status }}
-                  </span>
-                </td>
-                <td class="py-4 px-6 text-slate-400 text-sm">
-                  {{ formatDate(email.createdAt) }}
-                </td>
-                <td class="py-4 px-6">
-                  <div class="flex items-center gap-2">
-                    <button
-                      @click="viewEmail(email)"
-                      class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-sm font-semibold rounded-md transition-colors flex items-center gap-1"
-                      title="View details"
-                    >
-                      <Icon name="mdi:eye" class="w-4 h-4" />
-                      View
-                    </button>
-                    <button
-                      v-if="email.status === 'failed'"
-                      @click="resendEmail(email)"
-                      :disabled="resending === email.id"
-                      class="px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-md transition-colors flex items-center gap-1 disabled:opacity-50"
-                      title="Resend email"
-                    >
-                      <Icon :name="resending === email.id ? 'mdi:loading' : 'mdi:refresh'" :class="{ 'animate-spin': resending === email.id }" class="w-4 h-4" />
-                      Resend
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <!-- Pagination -->
-        <div v-if="totalEmails > pageSize" class="flex items-center justify-between px-6 py-4 border-t border-white/10">
-          <div class="text-slate-400 text-sm">
-            Showing {{ (currentPage - 1) * pageSize + 1 }} to {{ Math.min(currentPage * pageSize, totalEmails) }} of {{ totalEmails }} emails
-          </div>
-          <div class="flex gap-2">
-            <button
-              @click="previousPage"
-              :disabled="currentPage === 1"
-              class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Previous
-            </button>
-            <button
-              @click="nextPage"
-              :disabled="currentPage >= totalPages"
-              class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Next
-            </button>
-          </div>
-        </div>
+                    <Icon name="mdi:eye" class="w-4 h-4" />
+                  </button>
+                  <button
+                    v-if="email.status === 'failed'"
+                    @click="resendEmail(email)"
+                    :disabled="resending === email.id"
+                    class="p-2 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 rounded-lg transition-colors disabled:opacity-50"
+                    title="Resend email"
+                  >
+                    <Icon :name="resending === email.id ? 'mdi:loading' : 'mdi:refresh'" :class="{ 'animate-spin': resending === email.id }" class="w-4 h-4" />
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
 
-      <!-- Email Detail Modal -->
-      <EmailDetailModal
-        v-if="selectedEmail"
-        v-model="showDetailModal"
-        :email="selectedEmail"
-        @resend="handleResend"
-      />
-
-      <!-- Resend Confirmation Dialog -->
-      <UiConfirmDialog
-        :is-open="showResendConfirm"
-        title="Resend Email"
-        :message="`Are you sure you want to resend this email to ${emailToResend?.toEmail || 'the recipient'}?`"
-        type="info"
-        confirm-text="Resend"
-        cancel-text="Cancel"
-        @confirm="confirmResend"
-        @cancel="cancelResend"
-      />
+      <!-- Pagination -->
+      <div v-if="totalEmails > pageSize" class="flex items-center justify-between px-6 py-4 border-t border-slate-800">
+        <div class="text-slate-400 text-sm">
+          Showing <span class="font-medium text-white">{{ (currentPage - 1) * pageSize + 1 }}</span> to <span class="font-medium text-white">{{ Math.min(currentPage * pageSize, totalEmails) }}</span> of <span class="font-medium text-white">{{ totalEmails }}</span> emails
+        </div>
+        <div class="flex gap-2">
+          <button
+            @click="previousPage"
+            :disabled="currentPage === 1"
+            class="px-4 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-slate-300 hover:text-white rounded-lg transition-all text-sm font-medium flex items-center gap-1"
+          >
+            <Icon name="mdi:chevron-left" class="w-4 h-4" />
+            Previous
+          </button>
+          <button
+            @click="nextPage"
+            :disabled="currentPage >= totalPages"
+            class="px-4 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-slate-300 hover:text-white rounded-lg transition-all text-sm font-medium flex items-center gap-1"
+          >
+            Next
+            <Icon name="mdi:chevron-right" class="w-4 h-4" />
+          </button>
+        </div>
+      </div>
     </div>
+
+    <!-- Email Detail Modal -->
+    <EmailDetailModal
+      v-if="selectedEmail"
+      v-model="showDetailModal"
+      :email="selectedEmail"
+      @resend="handleResend"
+    />
+
+    <!-- Resend Confirmation Dialog -->
+    <UiConfirmDialog
+      :is-open="showResendConfirm"
+      title="Resend Email"
+      :message="`Are you sure you want to resend this email to ${emailToResend?.toEmail || 'the recipient'}?`"
+      type="info"
+      confirm-text="Resend"
+      cancel-text="Cancel"
+      @confirm="confirmResend"
+      @cancel="cancelResend"
+    />
   </div>
 </template>
 
