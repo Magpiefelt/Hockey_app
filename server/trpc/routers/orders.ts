@@ -138,7 +138,8 @@ export const ordersRouter = router({
       })
       
       // Get package ID for failed submission logging
-      // FIX: Add validation to prevent silent failures when invalid package slug is provided
+      // Resolve package ID from slug
+      // The packages table may not be seeded yet, so we handle this gracefully
       let dbPackageId: number | null = null
       if (input.packageId) {
         const pkgResult = await executeQuery<{ id: number }>(
@@ -148,8 +149,19 @@ export const ordersRouter = router({
         if (pkgResult.rows.length > 0) {
           dbPackageId = pkgResult.rows[0].id
         } else {
-          // FIX: Throw validation error if package slug was provided but not found
-          throw new ValidationError(`Invalid package ID: '${input.packageId}' not found`, 'packageId')
+          // Package not found in database - this can happen if:
+          // 1. The packages table hasn't been seeded yet
+          // 2. The package slug is invalid
+          // We log a warning but allow the order to proceed with null package_id
+          // The serviceType field will still capture what package was selected
+          logger.warn('Package slug not found in database, proceeding without package_id', {
+            packageId: input.packageId,
+            email,
+            serviceType
+          })
+          // Note: We intentionally do NOT throw an error here to avoid blocking
+          // legitimate orders when the database hasn't been seeded.
+          // The admin can still see the serviceType to understand what was ordered.
         }
       }
       

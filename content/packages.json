@@ -1,0 +1,79 @@
+[
+  {
+    "id": "player-intros-basic",
+    "name": "Package #1 - Basic Package",
+    "description": "Professional player introductions for up to 20 players",
+    "price": 8000,
+    "popular": false,
+    "icon": "🎤",
+    "features": [
+      "Professional player introductions",
+      "Up to 20 players",
+      "Pronunciation audio support",
+      "Custom intro song selection",
+      "High-quality audio production"
+    ]
+  },
+  {
+    "id": "player-intros-warmup",
+    "name": "Package #2 - Warmup Package",
+    "description": "All features from Package #1 plus custom warmup mix with 2-3 additional songs",
+    "price": 11000,
+    "popular": true,
+    "icon": "🎵",
+    "features": [
+      "Everything in Package #1",
+      "Custom warmup mix",
+      "2-3 additional warmup songs",
+      "Seamless audio transitions",
+      "Professional mixing"
+    ]
+  },
+  {
+    "id": "player-intros-ultimate",
+    "name": "Package #3 - Ultimate Game Day Package",
+    "description": "Complete game-day audio experience with all features from Package #2 plus goal horns, win songs, and custom audio packages",
+    "price": 19000,
+    "popular": false,
+    "icon": "🏆",
+    "features": [
+      "Everything in Package #2",
+      "Custom goal horn",
+      "Victory celebration song",
+      "Complete game-day audio package",
+      "Premium audio production",
+      "Unlimited revisions"
+    ]
+  },
+  {
+    "id": "game-day-dj",
+    "name": "Game Day DJ Service",
+    "description": "Professional DJ services for your entire game day event",
+    "price": 30000,
+    "popular": false,
+    "icon": "🎧",
+    "features": [
+      "Full game day DJ services",
+      "Custom music selection",
+      "Professional sound system",
+      "Crowd engagement",
+      "Flexible event duration"
+    ]
+  },
+  {
+    "id": "event-hosting",
+    "name": "Event Hosting & MC Services",
+    "description": "Professional event hosting and master of ceremonies services",
+    "price": 0,
+    "popular": false,
+    "icon": "🎤",
+    "features": [
+      "Professional MC services",
+      "Live announcements",
+      "Contest hosting",
+      "Fan engagement activities",
+      "Awards presentations",
+      "Player/coach interviews"
+    ]
+  }
+]

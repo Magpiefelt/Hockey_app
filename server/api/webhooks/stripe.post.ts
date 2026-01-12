@@ -5,7 +5,7 @@
 
 import { verifyWebhookSignature } from '../../utils/stripe'
 import { logger } from '../../utils/logger'
-import { query } from '../../db/connection'
+import { query, transaction } from '../../db/connection'
 import { sendPaymentReceipt } from '../../utils/email'
 
 export default defineEventHandler(async (event) => {
@@ -66,6 +66,7 @@ export default defineEventHandler(async (event) => {
 
 /**
  * Handle checkout session completed
+ * Uses a database transaction to ensure all updates succeed or fail together
  */
 async function handleCheckoutCompleted(session: any) {
   const orderId = parseInt(session.metadata.order_id)
@@ -76,54 +77,64 @@ async function handleCheckoutCompleted(session: any) {
     amountTotal: session.amount_total 
   })
 
+  // Store order details for email (fetched inside transaction)
+  let orderDetails: { contact_name: string; contact_email: string; total_amount: number } | null = null
+
   try {
-    // Update invoice status
-    await query(
-      `UPDATE invoices 
-       SET status = 'paid', paid_at = NOW(), updated_at = NOW()
-       WHERE stripe_invoice_id = $1`,
-      [session.id]
-    )
+    // Use transaction to ensure all database updates succeed or fail together
+    // This prevents inconsistent state where payment is recorded but order status isn't updated
+    await transaction(async (client) => {
+      // Update invoice status
+      await client.query(
+        `UPDATE invoices 
+         SET status = 'paid', paid_at = NOW(), updated_at = NOW()
+         WHERE stripe_invoice_id = $1`,
+        [session.id]
+      )
 
-    // Create payment record
-    await query(
-      `INSERT INTO payments (invoice_id, stripe_payment_id, amount_cents, currency, status, paid_at)
-       SELECT id, $1, $2, $3, $4, NOW()
-       FROM invoices
-       WHERE stripe_invoice_id = $5`,
-      [
-        session.payment_intent,
-        session.amount_total,
-        session.currency,
-        'succeeded',
-        session.id
-      ]
-    )
+      // Create payment record
+      await client.query(
+        `INSERT INTO payments (invoice_id, stripe_payment_id, amount_cents, currency, status, paid_at)
+         SELECT id, $1, $2, $3, $4, NOW()
+         FROM invoices
+         WHERE stripe_invoice_id = $5`,
+        [
+          session.payment_intent,
+          session.amount_total,
+          session.currency,
+          'succeeded',
+          session.id
+        ]
+      )
 
-    // Update order status to paid
-    await query(
-      `UPDATE quote_requests 
-       SET status = 'paid', updated_at = NOW()
-       WHERE id = $1`,
-      [orderId]
-    )
+      // Update order status to paid
+      await client.query(
+        `UPDATE quote_requests 
+         SET status = 'paid', updated_at = NOW()
+         WHERE id = $1`,
+        [orderId]
+      )
 
-    // Get order details for email
-    const orderResult = await query(
-      `SELECT contact_name, contact_email, total_amount
-       FROM quote_requests
-       WHERE id = $1`,
-      [orderId]
-    )
+      // Get order details for email (inside transaction to ensure consistency)
+      const orderResult = await client.query(
+        `SELECT contact_name, contact_email, total_amount
+         FROM quote_requests
+         WHERE id = $1`,
+        [orderId]
+      )
 
-    if (orderResult.rows.length > 0) {
-      const order = orderResult.rows[0]
+      if (orderResult.rows.length > 0) {
+        orderDetails = orderResult.rows[0]
+      }
+    })
 
-      // Send payment receipt email
+    // Send payment receipt email AFTER transaction commits successfully
+    // This ensures we only send emails for successfully processed payments
+    if (orderDetails) {
       await sendPaymentReceipt({
-        to: order.contact_email,
-        name: order.contact_name,
-        amount: order.total_amount,
+        to: orderDetails.contact_email,
+        name: orderDetails.contact_name,
+        amount: orderDetails.total_amount,
         orderId
       })
     }

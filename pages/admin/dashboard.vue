@@ -152,7 +152,7 @@
         </div>
 
         <!-- Quick Actions -->
-        <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="grid md:grid-cols-2 lg:grid-cols-5 gap-6">
           <NuxtLink to="/admin/orders" class="card p-6 hover:border-brand-500/30 transition-colors">
             <Icon name="mdi:file-document-multiple" class="w-8 h-8 text-brand-500 mb-3" />
             <h3 class="text-lg font-bold text-white mb-1">Manage Orders</h3>
@@ -163,6 +163,12 @@
             <Icon name="mdi:account-multiple" class="w-8 h-8 text-accent-500 mb-3" />
             <h3 class="text-lg font-bold text-white mb-1">View Customers</h3>
             <p class="text-sm text-slate-400">Manage customer information</p>
+          </NuxtLink>
+
+          <NuxtLink to="/admin/contact" class="card p-6 hover:border-purple-500/30 transition-colors">
+            <Icon name="mdi:email-multiple" class="w-8 h-8 text-purple-500 mb-3" />
+            <h3 class="text-lg font-bold text-white mb-1">Contact Messages</h3>
+            <p class="text-sm text-slate-400">View contact form submissions</p>
           </NuxtLink>
 
           <NuxtLink to="/admin/finance" class="card p-6 hover:border-success-500/30 transition-colors">
