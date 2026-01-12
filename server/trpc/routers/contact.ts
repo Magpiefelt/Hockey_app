@@ -11,109 +11,7 @@ import { logger } from '../../utils/logger'
 import { sanitizeEmail, sanitizeString, sanitizePhone } from '../../utils/sanitize'
 import { isValidEmail } from '../../utils/validation'
 import { rateLimit } from '../middleware/rateLimit'
-
-// Email sending utility
-async function sendContactNotificationEmail(data: {
-  name: string
-  email: string
-  phone?: string
-  subject: string
-  message: string
-  submissionId: number
-}): Promise<boolean> {
-  try {
-    const config = useRuntimeConfig()
-    const nodemailer = await import('nodemailer')
-    
-    // Check if SMTP is configured
-    if (!config.smtpHost || !config.smtpUser) {
-      logger.warn('SMTP not configured, skipping contact notification email')
-      return false
-    }
-    
-    const transporter = nodemailer.createTransport({
-      host: config.smtpHost,
-      port: parseInt(config.smtpPort || '587'),
-      secure: config.smtpPort === '465',
-      auth: {
-        user: config.smtpUser,
-        pass: config.smtpPass
-      }
-    })
-    
-    const adminEmail = config.adminEmail || config.smtpUser
-    
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%); color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
-          .content { background: #f8fafc; padding: 30px; border-radius: 0 0 8px 8px; }
-          .field { margin-bottom: 15px; }
-          .label { font-weight: bold; color: #64748b; font-size: 12px; text-transform: uppercase; }
-          .value { margin-top: 5px; }
-          .message-box { background: white; padding: 20px; border-radius: 8px; border-left: 4px solid #0ea5e9; margin-top: 20px; }
-          .footer { text-align: center; margin-top: 20px; color: #64748b; font-size: 12px; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1 style="margin: 0;">New Contact Form Submission</h1>
-            <p style="margin: 5px 0 0 0; opacity: 0.8;">Submission #${data.submissionId}</p>
-          </div>
-          <div class="content">
-            <div class="field">
-              <div class="label">From</div>
-              <div class="value">${data.name} &lt;${data.email}&gt;</div>
-            </div>
-            ${data.phone ? `
-            <div class="field">
-              <div class="label">Phone</div>
-              <div class="value">${data.phone}</div>
-            </div>
-            ` : ''}
-            <div class="field">
-              <div class="label">Subject</div>
-              <div class="value">${data.subject}</div>
-            </div>
-            <div class="message-box">
-              <div class="label">Message</div>
-              <div class="value" style="white-space: pre-wrap;">${data.message}</div>
-            </div>
-            <p style="margin-top: 20px; text-align: center;">
-              <a href="mailto:${data.email}?subject=Re: ${encodeURIComponent(data.subject)}" 
-                 style="display: inline-block; padding: 12px 24px; background: #0ea5e9; color: white; text-decoration: none; border-radius: 6px; font-weight: bold;">
-                Reply to ${data.name}
-              </a>
-            </p>
-          </div>
-          <div class="footer">
-            <p>This message was sent via the Elite Sports DJ contact form.</p>
-          </div>
-        </div>
-      </body>
-      </html>
-    `
-    
-    await transporter.sendMail({
-      from: `"Elite Sports DJ" <${config.smtpUser}>`,
-      to: adminEmail,
-      replyTo: data.email,
-      subject: `[Contact Form] ${data.subject}`,
-      html
-    })
-    
-    logger.info('Contact notification email sent', { submissionId: data.submissionId })
-    return true
-  } catch (error: any) {
-    logger.error('Failed to send contact notification email', { error: error.message })
-    return false
-  }
-}
+import { sendContactNotificationEmail } from '../../utils/email-enhanced'
 
 export const contactRouter = router({
   /**
@@ -170,7 +68,7 @@ export const contactRouter = router({
         
         const submission = result.rows[0]
         
-        // Send notification email to admin (non-blocking)
+        // Send notification email to admin using centralized Mailgun utility (non-blocking)
         sendContactNotificationEmail({
           name,
           email,

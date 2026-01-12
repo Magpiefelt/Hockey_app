@@ -1,10 +1,11 @@
 /**
  * Enhanced Email Templates
  * Additional email functions for quote enhancements
+ * 
+ * Migrated from Nodemailer/SMTP to Mailgun
  */
 
-import * as nodemailer from 'nodemailer'
-import type { Transporter } from 'nodemailer'
+import { sendEmailWithMailgun } from './mailgun'
 import { logger } from './logger'
 import { executeQuery } from './database'
 
@@ -15,42 +16,9 @@ interface EmailOptions {
   text?: string
 }
 
-// Environment variables for SMTP configuration
-const smtpConfig = {
-  host: process.env.SMTP_HOST || '',
-  port: parseInt(process.env.SMTP_PORT || '587'),
-  secure: process.env.SMTP_SECURE === 'true',
-  user: process.env.SMTP_USER || '',
-  pass: process.env.SMTP_PASS || '',
-  from: process.env.SMTP_FROM || 'Elite Sports DJ <noreply@elitesportsdj.com>'
-}
-
-const appBaseUrl = process.env.NUXT_PUBLIC_APP_BASE_URL || 'https://elitesportsdj.com'
-const adminEmail = process.env.ADMIN_EMAIL || 'admin@elitesportsdj.com'
-
-/**
- * Create email transporter based on environment configuration
- */
-function createTransporter(): Transporter {
-  if (smtpConfig.host && smtpConfig.user && smtpConfig.pass) {
-    return nodemailer.createTransport({
-      host: smtpConfig.host,
-      port: smtpConfig.port,
-      secure: smtpConfig.secure,
-      auth: {
-        user: smtpConfig.user,
-        pass: smtpConfig.pass
-      }
-    })
-  }
-  
-  logger.warn('SMTP not configured, emails will be logged to console')
-  return nodemailer.createTransport({
-    streamTransport: true,
-    newline: 'unix',
-    buffer: true
-  })
-}
+// Get app base URL from environment
+const getAppBaseUrl = () => process.env.NUXT_PUBLIC_APP_BASE_URL || 'https://elitesportsdj.com'
+const getAdminEmail = () => process.env.ADMIN_EMAIL || 'admin@elitesportsdj.com'
 
 /**
  * Log email to database
@@ -77,29 +45,28 @@ async function logEmail(
 
 /**
  * Send email with error handling and logging
+ * Uses Mailgun API for delivery
  */
 async function sendEmail(options: EmailOptions, template: string, metadata: any, quoteRequestId?: number): Promise<boolean> {
-  const transporter = createTransporter()
-  
-  const mailOptions = {
-    from: smtpConfig.from,
-    to: options.to,
-    subject: options.subject,
-    html: options.html,
-    text: options.text || options.html.replace(/<[^>]*>/g, '')
-  }
-
   try {
-    const info = await transporter.sendMail(mailOptions)
-    
-    logger.info('Email sent successfully', {
+    const sent = await sendEmailWithMailgun({
       to: options.to,
       subject: options.subject,
-      messageId: info.messageId
+      html: options.html,
+      text: options.text
     })
     
-    await logEmail(quoteRequestId || null, options.to, options.subject, template, metadata, 'sent')
-    return true
+    if (sent) {
+      logger.info('Email sent successfully', {
+        to: options.to,
+        subject: options.subject
+      })
+      
+      await logEmail(quoteRequestId || null, options.to, options.subject, template, metadata, 'sent')
+      return true
+    } else {
+      throw new Error('Email sending returned false')
+    }
   } catch (error: any) {
     logger.error('Failed to send email', {
       to: options.to,
@@ -131,6 +98,7 @@ export interface EnhancedQuoteEmailData {
 }
 
 export async function sendEnhancedQuoteEmail(data: EnhancedQuoteEmailData): Promise<boolean> {
+  const appBaseUrl = getAppBaseUrl()
   const formattedAmount = `$${(data.quoteAmount / 100).toFixed(2)}`
   const expirationText = data.expirationDate 
     ? data.expirationDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
@@ -270,6 +238,7 @@ export interface QuoteRevisionEmailData {
 }
 
 export async function sendQuoteRevisionEmail(data: QuoteRevisionEmailData): Promise<boolean> {
+  const appBaseUrl = getAppBaseUrl()
   const formattedPrevious = `$${(data.previousAmount / 100).toFixed(2)}`
   const formattedNew = `$${(data.newAmount / 100).toFixed(2)}`
   
@@ -363,6 +332,7 @@ export interface QuoteReminderEmailData {
 }
 
 export async function sendQuoteReminderEmail(data: QuoteReminderEmailData): Promise<boolean> {
+  const appBaseUrl = getAppBaseUrl()
   const formattedAmount = `$${(data.quoteAmount / 100).toFixed(2)}`
   const daysRemaining = Math.max(0, 30 - data.daysOld)
   
@@ -444,6 +414,9 @@ export interface AdminNotificationEmailData {
 }
 
 export async function sendAdminNotificationEmail(data: AdminNotificationEmailData): Promise<boolean> {
+  const appBaseUrl = getAppBaseUrl()
+  const adminEmail = getAdminEmail()
+  
   const html = `
     <!DOCTYPE html>
     <html>
@@ -677,5 +650,91 @@ export async function sendManualCompletionEmail(data: ManualCompletionEmailData)
     'manual_completion',
     data,
     data.orderId
+  )
+}
+
+// ============================================
+// Contact Form Notification Email
+// ============================================
+
+export interface ContactNotificationEmailData {
+  name: string
+  email: string
+  phone?: string
+  subject: string
+  message: string
+  submissionId: number
+}
+
+/**
+ * Send contact form notification to admin
+ */
+export async function sendContactNotificationEmail(data: ContactNotificationEmailData): Promise<boolean> {
+  const adminEmail = getAdminEmail()
+  
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%); color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { background: #f8fafc; padding: 30px; border-radius: 0 0 8px 8px; }
+        .field { margin-bottom: 15px; }
+        .label { font-weight: bold; color: #64748b; font-size: 12px; text-transform: uppercase; }
+        .value { margin-top: 5px; }
+        .message-box { background: white; padding: 20px; border-radius: 8px; border-left: 4px solid #0ea5e9; margin-top: 20px; }
+        .footer { text-align: center; margin-top: 20px; color: #64748b; font-size: 12px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1 style="margin: 0;">New Contact Form Submission</h1>
+          <p style="margin: 5px 0 0 0; opacity: 0.8;">Submission #${data.submissionId}</p>
+        </div>
+        <div class="content">
+          <div class="field">
+            <div class="label">From</div>
+            <div class="value">${data.name} &lt;${data.email}&gt;</div>
+          </div>
+          ${data.phone ? `
+          <div class="field">
+            <div class="label">Phone</div>
+            <div class="value">${data.phone}</div>
+          </div>
+          ` : ''}
+          <div class="field">
+            <div class="label">Subject</div>
+            <div class="value">${data.subject}</div>
+          </div>
+          <div class="message-box">
+            <div class="label">Message</div>
+            <div class="value" style="white-space: pre-wrap;">${data.message}</div>
+          </div>
+          <p style="margin-top: 20px; text-align: center;">
+            <a href="mailto:${data.email}?subject=Re: ${encodeURIComponent(data.subject)}" 
+               style="display: inline-block; padding: 12px 24px; background: #0ea5e9; color: white; text-decoration: none; border-radius: 6px; font-weight: bold;">
+              Reply to ${data.name}
+            </a>
+          </p>
+        </div>
+        <div class="footer">
+          <p>This message was sent via the Elite Sports DJ contact form.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `
+  
+  return sendEmail(
+    {
+      to: adminEmail,
+      subject: `[Contact Form] ${data.subject}`,
+      html
+    },
+    'contact_notification',
+    data
   )
 }

@@ -1,5 +1,11 @@
-import nodemailer from 'nodemailer'
-import type { Transporter } from 'nodemailer'
+/**
+ * Email Utility Module
+ * Provides email sending functionality using Mailgun API
+ * 
+ * Migrated from Nodemailer/SMTP to Mailgun
+ */
+
+import { sendEmailWithMailgun } from './mailgun'
 import { logger } from './logger'
 import { executeQuery } from './database'
 
@@ -47,34 +53,6 @@ interface PasswordResetData {
 }
 
 /**
- * Create email transporter based on environment configuration
- */
-function createTransporter(): Transporter {
-  const config = useRuntimeConfig()
-  
-  // Check if SMTP credentials are configured
-  if (config.smtpHost && config.smtpUser && config.smtpPass) {
-    return nodemailer.createTransport({
-      host: config.smtpHost,
-      port: parseInt(config.smtpPort || '587'),
-      secure: config.smtpSecure === 'true',
-      auth: {
-        user: config.smtpUser,
-        pass: config.smtpPass
-      }
-    })
-  }
-  
-  // Fallback to console logging for development
-  logger.warn('SMTP not configured, emails will be logged to console')
-  return nodemailer.createTransport({
-    streamTransport: true,
-    newline: 'unix',
-    buffer: true
-  })
-}
-
-/**
  * Log email to database
  */
 async function logEmail(
@@ -99,33 +77,29 @@ async function logEmail(
 
 /**
  * Send email with error handling and logging
+ * Uses Mailgun API for delivery
  */
-async function sendEmail(options: EmailOptions, template: string, metadata: any, quoteRequestId?: number): Promise<boolean> {
-  const transporter = createTransporter()
-  const config = useRuntimeConfig()
-  
-  const mailOptions = {
-    from: config.smtpFrom || 'Elite Sports DJ <noreply@elitesportsdj.com>',
-    to: options.to,
-    subject: options.subject,
-    html: options.html,
-    text: options.text || options.html.replace(/<[^>]*>/g, '') // Strip HTML for text version
-  }
-
+export async function sendEmail(options: EmailOptions, template: string, metadata: any, quoteRequestId?: number | null): Promise<boolean> {
   try {
-    // Send email
-    const info = await transporter.sendMail(mailOptions)
-    
-    logger.info('Email sent successfully', {
+    const sent = await sendEmailWithMailgun({
       to: options.to,
       subject: options.subject,
-      messageId: info.messageId
+      html: options.html,
+      text: options.text
     })
     
-    // Log as sent
-    await logEmail(quoteRequestId || null, options.to, options.subject, template, metadata, 'sent')
-    
-    return true
+    if (sent) {
+      logger.info('Email sent successfully', {
+        to: options.to,
+        subject: options.subject
+      })
+      
+      // Log as sent
+      await logEmail(quoteRequestId || null, options.to, options.subject, template, metadata, 'sent')
+      return true
+    } else {
+      throw new Error('Email sending returned false')
+    }
   } catch (error: any) {
     logger.error('Failed to send email', {
       error: error.message,
