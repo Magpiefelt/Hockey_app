@@ -68,8 +68,9 @@
               class="border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors group"
             >
               <td class="py-4 px-6">
-                <div class="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-xl">
-                  {{ pkg.icon || '📦' }}
+                <div class="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center">
+                  <span v-if="isValidEmoji(pkg.icon)" class="text-xl">{{ pkg.icon }}</span>
+                  <Icon v-else :name="getPackageIconFallback(pkg.slug)" class="w-5 h-5 text-slate-400" />
                 </div>
               </td>
               <td class="py-4 px-6 text-white font-medium">{{ pkg.name }}</td>
@@ -198,6 +199,29 @@ const editingPackage = ref<Package | null>(null)
 const showDeleteConfirm = ref(false)
 const deletingPackage = ref<Package | null>(null)
 const isDeleting = ref(false)
+
+// Map of package slugs to fallback MDI icons
+const packageIconMap: Record<string, string> = {
+  'player-intros-basic': 'mdi:microphone',
+  'player-intros-warmup': 'mdi:microphone-variant',
+  'player-intros-ultimate': 'mdi:trophy',
+  'game-day-dj': 'mdi:music-note',
+  'event-hosting': 'mdi:calendar-star',
+  'default': 'mdi:package-variant'
+}
+
+// Check if icon is a valid emoji
+const isValidEmoji = (icon: string | null | undefined): boolean => {
+  if (!icon || typeof icon !== 'string') return false
+  if (/^[a-zA-Z_-]+$/.test(icon)) return false
+  const emojiRegex = /[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F600}-\u{1F64F}]|[\u{1F680}-\u{1F6FF}]/u
+  return emojiRegex.test(icon)
+}
+
+// Get fallback MDI icon name based on package slug
+const getPackageIconFallback = (slug: string): string => {
+  return packageIconMap[slug] || packageIconMap['default']
+}
 
 const formatPrice = (cents: number): string => {
   return new Intl.NumberFormat('en-US', {

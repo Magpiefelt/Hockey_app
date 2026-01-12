@@ -27,7 +27,12 @@
           <div class="p-8">
             <!-- Header -->
             <div class="text-center mb-8">
-              <div class="text-6xl mb-4">{{ package?.icon }}</div>
+              <div class="mb-4 flex items-center justify-center">
+                <div v-if="getPackageIcon(package)" class="text-6xl">{{ getPackageIcon(package) }}</div>
+                <div v-else class="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-600 flex items-center justify-center">
+                  <Icon :name="getPackageIconFallback(package?.slug || package?.id || '')" class="w-10 h-10 text-white" />
+                </div>
+              </div>
               <h2 :id="`modal-title-${package?.id}`" class="text-3xl font-bold text-white mb-2">
                 {{ package?.name }}
               </h2>
@@ -110,10 +115,11 @@ import { ref, watch, onMounted, onUnmounted } from 'vue'
 
 interface Package {
   id: string
+  slug?: string
   name: string
   description: string
   price_cents: number
-  icon: string
+  icon?: string | null
   features: string[]
   popular?: boolean
 }
@@ -130,6 +136,38 @@ const emit = defineEmits<{
 }>()
 
 const modalContent = ref<HTMLElement | null>(null)
+
+// Map of package slugs to fallback MDI icons
+const packageIconMap: Record<string, string> = {
+  'player-intros-basic': 'mdi:microphone',
+  'player-intros-warmup': 'mdi:microphone-variant',
+  'player-intros-ultimate': 'mdi:trophy',
+  'game-day-dj': 'mdi:music-note',
+  'event-hosting': 'mdi:calendar-star',
+  'default': 'mdi:package-variant'
+}
+
+// Check if icon is a valid emoji
+const isValidEmoji = (icon: string | null | undefined): boolean => {
+  if (!icon || typeof icon !== 'string') return false
+  if (/^[a-zA-Z_-]+$/.test(icon)) return false
+  const emojiRegex = /[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F600}-\u{1F64F}]|[\u{1F680}-\u{1F6FF}]/u
+  return emojiRegex.test(icon)
+}
+
+// Get package icon - returns emoji if valid, null otherwise
+const getPackageIcon = (pkg: Package | null): string | null => {
+  if (!pkg) return null
+  if (isValidEmoji(pkg.icon)) {
+    return pkg.icon!
+  }
+  return null
+}
+
+// Get fallback MDI icon name based on package slug
+const getPackageIconFallback = (slug: string): string => {
+  return packageIconMap[slug] || packageIconMap['default']
+}
 const previouslyFocusedElement = ref<HTMLElement | null>(null)
 
 // Trap focus within modal

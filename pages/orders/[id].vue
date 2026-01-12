@@ -28,31 +28,41 @@
 
     <!-- Order Details -->
     <div v-else-if="orderData" class="space-y-6">
-      <!-- Status Banner -->
+      <!-- Status Banner - Enhanced with icon and better visual hierarchy -->
       <div 
         :class="[
-          'border-l-4 rounded-lg p-6',
+          'rounded-xl overflow-hidden shadow-sm',
           getStatusBannerClass(orderData.order.status)
         ]"
       >
-        <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-          <div class="flex-1">
-            <div class="flex items-center gap-3 mb-2">
-              <span 
-                :class="[
-                  'px-3 py-1 text-sm font-bold rounded-full',
-                  getStatusBadgeClass(orderData.order.status)
-                ]"
-              >
-                {{ getStatusLabel(orderData.order.status) }}
-              </span>
+        <!-- Status Header Bar -->
+        <div :class="['px-6 py-3 flex items-center gap-3', getStatusHeaderClass(orderData.order.status)]">
+          <Icon :name="getStatusIcon(orderData.order.status)" class="w-5 h-5" />
+          <span class="font-bold text-sm uppercase tracking-wide">
+            {{ getStatusLabel(orderData.order.status) }}
+          </span>
+        </div>
+        
+        <div class="p-6">
+          <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+            <div class="flex-1">
+              <h1 class="text-2xl font-bold text-slate-900 mb-2">Order #{{ orderData.order.id }}</h1>
+              <p class="text-slate-600 leading-relaxed">{{ getStatusDescription(orderData.order.status) }}</p>
+              
+              <!-- Next action hint -->
+              <div v-if="getNextActionHint(orderData.order.status)" class="mt-4 flex items-center gap-2 text-sm">
+                <Icon name="mdi:arrow-right-circle" class="w-4 h-4 text-cyan-600" />
+                <span class="text-slate-700 font-medium">{{ getNextActionHint(orderData.order.status) }}</span>
+              </div>
             </div>
-            <h1 class="text-2xl font-bold text-slate-900 mb-2">Order #{{ orderData.order.id }}</h1>
-            <p class="text-slate-600">{{ getStatusDescription(orderData.order.status) }}</p>
-          </div>
-          <div v-if="orderData.order.quotedAmount" class="text-right">
-            <p class="text-sm text-slate-500 mb-1">Quote Amount</p>
-            <p class="text-3xl font-bold text-cyan-600">{{ formatPrice(orderData.order.quotedAmount) }}</p>
+            
+            <div v-if="orderData.order.quotedAmount" class="text-right bg-white/50 rounded-lg p-4 border border-slate-200">
+              <p class="text-sm text-slate-500 mb-1">Quote Amount</p>
+              <p class="text-3xl font-bold text-cyan-600">{{ formatPrice(orderData.order.quotedAmount) }}</p>
+              <p v-if="orderData.order.eventDate" class="text-xs text-slate-400 mt-2">
+                Event: {{ formatDate(orderData.order.eventDate) }}
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -417,19 +427,69 @@ function isStepComplete(targetStatus: string): boolean {
 
 function getStatusBannerClass(status: string): string {
   const classes: Record<string, string> = {
-    'pending': 'bg-blue-50 border-blue-500',
-    'submitted': 'bg-blue-50 border-blue-500',
-    'quoted': 'bg-purple-50 border-purple-500',
-    'quote_viewed': 'bg-purple-50 border-purple-500',
-    'quote_accepted': 'bg-green-50 border-green-500',
-    'invoiced': 'bg-orange-50 border-orange-500',
-    'paid': 'bg-green-50 border-green-500',
-    'in_progress': 'bg-yellow-50 border-yellow-500',
-    'completed': 'bg-green-50 border-green-500',
-    'delivered': 'bg-slate-50 border-slate-400',
-    'cancelled': 'bg-red-50 border-red-500'
+    'pending': 'bg-blue-50 border border-blue-200',
+    'submitted': 'bg-blue-50 border border-blue-200',
+    'quoted': 'bg-purple-50 border border-purple-200',
+    'quote_viewed': 'bg-purple-50 border border-purple-200',
+    'quote_accepted': 'bg-emerald-50 border border-emerald-200',
+    'invoiced': 'bg-orange-50 border border-orange-200',
+    'paid': 'bg-emerald-50 border border-emerald-200',
+    'in_progress': 'bg-amber-50 border border-amber-200',
+    'completed': 'bg-emerald-50 border border-emerald-200',
+    'delivered': 'bg-slate-50 border border-slate-200',
+    'cancelled': 'bg-red-50 border border-red-200'
   }
-  return classes[status] || 'bg-slate-50 border-slate-400'
+  return classes[status] || 'bg-slate-50 border border-slate-200'
+}
+
+function getStatusHeaderClass(status: string): string {
+  const classes: Record<string, string> = {
+    'pending': 'bg-blue-500 text-white',
+    'submitted': 'bg-blue-500 text-white',
+    'quoted': 'bg-purple-500 text-white',
+    'quote_viewed': 'bg-purple-500 text-white',
+    'quote_accepted': 'bg-emerald-500 text-white',
+    'invoiced': 'bg-orange-500 text-white',
+    'paid': 'bg-emerald-500 text-white',
+    'in_progress': 'bg-amber-500 text-white',
+    'completed': 'bg-emerald-600 text-white',
+    'delivered': 'bg-slate-600 text-white',
+    'cancelled': 'bg-red-500 text-white'
+  }
+  return classes[status] || 'bg-slate-500 text-white'
+}
+
+function getStatusIcon(status: string): string {
+  const icons: Record<string, string> = {
+    'pending': 'mdi:clock-outline',
+    'submitted': 'mdi:send-check',
+    'quoted': 'mdi:file-document-outline',
+    'quote_viewed': 'mdi:eye-outline',
+    'quote_accepted': 'mdi:check-circle-outline',
+    'invoiced': 'mdi:receipt-text-outline',
+    'paid': 'mdi:credit-card-check-outline',
+    'in_progress': 'mdi:progress-wrench',
+    'completed': 'mdi:check-decagram',
+    'delivered': 'mdi:package-variant-closed-check',
+    'cancelled': 'mdi:close-circle-outline'
+  }
+  return icons[status] || 'mdi:help-circle-outline'
+}
+
+function getNextActionHint(status: string): string | null {
+  const hints: Record<string, string> = {
+    'pending': 'We will review your request and send a quote soon.',
+    'submitted': 'Your request is being processed.',
+    'quoted': 'Review your quote and proceed to payment when ready.',
+    'quote_viewed': 'Click the payment button below to proceed.',
+    'quote_accepted': 'Complete payment to start production.',
+    'invoiced': 'Pay your invoice to begin work on your order.',
+    'in_progress': 'We are working on your order. Check back for updates.',
+    'completed': 'Your files are ready for download below.',
+    'delivered': null,
+    'cancelled': null
+  }
+  return hints[status] || null
 }
 
 function getStatusBadgeClass(status: string): string {

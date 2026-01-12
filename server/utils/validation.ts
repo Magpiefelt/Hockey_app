@@ -77,6 +77,8 @@ export function isValidOrderStatus(status: string): boolean {
     'submitted',
     'in_progress',
     'quoted',
+    'quote_viewed',
+    'quote_accepted',
     'invoiced',
     'paid',
     'completed',

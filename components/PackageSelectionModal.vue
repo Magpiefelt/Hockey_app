@@ -29,9 +29,12 @@
         </div>
 
         <div class="text-center">
-          <!-- Package Icon -->
-          <div class="mb-4 text-4xl" role="img" :aria-label="`${pkg.name} icon`">
-            {{ pkg.icon }}
+          <!-- Package Icon - with fallback for missing/broken emojis -->
+          <div class="mb-4 flex items-center justify-center" role="img" :aria-label="`${pkg.name} icon`">
+            <div v-if="getPackageIcon(pkg)" class="text-4xl">{{ getPackageIcon(pkg) }}</div>
+            <div v-else class="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-600 flex items-center justify-center">
+              <Icon :name="getPackageIconFallback(pkg.slug || pkg.id)" class="w-7 h-7 text-white" />
+            </div>
           </div>
           
           <!-- Package Name -->
@@ -116,10 +119,11 @@ import { ref } from 'vue'
 
 interface Package {
   id: string
+  slug?: string
   name: string
   description: string
   price_cents: number
-  icon: string
+  icon?: string | null
   features?: string[]
   popular?: boolean
 }
@@ -135,6 +139,39 @@ const emit = defineEmits<{
 
 const isDetailsModalOpen = ref(false)
 const selectedPackageForDetails = ref<Package | null>(null)
+
+// Map of package slugs to fallback MDI icons
+const packageIconMap: Record<string, string> = {
+  'player-intros-basic': 'mdi:microphone',
+  'player-intros-warmup': 'mdi:microphone-variant',
+  'player-intros-ultimate': 'mdi:trophy',
+  'game-day-dj': 'mdi:music-note',
+  'event-hosting': 'mdi:calendar-star',
+  'default': 'mdi:package-variant'
+}
+
+// Check if icon is a valid emoji (not just text like "microphone")
+const isValidEmoji = (icon: string | null | undefined): boolean => {
+  if (!icon || typeof icon !== 'string') return false
+  // Reject plain text that looks like icon names (e.g., "microphone")
+  if (/^[a-zA-Z_-]+$/.test(icon)) return false
+  // Check for actual emoji characters (emoji regex pattern)
+  const emojiRegex = /[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F600}-\u{1F64F}]|[\u{1F680}-\u{1F6FF}]/u
+  return emojiRegex.test(icon)
+}
+
+// Get package icon - returns emoji if valid, null otherwise
+const getPackageIcon = (pkg: Package): string | null => {
+  if (isValidEmoji(pkg.icon)) {
+    return pkg.icon!
+  }
+  return null
+}
+
+// Get fallback MDI icon name based on package slug
+const getPackageIconFallback = (slug: string): string => {
+  return packageIconMap[slug] || packageIconMap['default']
+}
 
 const formatPrice = (cents: number): string => {
   return `$${(cents / 100).toFixed(0)}`

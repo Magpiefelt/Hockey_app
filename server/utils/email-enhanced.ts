@@ -553,3 +553,129 @@ export async function sendCustomEmailEnhanced(data: CustomEmailEnhancedData): Pr
     data.orderId
   )
 }
+
+// ============================================
+// Manual Order Completion Email
+// ============================================
+
+export interface ManualCompletionEmailData {
+  to: string
+  name: string
+  amount: number
+  orderId: number
+  serviceType: string
+  completionDate?: Date
+  adminMessage?: string
+}
+
+/**
+ * Send confirmation email for manually completed orders
+ * Used when admin completes an order that was handled offline
+ */
+export async function sendManualCompletionEmail(data: ManualCompletionEmailData): Promise<boolean> {
+  const formattedAmount = `$${(data.amount / 100).toFixed(2)}`
+  const completionDate = (data.completionDate || new Date()).toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  })
+  
+  const adminMessageSection = data.adminMessage ? `
+    <div style="background: #f0f9ff; border-left: 4px solid #0ea5e9; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+      <strong style="color: #0369a1;">Message from our team:</strong>
+      <p style="margin: 10px 0 0 0; color: #334155;">${data.adminMessage}</p>
+    </div>
+  ` : ''
+  
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 0 auto; }
+        .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 40px 30px; text-align: center; }
+        .content { background: #ffffff; padding: 40px 30px; }
+        .completion-box { background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); padding: 30px; border-radius: 12px; margin: 25px 0; border: 2px solid #10b981; text-align: center; }
+        .checkmark { font-size: 48px; margin-bottom: 10px; }
+        .amount { font-size: 36px; font-weight: bold; color: #059669; margin: 15px 0; }
+        .footer { background: #f8fafc; padding: 30px; text-align: center; color: #64748b; font-size: 14px; }
+        .details-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        .details-table td { padding: 12px 0; border-bottom: 1px solid #e2e8f0; }
+        .details-table td:first-child { color: #64748b; width: 40%; }
+        .details-table td:last-child { font-weight: 500; color: #1e293b; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <div class="checkmark">✓</div>
+          <h1 style="margin: 0; font-size: 28px;">Order Complete!</h1>
+          <p style="margin: 10px 0 0 0; opacity: 0.9;">Thank you for your business</p>
+        </div>
+        
+        <div class="content">
+          <p style="font-size: 18px;">Hi ${data.name},</p>
+          
+          <p>We're pleased to confirm that your order has been completed successfully.</p>
+          
+          <div class="completion-box">
+            <p style="margin: 0; color: #64748b; text-transform: uppercase; letter-spacing: 1px; font-size: 12px;">Amount Paid</p>
+            <div class="amount">${formattedAmount}</div>
+            <p style="margin: 0; color: #059669; font-weight: 500;">Payment Confirmed</p>
+          </div>
+          
+          <table class="details-table">
+            <tr>
+              <td>Order Number</td>
+              <td>#${data.orderId}</td>
+            </tr>
+            <tr>
+              <td>Service</td>
+              <td>${data.serviceType}</td>
+            </tr>
+            <tr>
+              <td>Completion Date</td>
+              <td>${completionDate}</td>
+            </tr>
+            <tr>
+              <td>Status</td>
+              <td style="color: #059669;">✓ Completed</td>
+            </tr>
+          </table>
+          
+          ${adminMessageSection}
+          
+          <h3 style="color: #1e293b; margin-top: 30px;">What's Next?</h3>
+          <ul style="padding-left: 20px; color: #475569;">
+            <li style="margin-bottom: 8px;">Your deliverables will be available in your account shortly</li>
+            <li style="margin-bottom: 8px;">You'll receive a notification when files are ready for download</li>
+            <li style="margin-bottom: 8px;">Feel free to reach out if you have any questions</li>
+          </ul>
+          
+          <p style="margin-top: 30px;">Thank you for choosing Elite Sports DJ! We hope you're delighted with our service.</p>
+          
+          <p>Best regards,<br><strong>The Elite Sports DJ Team</strong></p>
+        </div>
+        
+        <div class="footer">
+          <p>Questions? Contact us at info@elitesportsdj.com</p>
+          <p style="margin-top: 10px;">© ${new Date().getFullYear()} Elite Sports DJ. All rights reserved.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `
+
+  return sendEmail(
+    {
+      to: data.to,
+      subject: `Order Complete - Elite Sports DJ #${data.orderId}`,
+      html
+    },
+    'manual_completion',
+    data,
+    data.orderId
+  )
+}

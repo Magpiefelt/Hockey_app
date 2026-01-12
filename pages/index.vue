@@ -270,11 +270,11 @@
             <RevealOnScroll animation="fade-up" :delay="0">
               <div class="relative text-center">
                 <!-- Step Number -->
-                <div class="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-cyan-600 shadow-2xl shadow-blue-500/30">
+                <div class="relative z-10 mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-cyan-600 shadow-2xl shadow-blue-500/30">
                   <span class="text-3xl font-black text-white">1</span>
                 </div>
-                <!-- Connector Line (hidden on mobile) -->
-                <div class="absolute left-1/2 top-10 hidden h-1 w-full bg-gradient-to-r from-cyan-500/50 to-transparent md:block"></div>
+                <!-- Connector Line (hidden on mobile) - positioned behind the circle -->
+                <div class="absolute left-[calc(50%+2.5rem)] right-0 top-10 hidden h-1 bg-gradient-to-r from-cyan-500/50 to-transparent md:block" style="z-index: 0;"></div>
                 
                 <h3 class="mb-4 text-2xl font-bold text-white">Request a Quote</h3>
                 <p class="text-slate-300 leading-relaxed">
@@ -286,11 +286,12 @@
             <RevealOnScroll animation="fade-up" :delay="100">
               <div class="relative text-center">
                 <!-- Step Number -->
-                <div class="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-cyan-600 shadow-2xl shadow-blue-500/30">
+                <div class="relative z-10 mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-cyan-600 shadow-2xl shadow-blue-500/30">
                   <span class="text-3xl font-black text-white">2</span>
                 </div>
-                <!-- Connector Line (hidden on mobile) -->
-                <div class="absolute left-1/2 top-10 hidden h-1 w-full bg-gradient-to-r from-cyan-500/50 to-transparent md:block"></div>
+                <!-- Connector Lines (hidden on mobile) - positioned behind the circle -->
+                <div class="absolute left-0 right-[calc(50%+2.5rem)] top-10 hidden h-1 bg-gradient-to-l from-cyan-500/50 to-transparent md:block" style="z-index: 0;"></div>
+                <div class="absolute left-[calc(50%+2.5rem)] right-0 top-10 hidden h-1 bg-gradient-to-r from-cyan-500/50 to-transparent md:block" style="z-index: 0;"></div>
                 
                 <h3 class="mb-4 text-2xl font-bold text-white">Plan Together</h3>
                 <p class="text-slate-300 leading-relaxed">
@@ -302,9 +303,11 @@
             <RevealOnScroll animation="fade-up" :delay="200">
               <div class="relative text-center">
                 <!-- Step Number -->
-                <div class="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-cyan-600 shadow-2xl shadow-blue-500/30">
+                <div class="relative z-10 mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-cyan-600 shadow-2xl shadow-blue-500/30">
                   <span class="text-3xl font-black text-white">3</span>
                 </div>
+                <!-- Connector Line (hidden on mobile) - positioned behind the circle -->
+                <div class="absolute left-0 right-[calc(50%+2.5rem)] top-10 hidden h-1 bg-gradient-to-l from-cyan-500/50 to-transparent md:block" style="z-index: 0;"></div>
                 
                 <h3 class="mb-4 text-2xl font-bold text-white">Game Day Magic</h3>
                 <p class="text-slate-300 leading-relaxed">

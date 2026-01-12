@@ -3,6 +3,7 @@ import { TRPCError } from '@trpc/server'
 import { router, adminProcedure } from '../trpc'
 import { query, transaction } from '../../db/connection'
 import { sendCustomEmail, sendQuoteEmail, sendOrderConfirmation, sendInvoiceEmail, sendPaymentReceipt } from '../../utils/email'
+import { logger } from '../../utils/logger'
 
 export const adminRouter = router({
   /**
@@ -1070,5 +1071,259 @@ export const adminRouter = router({
       ]
       
       return { statuses }
+    }),
+
+  /**
+   * Manually complete an order that was handled offline
+   * Creates invoice and payment records for consistency with Stripe-processed orders
+   * 
+   * Security: Admin-only endpoint
+   * Validation: Prevents duplicate completions, validates amount range
+   * Audit: Full logging and status history tracking
+   */
+  manualComplete: adminProcedure
+    .input(z.object({
+      orderId: z.number().int().positive('Order ID must be a positive integer'),
+      completionAmount: z.number()
+        .positive('Completion amount must be positive')
+        .max(5000000, 'Amount cannot exceed $50,000'), // Max $50,000 in cents
+      paymentMethod: z.enum(['cash', 'check', 'wire', 'other']).default('other'),
+      adminNotes: z.string().max(2000, 'Notes cannot exceed 2000 characters').optional(),
+      sendEmail: z.boolean().default(false)
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const { orderId, completionAmount, paymentMethod, adminNotes, sendEmail } = input
+      const adminUserId = ctx.user.userId
+      
+      logger.info('Manual completion initiated', {
+        orderId,
+        amount: completionAmount,
+        paymentMethod,
+        adminUserId,
+        sendEmail
+      })
+      
+      // Store order details for email (sent outside transaction)
+      let orderDetailsForEmail: {
+        contactEmail: string
+        contactName: string
+        serviceType: string
+      } | null = null
+      
+      let result: {
+        success: boolean
+        orderId: number
+        previousStatus: string
+        newStatus: string
+        amount: number
+        invoiceId: string
+        paymentId: string
+      }
+      
+      try {
+        result = await transaction(async (client) => {
+          // Get current order details with FOR UPDATE to prevent race conditions
+          const orderResult = await client.query(
+            `SELECT id, status, contact_name, contact_email, service_type, quoted_amount
+             FROM quote_requests 
+             WHERE id = $1
+             FOR UPDATE`,
+            [orderId]
+          )
+          
+          if (orderResult.rows.length === 0) {
+            logger.warn('Manual completion failed: Order not found', { orderId, adminUserId })
+            throw new TRPCError({
+              code: 'NOT_FOUND',
+              message: 'Order not found'
+            })
+          }
+          
+          const order = orderResult.rows[0]
+          const previousStatus = order.status
+          
+          // Store for email (outside transaction)
+          orderDetailsForEmail = {
+            contactEmail: order.contact_email,
+            contactName: order.contact_name,
+            serviceType: order.service_type || 'DJ Services'
+          }
+          
+          // Validate order is not already in a terminal state
+          const terminalStatuses = ['completed', 'delivered', 'cancelled']
+          if (terminalStatuses.includes(previousStatus)) {
+            logger.warn('Manual completion failed: Terminal status', { 
+              orderId, 
+              previousStatus, 
+              adminUserId 
+            })
+            throw new TRPCError({
+              code: 'BAD_REQUEST',
+              message: `Cannot manually complete an order that is already ${previousStatus}`
+            })
+          }
+          
+          // Check for existing manual completion (prevent duplicates)
+          const existingManualResult = await client.query(
+            `SELECT id FROM invoices 
+             WHERE quote_id = $1 
+             AND stripe_invoice_id LIKE 'manual_inv_%'`,
+            [orderId]
+          )
+          
+          if (existingManualResult.rows.length > 0) {
+            logger.warn('Manual completion failed: Duplicate attempt', { orderId, adminUserId })
+            throw new TRPCError({
+              code: 'CONFLICT',
+              message: 'This order has already been manually completed. Please refresh the page.'
+            })
+          }
+          
+          // Generate unique identifiers for manual records
+          const timestamp = Date.now()
+          const manualInvoiceId = `manual_inv_${orderId}_${timestamp}`
+          const manualPaymentId = `manual_pay_${orderId}_${timestamp}`
+          
+          // Create invoice record for consistency
+          const invoiceResult = await client.query(
+            `INSERT INTO invoices (
+              quote_id, stripe_invoice_id, stripe_customer_id, amount_cents, 
+              currency, status, customer_snapshot, created_at, paid_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+            RETURNING id`,
+            [
+              orderId,
+              manualInvoiceId,
+              `manual_customer_${orderId}`,
+              completionAmount,
+              'usd',
+              'paid',
+              JSON.stringify({ 
+                name: order.contact_name, 
+                email: order.contact_email,
+                manual_completion: true,
+                completed_by: adminUserId,
+                payment_method: paymentMethod,
+                completed_at: new Date().toISOString()
+              })
+            ]
+          )
+          
+          const invoiceId = invoiceResult.rows[0].id
+          
+          // Create payment record with payment method
+          await client.query(
+            `INSERT INTO payments (
+              invoice_id, stripe_payment_id, amount_cents, currency, status, paid_at
+            ) VALUES ($1, $2, $3, $4, $5, NOW())`,
+            [
+              invoiceId,
+              manualPaymentId,
+              completionAmount,
+              'usd',
+              'succeeded'
+            ]
+          )
+          
+          // Build admin notes with payment method
+          const notesPrefix = `[Manual Completion - ${paymentMethod.toUpperCase()}]`
+          const fullNotes = adminNotes 
+            ? `${notesPrefix} ${adminNotes}` 
+            : `${notesPrefix} Order completed offline by admin`
+          
+          // Update order status and amounts
+          await client.query(
+            `UPDATE quote_requests 
+             SET status = 'completed',
+                 quoted_amount = COALESCE(quoted_amount, $2),
+                 total_amount = $2,
+                 admin_notes = CASE 
+                   WHEN admin_notes IS NULL OR admin_notes = '' THEN $3
+                   ELSE admin_notes || E'\n\n' || $3
+                 END,
+                 updated_at = NOW()
+             WHERE id = $1`,
+            [orderId, completionAmount, fullNotes]
+          )
+          
+          // Log status change in history with detailed information
+          await client.query(
+            `INSERT INTO order_status_history (
+              quote_id, previous_status, new_status, changed_by, notes
+            ) VALUES ($1, $2, $3, $4, $5)`,
+            [
+              orderId,
+              previousStatus,
+              'completed',
+              adminUserId,
+              `Manual completion by admin. Amount: $${(completionAmount / 100).toFixed(2)}. Payment method: ${paymentMethod}. ${adminNotes || 'No additional notes.'}`
+            ]
+          )
+          
+          logger.info('Manual completion database updates successful', {
+            orderId,
+            invoiceId: manualInvoiceId,
+            paymentId: manualPaymentId,
+            previousStatus,
+            adminUserId
+          })
+          
+          return {
+            success: true,
+            orderId,
+            previousStatus,
+            newStatus: 'completed',
+            amount: completionAmount,
+            invoiceId: manualInvoiceId,
+            paymentId: manualPaymentId
+          }
+        })
+      } catch (error: any) {
+        // Re-throw TRPCErrors as-is
+        if (error instanceof TRPCError) {
+          throw error
+        }
+        // Log and wrap unexpected errors
+        logger.error('Manual completion failed with unexpected error', error, {
+          orderId,
+          adminUserId
+        })
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Failed to complete order. Please try again or contact support.'
+        })
+      }
+      
+      // Send email AFTER transaction commits successfully (outside transaction)
+      let emailSent = false
+      if (sendEmail && orderDetailsForEmail?.contactEmail) {
+        try {
+          const { sendManualCompletionEmail } = await import('../../utils/email-enhanced')
+          emailSent = await sendManualCompletionEmail({
+            to: orderDetailsForEmail.contactEmail,
+            name: orderDetailsForEmail.contactName,
+            amount: completionAmount,
+            orderId,
+            serviceType: orderDetailsForEmail.serviceType
+          })
+          
+          if (emailSent) {
+            logger.info('Manual completion email sent', { orderId, email: orderDetailsForEmail.contactEmail })
+          } else {
+            logger.warn('Manual completion email failed to send', { orderId, email: orderDetailsForEmail.contactEmail })
+          }
+        } catch (emailError: any) {
+          // Log but don't fail - transaction already committed
+          logger.error('Failed to send manual completion email', emailError, {
+            orderId,
+            email: orderDetailsForEmail.contactEmail
+          })
+        }
+      }
+      
+      return {
+        ...result,
+        emailSent
+      }
     })
 })

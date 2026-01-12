@@ -63,6 +63,15 @@
             </button>
             
             <button
+              v-if="canManuallyComplete"
+              @click="showManualCompletionModal = true"
+              class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl transition-all flex items-center gap-2"
+            >
+              <Icon name="mdi:check-circle" class="w-5 h-5" />
+              Complete Manually
+            </button>
+            
+            <button
               @click="showCustomerDrawer = true"
               class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white rounded-xl transition-all font-medium flex items-center gap-2"
             >
@@ -470,6 +479,19 @@
       @close="showCustomerDrawer = false"
       @view-order="navigateToOrder"
     />
+
+    <!-- Manual Completion Modal -->
+    <AdminManualCompletionModal
+      v-if="showManualCompletionModal && orderData"
+      :order-id="orderId"
+      :customer-name="orderData.order.name"
+      :customer-email="orderData.order.emailSnapshot"
+      :service-name="orderData.order.serviceType || 'Custom Service'"
+      :current-status="orderData.order.status"
+      :existing-quoted-amount="orderData.order.quotedAmount"
+      @close="showManualCompletionModal = false"
+      @completed="handleManualCompletion"
+    />
   </div>
 </template>
 
@@ -534,6 +556,7 @@ const resendingEmail = ref(false)
 const showEnhancedQuoteModal = ref(false)
 const showRevisionModal = ref(false)
 const showCustomerDrawer = ref(false)
+const showManualCompletionModal = ref(false)
 
 // File upload
 const deliverableInputRef = ref<HTMLInputElement | null>(null)
@@ -584,6 +607,18 @@ const handleQuoteRevised = (data: { orderId: number; previousAmount: number; new
   showSuccess(`Quote updated to v${data.version}`)
   fetchOrder()
 }
+
+const handleManualCompletion = (data: { orderId: number; amount: number; previousStatus: string }) => {
+  fetchOrder()
+}
+
+// Computed for manual completion button visibility
+const canManuallyComplete = computed(() => {
+  if (!orderData.value) return false
+  const status = orderData.value.order.status
+  const terminalStatuses = ['completed', 'delivered', 'cancelled']
+  return !terminalStatuses.includes(status)
+})
 
 const resendQuoteEmail = async () => {
   resendingEmail.value = true
