@@ -324,9 +324,10 @@ onMounted(() => {
   }
 })
 
-// Package data - loaded from Nuxt Content
-const { data: packagesData } = await useAsyncData('packages', () => 
-  queryContent('packages').find()
+// Package data - loaded from database via tRPC
+const trpc = useTrpc()
+const { data: packagesData, refresh: refreshPackages } = await useAsyncData('packages', () => 
+  trpc.packages.getAll.query()
 )
 
 // Computed property with safe fallback

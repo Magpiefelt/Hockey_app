@@ -83,7 +83,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed, watch, onUnmounted } from 'vue'
 
 type DialogType = 'danger' | 'warning' | 'info' | 'success'
 
@@ -171,6 +171,12 @@ watch(() => props.isOpen, (isOpen) => {
     document.body.style.overflow = ''
   }
 }, { immediate: true })
+
+// Cleanup on component unmount to prevent memory leaks
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleKeydown)
+  document.body.style.overflow = ''
+})
 
 function handleBackdropClick() {
   if (props.closeOnBackdrop && !props.loading) {

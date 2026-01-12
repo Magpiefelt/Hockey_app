@@ -177,7 +177,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, onUnmounted } from 'vue'
 
 interface Email {
   id: number
@@ -341,6 +341,12 @@ watch(() => props.modelValue, (isOpen) => {
     document.removeEventListener('keydown', handleKeydown)
     document.body.style.overflow = ''
   }
+})
+
+// Cleanup on component unmount to prevent memory leaks
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleKeydown)
+  document.body.style.overflow = ''
 })
 </script>
 

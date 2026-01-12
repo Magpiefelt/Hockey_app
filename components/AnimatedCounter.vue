@@ -1,11 +1,11 @@
 <template>
-  <div class="animated-counter">
+  <span ref="counterRef" class="animated-counter">
     <span class="counter-value">{{ displayValue }}</span>
-  </div>
+  </span>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 
 interface Props {
   endValue: number
@@ -25,7 +25,8 @@ const props = withDefaults(defineProps<Props>(), {
 const displayValue = ref(props.prefix + '0' + props.suffix)
 const currentValue = ref(0)
 const hasAnimated = ref(false)
-const counterElement = ref<HTMLElement | null>(null)
+const counterRef = ref<HTMLElement | null>(null)
+let observer: IntersectionObserver | null = null
 
 const easeOutQuad = (t: number): number => {
   return t * (2 - t)
@@ -47,7 +48,14 @@ const animateCounter = () => {
     
     currentValue.value = startValue + (endValue - startValue) * easedProgress
     
-    const formattedValue = currentValue.value.toFixed(props.decimals)
+    // Format value - use Math.round for integers, toFixed for decimals
+    let formattedValue: string
+    if (props.decimals === 0) {
+      formattedValue = Math.round(currentValue.value).toString()
+    } else {
+      formattedValue = currentValue.value.toFixed(props.decimals)
+    }
+    
     displayValue.value = props.prefix + formattedValue + props.suffix
     
     if (progress < 1) {
@@ -59,7 +67,10 @@ const animateCounter = () => {
 }
 
 onMounted(() => {
-  const observer = new IntersectionObserver(
+  // Use the template ref instead of querySelector
+  if (!counterRef.value) return
+  
+  observer = new IntersectionObserver(
     (entries) => {
       entries.forEach((entry) => {
         if (entry.isIntersecting && !hasAnimated.value) {
@@ -67,12 +78,29 @@ onMounted(() => {
         }
       })
     },
-    { threshold: 0.5 }
+    { 
+      threshold: 0.2,
+      rootMargin: '0px 0px -50px 0px'
+    }
   )
   
-  const element = document.querySelector('.animated-counter')
-  if (element) {
-    observer.observe(element)
+  observer.observe(counterRef.value)
+})
+
+// Cleanup observer on unmount
+onUnmounted(() => {
+  if (observer) {
+    observer.disconnect()
+    observer = null
+  }
+})
+
+// Watch for prop changes to re-animate if needed
+watch(() => props.endValue, (newVal) => {
+  if (hasAnimated.value) {
+    // Reset and re-animate when endValue changes
+    hasAnimated.value = false
+    animateCounter()
   }
 })
 </script>

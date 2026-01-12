@@ -184,7 +184,7 @@
                   class="py-4 px-6 text-slate-300 cursor-pointer"
                   @click="navigateTo(`/admin/orders/${order.id}`)"
                 >
-                  {{ order.serviceType || 'No Package' }}
+                  {{ getPackageName(order) }}
                 </td>
                 <td 
                   class="py-4 px-6 cursor-pointer"
@@ -531,6 +531,21 @@ const resetFilters = () => {
 // Get file count from order data
 const getFileCount = (order: any) => {
   return order.fileCount || 0
+}
+
+// Get package name from order data
+const getPackageName = (order: any) => {
+  // First try to get from the joined package data
+  if (order.packageName) return order.packageName
+  
+  // Then try to match from loaded packages
+  if (order.packageId && packages.value.length > 0) {
+    const pkg = packages.value.find(p => p.id === order.packageId || p.slug === order.packageId)
+    if (pkg) return pkg.name
+  }
+  
+  // Fall back to serviceType or default
+  return order.serviceType || 'No Package'
 }
 
 // Add goToPage function for pagination
