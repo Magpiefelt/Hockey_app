@@ -27,21 +27,14 @@
     </div>
 
     <!-- Empty State -->
-    <div v-else-if="!orders || orders.length === 0" class="text-center py-20">
-      <div class="w-24 h-24 bg-cyan-50 rounded-full flex items-center justify-center mx-auto mb-6">
-        <Icon name="mdi:file-document-multiple-outline" class="w-12 h-12 text-cyan-500" />
-      </div>
-      <h2 class="text-2xl font-bold text-slate-900 mb-2">No orders yet</h2>
-      <p class="text-slate-600 mb-8 max-w-md mx-auto leading-relaxed">
-        Ready to get started? Request a service and we'll send you a custom quote within 24 hours.
-      </p>
-      <NuxtLink 
-        to="/request"
-        class="inline-flex items-center gap-2 px-8 py-3 bg-cyan-500 hover:bg-cyan-600 text-white font-bold rounded-lg shadow-sm transition-colors"
-      >
-        <Icon name="mdi:plus" class="w-5 h-5" />
-        Request Your First Service
-      </NuxtLink>
+    <div v-else-if="!orders || orders.length === 0" class="bg-white border border-slate-200 rounded-xl">
+      <UiEmptyState
+        icon="mdi:file-document-multiple-outline"
+        title="No orders yet"
+        description="Ready to get started? Request a service and we'll send you a custom quote within 24 hours."
+        action-text="Request Your First Service"
+        action-to="/request"
+      />
     </div>
 
     <!-- Orders List -->
@@ -82,16 +75,22 @@
         />
       </div>
 
-      <!-- Pagination (if needed) -->
-      <div v-if="filteredOrders.length === 0 && filterStatus" class="text-center py-12">
-        <Icon name="mdi:filter-off" class="w-12 h-12 text-slate-400 mx-auto mb-4" />
-        <p class="text-slate-600 mb-4">No orders found with status "{{ getStatusLabel(filterStatus) }}"</p>
-        <button
-          @click="filterStatus = ''"
-          class="text-cyan-600 hover:text-cyan-700 font-medium"
+      <!-- Filtered Empty State -->
+      <div v-if="filteredOrders.length === 0 && filterStatus" class="bg-white border border-slate-200 rounded-xl">
+        <UiEmptyState
+          icon="mdi:filter-off"
+          title="No matching orders"
+          :description="`No orders found with status '${getStatusLabel(filterStatus)}'`"
         >
-          Clear filter
-        </button>
+          <template #action>
+            <button
+              @click="filterStatus = ''"
+              class="px-6 py-2.5 bg-cyan-500 hover:bg-cyan-600 text-white font-semibold rounded-lg transition-colors"
+            >
+              Clear filter
+            </button>
+          </template>
+        </UiEmptyState>
       </div>
     </div>
   </div>

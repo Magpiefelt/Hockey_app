@@ -426,38 +426,20 @@ const handleBack = () => {
 }
 
 const handleFormStepComplete = (data: any) => {
-  console.log('=== FORM STEP COMPLETE ===')  
-  console.log('Received data from child:', data)
-  console.log('typeof data:', typeof data)
-  console.log('data === undefined:', data === undefined)
-  console.log('data === null:', data === null)
-  
   if (!data) {
-    console.error('ERROR: No data received from child form!')
-    console.error('This means the child form emitted submit without payload')
-    console.error('Current step:', currentStep.value)
-    console.error('Selected package:', selectedPackageId.value)
-    
-    // Show error to user
+    // Show error to user if form data is missing
     submissionError.value = 'Form data is missing. Please try filling out the form again.'
     window.scrollTo({ top: 0, behavior: 'smooth' })
     return
   }
   
-  console.log('data.contactName:', data.contactName)
-  console.log('formData BEFORE merge:', formData)
-  
   // Deep merge form data to preserve nested objects
   const mergeResult = deepMerge(formData, data)
-  console.log('Deep merge result:', mergeResult)
   
   // Assign each property individually to ensure Vue reactivity tracks all changes
   Object.keys(mergeResult).forEach(key => {
     formData[key] = mergeResult[key]
   })
-  
-  console.log('formData AFTER merge:', formData)
-  console.log('formData.contactName after merge:', formData.contactName)
   
   // Move to review step
   currentStep.value = 'review'
@@ -484,21 +466,10 @@ const handleFinalSubmit = async () => {
     const trpc = useTrpc()
     const { showSuccess, showError } = useNotification()
     
-    console.log('=== SUBMISSION DEBUG ===')    
-    console.log('Form data keys:', Object.keys(formData))
-    console.log('formData.contactName:', formData.contactName)
-    console.log('formData.contactEmail:', formData.contactEmail)
-    console.log('formData.contactPhone:', formData.contactPhone)
-    
     // Prepare submission data - extract contact info from flat structure
     const contactName = formData.contactName?.trim() || ''
     const contactEmail = formData.contactEmail?.trim() || ''
     const contactPhone = formData.contactPhone?.trim() || ''
-    
-    console.log('Extracted contact info:')
-    console.log('  contactName:', contactName)
-    console.log('  contactEmail:', contactEmail)
-    console.log('  contactPhone:', contactPhone)
     
     // Comprehensive validation before submission
     const validationErrors: string[] = []
@@ -578,12 +549,8 @@ const handleFinalSubmit = async () => {
       audioFiles: formData.audioFiles || []
     }
     
-    console.log('Submitting order to database:', orderData)
-    
     // Create order in database
     const result = await trpc.orders.create.mutate(orderData)
-    
-    console.log('Order created successfully:', result)
     
     // Clear form data from localStorage
     clearFormState()
@@ -596,13 +563,6 @@ const handleFinalSubmit = async () => {
     // Reset submitting state after navigation (though user won't see this)
     isSubmitting.value = false
   } catch (error: any) {
-    console.error('Order submission error:', error)
-    console.error('Error details:', {
-      message: error.message,
-      data: error.data,
-      cause: error.cause
-    })
-    
     // Show error to user
     const { showError } = useNotification()
     const errorMessage = error.data?.message || error.message || 'There was an error submitting your request. Please try again or contact us directly.'

@@ -290,6 +290,51 @@
           <p>No files attached to this order</p>
         </div>
       </div>
+
+      <!-- Cancel Order Section -->
+      <div v-if="canCancelOrder" class="bg-white border border-slate-200 rounded-lg p-6">
+        <div class="flex items-start justify-between">
+          <div>
+            <h3 class="text-lg font-semibold text-slate-900 mb-1">Need to Cancel?</h3>
+            <p class="text-slate-600 text-sm">You can cancel this order before payment is completed.</p>
+          </div>
+          <button
+            @click="openCancelDialog"
+            class="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 rounded-lg font-medium transition-colors flex items-center gap-2"
+          >
+            <Icon name="mdi:close-circle" class="w-5 h-5" />
+            Cancel Order
+          </button>
+        </div>
+      </div>
+
+      <!-- Cancel Confirmation Dialog -->
+      <UiConfirmDialog
+        :is-open="showCancelDialog"
+        title="Cancel Order"
+        message="Are you sure you want to cancel this order? This action cannot be undone."
+        type="danger"
+        confirm-text="Yes, Cancel Order"
+        cancel-text="Keep Order"
+        :loading="isCancelling"
+        @confirm="confirmCancelOrder"
+        @cancel="closeCancelDialog"
+      >
+        <template #content>
+          <div class="mt-4">
+            <label for="cancel-reason" class="block text-sm font-medium text-slate-700 mb-2">
+              Reason for cancellation (optional)
+            </label>
+            <textarea
+              id="cancel-reason"
+              v-model="cancelReason"
+              rows="3"
+              class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm"
+              placeholder="Let us know why you're cancelling..."
+            ></textarea>
+          </div>
+        </template>
+      </UiConfirmDialog>
     </div>
   </div>
 </template>
@@ -327,6 +372,9 @@ const orderData = computed(() => ordersStore.currentOrder)
 const loading = computed(() => ordersStore.isLoading)
 const error = computed(() => ordersStore.error)
 const downloadingFileId = ref<number | null>(null)
+const showCancelDialog = ref(false)
+const cancelReason = ref('')
+const isCancelling = ref(false)
 
 const uploadedFiles = computed(() => {
   return orderData.value?.files?.filter((f: any) => f.kind === 'upload') || []
@@ -341,6 +389,13 @@ const showPaymentSection = computed(() => {
   return orderData.value?.order?.quotedAmount && 
          !orderData.value?.payment &&
          !['paid', 'completed', 'delivered', 'cancelled'].includes(orderData.value?.order?.status)
+})
+
+// Show cancel button only for cancellable statuses
+const canCancelOrder = computed(() => {
+  const status = orderData.value?.order?.status
+  const cancellableStatuses = ['submitted', 'quoted', 'quote_viewed', 'quote_accepted', 'invoiced']
+  return status && cancellableStatuses.includes(status)
 })
 
 // Status-based helpers
@@ -420,15 +475,15 @@ const fetchOrder = async () => {
 
 // Payment event handlers
 function onPaymentStarted() {
-  console.log('Payment process started')
+  // Payment process initiated
 }
 
 function onPaymentError(error: string) {
-  console.error('Payment error:', error)
+  showError(`Payment error: ${error}`)
 }
 
 function onPaymentRedirecting(url: string) {
-  console.log('Redirecting to payment:', url)
+  // Redirecting to payment provider
 }
 
 const getProgressHeight = (status: string) => {
@@ -460,10 +515,38 @@ const downloadFile = async (fileId: number, filename: string) => {
     
     showSuccess('Download started')
   } catch (err: any) {
-    console.error('Download error:', err)
     showError(`Failed to download file: ${err.message || 'Unknown error'}`)
   } finally {
     downloadingFileId.value = null
+  }
+}
+
+// Cancel order functions
+function openCancelDialog() {
+  cancelReason.value = ''
+  showCancelDialog.value = true
+}
+
+function closeCancelDialog() {
+  showCancelDialog.value = false
+  cancelReason.value = ''
+}
+
+async function confirmCancelOrder() {
+  isCancelling.value = true
+  try {
+    await trpc.orders.cancel.mutate({
+      orderId: orderId.value,
+      reason: cancelReason.value || undefined
+    })
+    showSuccess('Order cancelled successfully')
+    closeCancelDialog()
+    // Refresh order data
+    await fetchOrder()
+  } catch (err: any) {
+    showError(err.message || 'Failed to cancel order')
+  } finally {
+    isCancelling.value = false
   }
 }
 

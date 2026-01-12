@@ -569,5 +569,83 @@ export const ordersRouter = router({
         success: true,
         message: 'File attached successfully'
       }
+    }),
+
+  /**
+   * Cancel an order (customer can only cancel before payment)
+   */
+  cancel: protectedProcedure
+    .input(z.object({
+      orderId: z.number(),
+      reason: z.string().max(500).optional()
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const { orderId, reason } = input
+      
+      logger.info('Order cancellation requested', { orderId, userId: ctx.user.userId })
+      
+      // Get the order
+      const order = await queryOne<{ 
+        id: number
+        user_id: number | null
+        status: string
+        contact_email: string
+      }>(
+        'SELECT id, user_id, status, contact_email FROM quote_requests WHERE id = $1',
+        [orderId]
+      )
+      
+      if (!order) {
+        throw new NotFoundError('Order')
+      }
+      
+      // Check authorization - user must own the order
+      if (order.user_id !== ctx.user.userId) {
+        throw new AuthorizationError('Not authorized to cancel this order')
+      }
+      
+      // Check if order can be cancelled
+      // Customers can only cancel orders that haven't been paid yet
+      const cancellableStatuses = ['submitted', 'quoted', 'quote_viewed', 'quote_accepted', 'invoiced']
+      if (!cancellableStatuses.includes(order.status)) {
+        throw new ValidationError(
+          `Orders with status '${order.status}' cannot be cancelled. Please contact support for assistance.`,
+          'status'
+        )
+      }
+      
+      // Update order status to cancelled
+      await executeQuery(
+        `UPDATE quote_requests 
+         SET status = 'cancelled', 
+             updated_at = NOW(),
+             notes = COALESCE(notes, '') || $2
+         WHERE id = $1`,
+        [orderId, reason ? `\n\n[Customer Cancelled: ${reason}]` : '\n\n[Cancelled by customer]']
+      )
+      
+      // Log the cancellation
+      await logOrderEvent({
+        quoteId: orderId,
+        action: AuditAction.STATUS_CHANGE,
+        userId: ctx.user.userId,
+        details: {
+          previousStatus: order.status,
+          newStatus: 'cancelled',
+          reason: reason || 'Customer requested cancellation'
+        }
+      })
+      
+      logger.info('Order cancelled by customer', { 
+        orderId, 
+        userId: ctx.user.userId,
+        previousStatus: order.status,
+        reason 
+      })
+      
+      return {
+        success: true,
+        message: 'Order cancelled successfully'
+      }
     })
 })

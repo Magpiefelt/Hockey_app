@@ -272,6 +272,18 @@
         :email="selectedEmail"
         @resend="handleResend"
       />
+
+      <!-- Resend Confirmation Dialog -->
+      <UiConfirmDialog
+        :is-open="showResendConfirm"
+        title="Resend Email"
+        :message="`Are you sure you want to resend this email to ${emailToResend?.toEmail || 'the recipient'}?`"
+        type="info"
+        confirm-text="Resend"
+        cancel-text="Cancel"
+        @confirm="confirmResend"
+        @cancel="cancelResend"
+      />
     </div>
   </div>
 </template>
@@ -297,6 +309,10 @@ const pageSize = 50
 const resending = ref<number | null>(null)
 const selectedEmail = ref<any>(null)
 const showDetailModal = ref(false)
+const showResendConfirm = ref(false)
+const emailToResend = ref<any>(null)
+
+const { showSuccess, showError } = useNotification()
 
 // Filters
 const filters = ref({
@@ -396,10 +412,18 @@ function viewEmail(email: any) {
   showDetailModal.value = true
 }
 
-// Resend email
-async function resendEmail(email: any) {
-  if (!confirm('Are you sure you want to resend this email?')) return
+// Resend email - show confirmation dialog
+function resendEmail(email: any) {
+  emailToResend.value = email
+  showResendConfirm.value = true
+}
 
+// Handle resend confirmation
+async function confirmResend() {
+  if (!emailToResend.value) return
+  
+  const email = emailToResend.value
+  showResendConfirm.value = false
   resending.value = email.id
 
   try {
@@ -408,13 +432,19 @@ async function resendEmail(email: any) {
     // Refresh emails and stats
     await Promise.all([fetchEmails(), fetchStats()])
     
-    alert('Email resent successfully!')
+    showSuccess('Email resent successfully!')
   } catch (err: any) {
-    // Error logged: 'Failed to resend email:', err)
-    alert(`Failed to resend email: ${err.message}`)
+    showError(`Failed to resend email: ${err.message}`)
   } finally {
     resending.value = null
+    emailToResend.value = null
   }
+}
+
+// Cancel resend
+function cancelResend() {
+  showResendConfirm.value = false
+  emailToResend.value = null
 }
 
 // Handle resend from modal
