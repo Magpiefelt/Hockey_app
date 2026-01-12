@@ -3,7 +3,7 @@
     "id": "player-intros-basic",
     "name": "Package #1 - Basic Package",
     "description": "Professional player introductions for up to 20 players",
-    "price": 8000,
+    "price_cents": 8000,
     "popular": false,
     "icon": "🎤",
     "features": [
@@ -18,7 +18,7 @@
     "id": "player-intros-warmup",
     "name": "Package #2 - Warmup Package",
     "description": "All features from Package #1 plus custom warmup mix with 2-3 additional songs",
-    "price": 11000,
+    "price_cents": 11000,
     "popular": true,
     "icon": "🎵",
     "features": [
@@ -33,7 +33,7 @@
     "id": "player-intros-ultimate",
     "name": "Package #3 - Ultimate Game Day Package",
     "description": "Complete game-day audio experience with all features from Package #2 plus goal horns, win songs, and custom audio packages",
-    "price": 19000,
+    "price_cents": 19000,
     "popular": false,
     "icon": "🏆",
     "features": [
@@ -49,7 +49,7 @@
     "id": "game-day-dj",
     "name": "Game Day DJ Service",
     "description": "Professional DJ services for your entire game day event",
-    "price": 30000,
+    "price_cents": 30000,
     "popular": false,
     "icon": "🎧",
     "features": [
@@ -64,7 +64,7 @@
     "id": "event-hosting",
     "name": "Event Hosting & MC Services",
     "description": "Professional event hosting and master of ceremonies services",
-    "price": 0,
+    "price_cents": 0,
     "popular": false,
     "icon": "🎤",
     "features": [

@@ -25,10 +25,13 @@ export async function seedDatabase() {
 
     // Insert packages
     for (const pkg of packages) {
-      const { id, name, description, price, popular, features, icon } = pkg
+      const { id, name, description, price, price_cents, popular, features, icon } = pkg
       
-      // Convert price to cents if it's in dollars
-      const priceCents = typeof price === 'number' ? price : 0
+      // Handle both price and price_cents fields for backward compatibility
+      // price_cents takes precedence if both are present
+      const priceCents = typeof price_cents === 'number' 
+        ? price_cents 
+        : (typeof price === 'number' ? price : 0)
 
       await query(
         `INSERT INTO packages (slug, name, description, price_cents, is_popular, features, icon)
@@ -52,7 +55,7 @@ export async function seedDatabase() {
         ]
       )
 
-      console.log(`  ✅ Seeded package: ${name}`)
+      console.log(`  ✅ Seeded package: ${name} (${priceCents} cents)`)
     }
 
     console.log('✅ Database seeding completed successfully')

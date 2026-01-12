@@ -2,7 +2,7 @@
   <Teleport to="body">
     <Transition name="modal">
       <div
-        v-if="modelValue"
+        v-if="modelValue && safeEmail"
         class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
         @click.self="close"
       >
@@ -19,7 +19,7 @@
                 Email Details
               </h2>
               <p class="text-sm text-slate-400">
-                ID: #{{ email.id }} • {{ formatDate(email.createdAt) }}
+                ID: #{{ safeEmail.id }} • {{ formatDate(safeEmail.createdAt) }}
               </p>
             </div>
             <button
@@ -37,33 +37,33 @@
             <div
               :class="[
                 'p-4 rounded-lg border flex items-start gap-3',
-                getStatusBannerClass(email.status)
+                getStatusBannerClass(safeEmail.status)
               ]"
             >
-              <Icon :name="getStatusIcon(email.status)" class="w-6 h-6 flex-shrink-0 mt-0.5" />
+              <Icon :name="getStatusIcon(safeEmail.status)" class="w-6 h-6 flex-shrink-0 mt-0.5" />
               <div class="flex-1">
                 <h3 class="font-semibold mb-1">
-                  {{ getStatusTitle(email.status) }}
+                  {{ getStatusTitle(safeEmail.status) }}
                 </h3>
                 <p class="text-sm opacity-90">
-                  {{ getStatusMessage(email.status) }}
+                  {{ getStatusMessage(safeEmail.status) }}
                 </p>
-                <p v-if="email.sentAt" class="text-xs mt-2 opacity-75">
-                  Sent at: {{ formatDateTime(email.sentAt) }}
+                <p v-if="safeEmail.sentAt" class="text-xs mt-2 opacity-75">
+                  Sent at: {{ formatDateTime(safeEmail.sentAt) }}
                 </p>
               </div>
             </div>
 
             <!-- Error Message -->
             <div
-              v-if="email.status === 'failed' && email.errorMessage"
+              v-if="safeEmail.status === 'failed' && safeEmail.errorMessage"
               class="p-4 rounded-lg bg-red-500/10 border border-red-500/30"
             >
               <div class="flex items-start gap-3">
                 <Icon name="mdi:alert-circle" class="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
                 <div class="flex-1">
                   <h4 class="text-red-400 font-semibold mb-1">Error Details</h4>
-                  <p class="text-sm text-slate-300 font-mono">{{ email.errorMessage }}</p>
+                  <p class="text-sm text-slate-300 font-mono">{{ safeEmail.errorMessage }}</p>
                 </div>
               </div>
             </div>
@@ -74,8 +74,8 @@
               <div>
                 <label class="block text-sm font-medium text-slate-400 mb-2">Recipient</label>
                 <div class="p-4 bg-dark-primary border border-white/10 rounded-lg">
-                  <p class="text-white font-medium">{{ email.toEmail }}</p>
-                  <p v-if="email.contactName" class="text-slate-400 text-sm mt-1">{{ email.contactName }}</p>
+                  <p class="text-white font-medium">{{ safeEmail.toEmail }}</p>
+                  <p v-if="safeEmail.contactName" class="text-slate-400 text-sm mt-1">{{ safeEmail.contactName }}</p>
                 </div>
               </div>
 
@@ -84,25 +84,25 @@
                 <label class="block text-sm font-medium text-slate-400 mb-2">Template</label>
                 <div class="p-4 bg-dark-primary border border-white/10 rounded-lg">
                   <div class="flex items-center gap-2">
-                    <Icon :name="getTemplateIcon(email.template)" class="w-5 h-5 text-brand-400" />
-                    <span class="text-white font-medium">{{ formatTemplate(email.template) }}</span>
+                    <Icon :name="getTemplateIcon(safeEmail.template)" class="w-5 h-5 text-brand-400" />
+                    <span class="text-white font-medium">{{ formatTemplate(safeEmail.template) }}</span>
                   </div>
                 </div>
               </div>
 
               <!-- Order ID -->
-              <div v-if="email.orderId">
+              <div v-if="safeEmail.orderId">
                 <label class="block text-sm font-medium text-slate-400 mb-2">Related Order</label>
                 <div class="p-4 bg-dark-primary border border-white/10 rounded-lg">
                   <NuxtLink
-                    :to="`/admin/orders/${email.orderId}`"
+                    :to="`/admin/orders/${safeEmail.orderId}`"
                     class="text-brand-400 hover:text-brand-300 font-medium flex items-center gap-2"
                   >
-                    Order #{{ email.orderId }}
+                    Order #{{ safeEmail.orderId }}
                     <Icon name="mdi:open-in-new" class="w-4 h-4" />
                   </NuxtLink>
-                  <p v-if="email.orderStatus" class="text-slate-400 text-sm mt-1">
-                    Status: {{ email.orderStatus }}
+                  <p v-if="safeEmail.orderStatus" class="text-slate-400 text-sm mt-1">
+                    Status: {{ safeEmail.orderStatus }}
                   </p>
                 </div>
               </div>
@@ -111,8 +111,8 @@
               <div>
                 <label class="block text-sm font-medium text-slate-400 mb-2">Created</label>
                 <div class="p-4 bg-dark-primary border border-white/10 rounded-lg">
-                  <p class="text-white">{{ formatDateTime(email.createdAt) }}</p>
-                  <p class="text-slate-400 text-sm mt-1">{{ getRelativeTime(email.createdAt) }}</p>
+                  <p class="text-white">{{ formatDateTime(safeEmail.createdAt) }}</p>
+                  <p class="text-slate-400 text-sm mt-1">{{ getRelativeTime(safeEmail.createdAt) }}</p>
                 </div>
               </div>
             </div>
@@ -121,12 +121,12 @@
             <div>
               <label class="block text-sm font-medium text-slate-400 mb-2">Subject</label>
               <div class="p-4 bg-dark-primary border border-white/10 rounded-lg">
-                <p class="text-white">{{ email.subject }}</p>
+                <p class="text-white">{{ safeEmail.subject }}</p>
               </div>
             </div>
 
             <!-- Metadata -->
-            <div v-if="email.metadataJson">
+            <div v-if="safeEmail.metadataJson">
               <label class="block text-sm font-medium text-slate-400 mb-2">
                 Email Data
                 <button
@@ -137,7 +137,7 @@
                 </button>
               </label>
               <div v-if="showMetadata" class="p-4 bg-dark-primary border border-white/10 rounded-lg overflow-x-auto">
-                <pre class="text-sm text-slate-300 font-mono">{{ JSON.stringify(email.metadataJson, null, 2) }}</pre>
+                <pre class="text-sm text-slate-300 font-mono">{{ JSON.stringify(safeEmail.metadataJson, null, 2) }}</pre>
               </div>
             </div>
           </div>
@@ -152,7 +152,7 @@
             </button>
             <div class="flex gap-3">
               <button
-                v-if="email.orderId"
+                v-if="safeEmail.orderId"
                 @click="goToOrder"
                 class="px-6 py-2.5 bg-slate-700 hover:bg-slate-600 text-white font-semibold rounded-lg transition-colors flex items-center gap-2"
               >
@@ -160,7 +160,7 @@
                 View Order
               </button>
               <button
-                v-if="email.status === 'failed'"
+                v-if="safeEmail.status === 'failed'"
                 @click="handleResend"
                 :disabled="isResending"
                 class="px-6 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
@@ -177,7 +177,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 
 interface Email {
   id: number
@@ -196,7 +196,7 @@ interface Email {
 
 interface Props {
   modelValue: boolean
-  email: Email
+  email: Email | null
 }
 
 interface Emits {
@@ -210,26 +210,41 @@ const emit = defineEmits<Emits>()
 const showMetadata = ref(false)
 const isResending = ref(false)
 
+// Default email object to prevent null reference errors
+const defaultEmail: Email = {
+  id: 0,
+  toEmail: '',
+  subject: '',
+  template: '',
+  status: '',
+  createdAt: new Date().toISOString()
+}
+
+// Safe email accessor that never returns null
+const safeEmail = computed(() => props.email || defaultEmail)
+
 function close() {
   emit('update:modelValue', false)
   showMetadata.value = false
 }
 
 function goToOrder() {
-  if (props.email.orderId) {
-    navigateTo(`/admin/orders/${props.email.orderId}`)
+  if (safeEmail.value.orderId) {
+    navigateTo(`/admin/orders/${safeEmail.value.orderId}`)
     close()
   }
 }
 
 function handleResend() {
-  emit('resend', props.email.id)
-  isResending.value = true
-  
-  // Reset after 3 seconds
-  setTimeout(() => {
-    isResending.value = false
-  }, 3000)
+  if (safeEmail.value.id) {
+    emit('resend', safeEmail.value.id)
+    isResending.value = true
+    
+    // Reset after 3 seconds
+    setTimeout(() => {
+      isResending.value = false
+    }, 3000)
+  }
 }
 
 function getStatusBannerClass(status: string) {
@@ -291,39 +306,54 @@ function formatTemplate(template: string) {
 }
 
 function formatDate(dateString: string) {
-  const date = new Date(dateString)
-  return date.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  })
+  if (!dateString) return ''
+  try {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    })
+  } catch {
+    return ''
+  }
 }
 
 function formatDateTime(dateString: string) {
-  const date = new Date(dateString)
-  return date.toLocaleString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
+  if (!dateString) return ''
+  try {
+    const date = new Date(dateString)
+    return date.toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  } catch {
+    return ''
+  }
 }
 
 function getRelativeTime(dateString: string) {
-  const date = new Date(dateString)
-  const now = new Date()
-  const diff = now.getTime() - date.getTime()
-  
-  const seconds = Math.floor(diff / 1000)
-  const minutes = Math.floor(seconds / 60)
-  const hours = Math.floor(minutes / 60)
-  const days = Math.floor(hours / 24)
-  
-  if (days > 0) return `${days} day${days > 1 ? 's' : ''} ago`
-  if (hours > 0) return `${hours} hour${hours > 1 ? 's' : ''} ago`
-  if (minutes > 0) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`
-  return 'Just now'
+  if (!dateString) return ''
+  try {
+    const date = new Date(dateString)
+    const now = new Date()
+    const diff = now.getTime() - date.getTime()
+    
+    const seconds = Math.floor(diff / 1000)
+    const minutes = Math.floor(seconds / 60)
+    const hours = Math.floor(minutes / 60)
+    const days = Math.floor(hours / 24)
+    
+    if (days > 0) return `${days} day${days > 1 ? 's' : ''} ago`
+    if (hours > 0) return `${hours} hour${hours > 1 ? 's' : ''} ago`
+    if (minutes > 0) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`
+    return 'Just now'
+  } catch {
+    return ''
+  }
 }
 
 // Trap focus and handle escape key
@@ -333,20 +363,28 @@ function handleKeydown(e: KeyboardEvent) {
   }
 }
 
+// Track if event listener is attached
+let isListenerAttached = false
+
 watch(() => props.modelValue, (isOpen) => {
-  if (isOpen) {
+  if (isOpen && !isListenerAttached) {
     document.addEventListener('keydown', handleKeydown)
     document.body.style.overflow = 'hidden'
-  } else {
+    isListenerAttached = true
+  } else if (!isOpen && isListenerAttached) {
     document.removeEventListener('keydown', handleKeydown)
     document.body.style.overflow = ''
+    isListenerAttached = false
   }
-})
+}, { immediate: true })
 
 // Cleanup on component unmount to prevent memory leaks
 onUnmounted(() => {
-  document.removeEventListener('keydown', handleKeydown)
-  document.body.style.overflow = ''
+  if (isListenerAttached) {
+    document.removeEventListener('keydown', handleKeydown)
+    document.body.style.overflow = ''
+    isListenerAttached = false
+  }
 })
 </script>
 
