@@ -11,6 +11,7 @@ import { adminEnhancementsRouter } from './admin-enhancements'
 import { quotePublicRouter } from './quote-public'
 import { contactRouter } from './contact'
 import { financeRouter } from './finance'
+import { financeAutomationRouter } from './financeAutomation'
 
 export const appRouter = router({
   auth: authRouter,
@@ -26,7 +27,9 @@ export const appRouter = router({
   quote: quotePublicRouter,
   contact: contactRouter,
   // Enhanced finance router with tax calculations
-  finance: financeRouter
+  finance: financeRouter,
+  // Finance automation (invoices, reminders, reporting)
+  financeAutomation: financeAutomationRouter
 })
 
 export type AppRouter = typeof appRouter
