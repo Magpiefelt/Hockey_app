@@ -39,6 +39,7 @@ export default defineNuxtConfig({
     mailgunDomain: process.env.MAILGUN_DOMAIN || 'elitesportsdj.ca',
     mailgunApiUrl: process.env.MAILGUN_API_URL || 'https://api.mailgun.net',
     mailgunFromEmail: process.env.MAILGUN_FROM_EMAIL || 'Elite Sports DJ <postmaster@elitesportsdj.ca>',
+    mailgunWebhookSigningKey: process.env.MAILGUN_WEBHOOK_SIGNING_KEY || '',
     adminIpWhitelist: process.env.ADMIN_IP_WHITELIST || '',
     metricsApiKey: process.env.METRICS_API_KEY || '',
     metricsIpAllowlist: process.env.METRICS_IP_ALLOWLIST || '',

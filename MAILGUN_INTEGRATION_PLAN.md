@@ -92,6 +92,47 @@ The following environment variables must be set in production:
 
 ---
 
+## Webhook Configuration
+
+The application now supports Mailgun webhooks for tracking email delivery status.
+
+### Webhook URL
+
+Configure this URL in your Mailgun Dashboard under **Sending > Webhooks**:
+
+```
+https://yourdomain.com/api/webhooks/mailgun
+```
+
+### Supported Events
+
+| Event | Description |
+|-------|-------------|
+| `delivered` | Email was successfully delivered |
+| `bounced` | Email bounced (permanent failure) |
+| `failed` | Email delivery failed |
+| `complained` | Recipient marked email as spam |
+| `opened` | Recipient opened the email |
+| `clicked` | Recipient clicked a link |
+
+### Database Migration
+
+Run the migration to add webhook columns:
+
+```bash
+pnpm migrate:up
+```
+
+Or manually run:
+```sql
+-- From database/migrations/003_add_email_webhook_columns.sql
+ALTER TABLE email_logs ADD COLUMN IF NOT EXISTS webhook_event VARCHAR(50);
+ALTER TABLE email_logs ADD COLUMN IF NOT EXISTS webhook_data JSONB;
+ALTER TABLE email_logs ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE;
+```
+
+---
+
 ## Deployment Instructions
 
 1. Set the following environment variables in your production environment:
@@ -101,6 +142,7 @@ The following environment variables must be set in production:
    MAILGUN_DOMAIN=elitesportsdj.ca
    MAILGUN_API_URL=https://api.mailgun.net
    MAILGUN_FROM_EMAIL=Elite Sports DJ <postmaster@elitesportsdj.ca>
+   MAILGUN_WEBHOOK_SIGNING_KEY=<YOUR_WEBHOOK_SIGNING_KEY>
    ```
 
 2. Install dependencies (nodemailer will be removed):
