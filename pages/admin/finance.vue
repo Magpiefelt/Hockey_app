@@ -1,177 +1,215 @@
 <template>
-  <div class="px-6 py-8">
-    <div class="container mx-auto max-w-7xl">
-      <!-- Header -->
-      <div class="mb-8">
-        <h1 class="text-3xl md:text-4xl font-bold text-white mb-2">
-          Finance <span class="gradient-text">Dashboard</span>
-        </h1>
-        <p class="text-lg text-slate-400">
-          Revenue metrics and payment analytics
-        </p>
+  <div class="max-w-7xl mx-auto">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+      <div>
+        <h1 class="text-2xl lg:text-3xl font-bold text-white mb-1">Finance Dashboard</h1>
+        <p class="text-slate-400">Revenue metrics and payment analytics</p>
       </div>
-
-      <!-- Loading State -->
-      <div v-if="loading" class="flex justify-center items-center py-20">
-        <div class="animate-spin h-12 w-12 border-4 border-brand-600 border-t-transparent rounded-full"></div>
-      </div>
-
-      <!-- Error State -->
-      <div v-else-if="error" class="card p-6 border-red-500/40 text-center">
-        <p class="text-red-400 text-lg mb-4">{{ error }}</p>
-        <button 
+      <div class="flex items-center gap-3">
+        <button
           @click="fetchMetrics"
-          class="px-6 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-colors"
+          :disabled="loading"
+          class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white rounded-xl transition-all font-medium flex items-center gap-2"
         >
-          Try Again
+          <Icon :name="loading ? 'mdi:loading' : 'mdi:refresh'" :class="loading ? 'w-4 h-4 animate-spin' : 'w-4 h-4'" />
+          Refresh
         </button>
       </div>
+    </div>
 
-      <!-- Dashboard Content -->
-      <div v-else-if="metrics" class="space-y-8">
-        <!-- Key Metrics -->
-        <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div class="card p-6">
-            <div class="flex items-center justify-between mb-2">
-              <p class="text-slate-400 text-sm font-semibold uppercase">Total Revenue</p>
-              <div class="w-10 h-10 rounded-lg bg-brand-500/10 flex items-center justify-center">
-                <svg class="h-5 w-5 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-            </div>
-            <p class="text-4xl font-bold text-white">{{ formatPrice(metrics.totalRevenue) }}</p>
-            <p class="text-brand-400 text-sm mt-1">All time</p>
-          </div>
+    <!-- Loading State -->
+    <div v-if="loading" class="flex justify-center items-center py-20">
+      <div class="flex flex-col items-center gap-4">
+        <div class="w-12 h-12 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin"></div>
+        <p class="text-slate-400">Loading financial data...</p>
+      </div>
+    </div>
 
-          <div class="card p-6">
-            <div class="flex items-center justify-between mb-2">
-              <p class="text-slate-400 text-sm font-semibold uppercase">MTD Revenue</p>
-              <div class="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center">
-                <svg class="h-5 w-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                </svg>
-              </div>
-            </div>
-            <p class="text-4xl font-bold text-white">{{ formatPrice(metrics.mtdRevenue) }}</p>
-            <p class="text-green-400 text-sm mt-1">This month</p>
-          </div>
+    <!-- Error State -->
+    <div v-else-if="error" class="bg-red-500/10 border border-red-500/30 rounded-2xl p-8 text-center">
+      <div class="w-16 h-16 rounded-2xl bg-red-500/20 flex items-center justify-center mx-auto mb-4">
+        <Icon name="mdi:alert-circle" class="w-8 h-8 text-red-400" />
+      </div>
+      <p class="text-red-400 text-lg mb-4">{{ error }}</p>
+      <button 
+        @click="fetchMetrics"
+        class="px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-xl transition-all"
+      >
+        Try Again
+      </button>
+    </div>
 
-          <div class="card p-6">
-            <div class="flex items-center justify-between mb-2">
-              <p class="text-slate-400 text-sm font-semibold uppercase">Avg Order Value</p>
-              <div class="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                <svg class="h-5 w-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                </svg>
-              </div>
+    <!-- Dashboard Content -->
+    <div v-else-if="metrics" class="space-y-6">
+      <!-- Key Metrics Grid -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+        <!-- Total Revenue -->
+        <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-5 lg:p-6 hover:border-slate-700 transition-all group">
+          <div class="flex items-center justify-between mb-4">
+            <div class="w-11 h-11 rounded-xl bg-emerald-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Icon name="mdi:currency-usd" class="w-6 h-6 text-emerald-400" />
             </div>
-            <p class="text-4xl font-bold text-white">{{ formatPrice(metrics.avgOrderValue) }}</p>
-            <p class="text-purple-400 text-sm mt-1">Per order</p>
+            <span class="text-xs font-medium text-slate-500 uppercase tracking-wide">All Time</span>
           </div>
-
-          <div class="card p-6">
-            <div class="flex items-center justify-between mb-2">
-              <p class="text-slate-400 text-sm font-semibold uppercase">Pending Payments</p>
-              <div class="w-10 h-10 rounded-lg bg-yellow-500/10 flex items-center justify-center">
-                <svg class="h-5 w-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-            </div>
-            <p class="text-4xl font-bold text-white">{{ formatPrice(metrics.pendingPayments) }}</p>
-            <p class="text-yellow-400 text-sm mt-1">Awaiting payment</p>
-          </div>
+          <p class="text-2xl lg:text-3xl font-bold text-white mb-1">{{ formatPrice(metrics.totalRevenue) }}</p>
+          <p class="text-sm text-slate-400">Total Revenue</p>
         </div>
 
-        <!-- Revenue by Package -->
-        <div class="card p-8">
-          <h2 class="text-2xl font-bold text-white mb-6">Revenue by Package</h2>
-          <div v-if="metrics.revenueByPackage.length === 0" class="text-center py-8 text-slate-400">
-            No revenue data available
+        <!-- Monthly Revenue -->
+        <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-5 lg:p-6 hover:border-slate-700 transition-all group">
+          <div class="flex items-center justify-between mb-4">
+            <div class="w-11 h-11 rounded-xl bg-cyan-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Icon name="mdi:trending-up" class="w-6 h-6 text-cyan-400" />
+            </div>
+            <span class="text-xs font-medium text-slate-500 uppercase tracking-wide">This Month</span>
+          </div>
+          <p class="text-2xl lg:text-3xl font-bold text-white mb-1">{{ formatPrice(metrics.mtdRevenue) }}</p>
+          <p class="text-sm text-slate-400">Monthly Revenue</p>
+        </div>
+
+        <!-- Average Order Value -->
+        <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-5 lg:p-6 hover:border-slate-700 transition-all group">
+          <div class="flex items-center justify-between mb-4">
+            <div class="w-11 h-11 rounded-xl bg-purple-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Icon name="mdi:calculator" class="w-6 h-6 text-purple-400" />
+            </div>
+            <span class="text-xs font-medium text-slate-500 uppercase tracking-wide">Per Order</span>
+          </div>
+          <p class="text-2xl lg:text-3xl font-bold text-white mb-1">{{ formatPrice(metrics.avgOrderValue) }}</p>
+          <p class="text-sm text-slate-400">Avg Order Value</p>
+        </div>
+
+        <!-- Pending Payments -->
+        <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-5 lg:p-6 hover:border-slate-700 transition-all group">
+          <div class="flex items-center justify-between mb-4">
+            <div class="w-11 h-11 rounded-xl bg-amber-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Icon name="mdi:clock-outline" class="w-6 h-6 text-amber-400" />
+            </div>
+            <span class="text-xs font-medium text-slate-500 uppercase tracking-wide">Awaiting</span>
+          </div>
+          <p class="text-2xl lg:text-3xl font-bold text-white mb-1">{{ formatPrice(metrics.pendingPayments) }}</p>
+          <p class="text-sm text-slate-400">Pending Payments</p>
+        </div>
+      </div>
+
+      <!-- Revenue by Package -->
+      <div class="bg-slate-900/50 border border-slate-800 rounded-2xl overflow-hidden">
+        <div class="p-6 border-b border-slate-800">
+          <h2 class="text-xl font-bold text-white flex items-center gap-2">
+            <Icon name="mdi:chart-bar" class="w-6 h-6 text-cyan-400" />
+            Revenue by Package
+          </h2>
+        </div>
+        <div class="p-6">
+          <div v-if="metrics.revenueByPackage.length === 0" class="text-center py-8">
+            <div class="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center mx-auto mb-3">
+              <Icon name="mdi:chart-bar" class="w-6 h-6 text-slate-600" />
+            </div>
+            <p class="text-slate-400">No revenue data available</p>
           </div>
           <div v-else class="space-y-4">
-            <div v-for="pkg in metrics.revenueByPackage" :key="pkg.name" class="flex items-center justify-between">
-              <div class="flex-1">
-                <div class="flex items-center justify-between mb-2">
-                  <span class="text-white font-medium">{{ pkg.name }}</span>
-                  <span class="text-slate-400">{{ formatPrice(pkg.revenue) }}</span>
-                </div>
-                <div class="w-full bg-white/5 rounded-full h-2">
-                  <div 
-                    class="h-2 rounded-full"
-                    :class="pkg.color"
-                    :style="{ width: `${(pkg.revenue / metrics.totalRevenue) * 100}%` }"
-                  ></div>
-                </div>
+            <div v-for="pkg in metrics.revenueByPackage" :key="pkg.name" class="group">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-white font-medium">{{ pkg.name }}</span>
+                <span class="text-slate-300 font-semibold">{{ formatPrice(pkg.revenue) }}</span>
+              </div>
+              <div class="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden">
+                <div 
+                  class="h-2.5 rounded-full transition-all duration-500 group-hover:opacity-80"
+                  :class="pkg.color"
+                  :style="{ width: `${Math.max((pkg.revenue / metrics.totalRevenue) * 100, 2)}%` }"
+                ></div>
               </div>
             </div>
           </div>
         </div>
+      </div>
 
-        <!-- Recent Transactions -->
-        <div class="card p-8">
-          <div class="flex items-center justify-between mb-6">
-            <h2 class="text-2xl font-bold text-white">Recent Transactions</h2>
-            <button 
-              v-if="metrics.recentTransactions.length > 0"
-              @click="navigateToOrders"
-              class="text-brand-400 hover:text-brand-300 font-medium transition-colors"
-            >
-              View all →
-            </button>
-          </div>
+      <!-- Recent Transactions -->
+      <div class="bg-slate-900/50 border border-slate-800 rounded-2xl overflow-hidden">
+        <div class="flex items-center justify-between p-6 border-b border-slate-800">
+          <h2 class="text-xl font-bold text-white flex items-center gap-2">
+            <Icon name="mdi:receipt-text" class="w-6 h-6 text-emerald-400" />
+            Recent Transactions
+          </h2>
+          <NuxtLink 
+            v-if="metrics.recentTransactions.length > 0"
+            to="/admin/orders"
+            class="text-sm text-cyan-400 hover:text-cyan-300 font-medium flex items-center gap-1 transition-colors"
+          >
+            View All
+            <Icon name="mdi:arrow-right" class="w-4 h-4" />
+          </NuxtLink>
+        </div>
 
-          <div v-if="metrics.recentTransactions.length === 0" class="text-center py-12 text-slate-400">
-            No recent transactions
+        <div v-if="metrics.recentTransactions.length === 0" class="p-12 text-center">
+          <div class="w-16 h-16 rounded-2xl bg-slate-800 flex items-center justify-center mx-auto mb-4">
+            <Icon name="mdi:receipt-text-outline" class="w-8 h-8 text-slate-600" />
           </div>
+          <p class="text-slate-400 mb-1">No recent transactions</p>
+          <p class="text-sm text-slate-500">Transactions will appear here once payments are processed</p>
+        </div>
 
-          <div v-else class="overflow-x-auto">
-            <table class="w-full">
-              <thead>
-                <tr class="border-b border-white/10">
-                  <th class="text-left py-3 px-4 text-slate-200 font-semibold text-sm uppercase">Date</th>
-                  <th class="text-left py-3 px-4 text-slate-200 font-semibold text-sm uppercase">Customer</th>
-                  <th class="text-left py-3 px-4 text-slate-200 font-semibold text-sm uppercase">Package</th>
-                  <th class="text-left py-3 px-4 text-slate-200 font-semibold text-sm uppercase">Amount</th>
-                  <th class="text-left py-3 px-4 text-slate-200 font-semibold text-sm uppercase">Status</th>
-                  <th class="text-left py-3 px-4 text-slate-200 font-semibold text-sm uppercase">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr 
-                  v-for="transaction in metrics.recentTransactions" 
-                  :key="transaction.id"
-                  class="border-b border-white/10 hover:bg-white/5 transition-colors"
-                >
-                  <td class="py-4 px-4 text-slate-400">{{ formatDate(transaction.date) }}</td>
-                  <td class="py-4 px-4 text-white">{{ transaction.customerName }}</td>
-                  <td class="py-4 px-4 text-slate-300">{{ transaction.packageName }}</td>
-                  <td class="py-4 px-4 text-white font-semibold">{{ formatCurrency(transaction.amount) }}</td>
-                  <td class="py-4 px-4">
-                    <span 
-                      class="px-3 py-1 rounded-full text-xs font-semibold"
-                      :class="{
-                        'bg-green-500/20 text-green-400': transaction.status === 'succeeded',
-                        'bg-yellow-500/20 text-yellow-400': transaction.status === 'pending',
-                        'bg-red-500/20 text-red-400': transaction.status === 'failed'
-                      }"
-                    >
-                      {{ transaction.status.toUpperCase() }}
-                    </span>
-                  </td>
-                  <td class="py-4 px-4">
-                    <NuxtLink 
-                      :to="`/admin/orders/${transaction.orderId}`"
-                      class="text-brand-400 hover:text-brand-300 text-sm font-medium transition-colors"
-                    >
-                      View Order →
-                    </NuxtLink>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+        <div v-else class="overflow-x-auto">
+          <table class="w-full">
+            <thead>
+              <tr class="border-b border-slate-800 bg-slate-800/30">
+                <th class="text-left py-4 px-6 text-slate-300 font-semibold text-xs uppercase tracking-wide">Date</th>
+                <th class="text-left py-4 px-6 text-slate-300 font-semibold text-xs uppercase tracking-wide">Customer</th>
+                <th class="text-left py-4 px-6 text-slate-300 font-semibold text-xs uppercase tracking-wide">Package</th>
+                <th class="text-left py-4 px-6 text-slate-300 font-semibold text-xs uppercase tracking-wide">Amount</th>
+                <th class="text-left py-4 px-6 text-slate-300 font-semibold text-xs uppercase tracking-wide">Status</th>
+                <th class="text-left py-4 px-6 text-slate-300 font-semibold text-xs uppercase tracking-wide">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr 
+                v-for="transaction in metrics.recentTransactions" 
+                :key="transaction.id"
+                class="border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors group"
+              >
+                <td class="py-4 px-6 text-slate-400">{{ formatDate(transaction.date) }}</td>
+                <td class="py-4 px-6 text-white font-medium">{{ transaction.customerName }}</td>
+                <td class="py-4 px-6 text-slate-300">{{ transaction.packageName }}</td>
+                <td class="py-4 px-6 text-white font-semibold">{{ formatCurrency(transaction.amount) }}</td>
+                <td class="py-4 px-6">
+                  <span 
+                    :class="[
+                      'px-3 py-1 text-xs font-semibold rounded-full',
+                      getTransactionStatusClasses(transaction.status)
+                    ]"
+                  >
+                    {{ transaction.status.toUpperCase() }}
+                  </span>
+                </td>
+                <td class="py-4 px-6">
+                  <NuxtLink 
+                    :to="`/admin/orders/${transaction.orderId}`"
+                    class="text-cyan-400 hover:text-cyan-300 text-sm font-medium transition-colors flex items-center gap-1 opacity-0 group-hover:opacity-100"
+                  >
+                    View Order
+                    <Icon name="mdi:arrow-right" class="w-4 h-4" />
+                  </NuxtLink>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Info Section -->
+    <div class="mt-6 bg-blue-500/10 border border-blue-500/30 rounded-2xl p-6">
+      <div class="flex gap-3">
+        <Icon name="mdi:information" class="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+        <div class="text-sm text-slate-300 space-y-2">
+          <p>
+            <strong class="text-white">Note:</strong> Revenue figures are based on completed payments processed through Stripe.
+          </p>
+          <p>
+            Pending payments represent quotes that have been accepted but not yet paid.
+          </p>
         </div>
       </div>
     </div>
@@ -206,7 +244,7 @@ const metrics = computed(() => {
     revenueByPackage: financeData.value.revenueByService.map((item, idx) => ({
       name: item.service,
       revenue: item.revenue,
-      color: ['bg-brand-500', 'bg-purple-500', 'bg-cyan-500', 'bg-green-500'][idx % 4]
+      color: ['bg-cyan-500', 'bg-purple-500', 'bg-emerald-500', 'bg-amber-500', 'bg-blue-500', 'bg-pink-500'][idx % 6]
     })),
     recentTransactions: financeData.value.recentTransactions || []
   }
@@ -247,11 +285,23 @@ const formatCurrency = (amountInCents: number | null) => {
   }).format(amountInCents / 100)
 }
 
-const navigateToOrders = () => {
-  router.push('/admin/orders')
+const getTransactionStatusClasses = (status: string) => {
+  const classes: Record<string, string> = {
+    succeeded: 'bg-emerald-500/20 text-emerald-400',
+    pending: 'bg-amber-500/20 text-amber-400',
+    failed: 'bg-red-500/20 text-red-400'
+  }
+  return classes[status] || 'bg-slate-500/20 text-slate-400'
 }
 
 onMounted(() => {
   fetchMetrics()
+})
+
+useHead({
+  title: 'Finance Dashboard - Elite Sports DJ Admin',
+  meta: [
+    { name: 'description', content: 'View revenue metrics and payment analytics' }
+  ]
 })
 </script>

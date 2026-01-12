@@ -112,20 +112,20 @@
       </div>
     </div>
 
-      <!-- Info Section -->
-      <div class="mt-6 card p-6 bg-blue-500/10 border-blue-500/30">
-        <div class="flex gap-3">
-          <Icon name="mdi:information" class="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
-          <div class="text-sm text-slate-300 space-y-2">
-            <p>
-              <strong class="text-white">Note:</strong> Changes to packages will be reflected immediately on the public request form.
-            </p>
-            <p>
-              The package slug is used as the unique identifier and cannot be changed after creation.
-            </p>
-          </div>
+    <!-- Info Section -->
+    <div class="mt-6 bg-blue-500/10 border border-blue-500/30 rounded-2xl p-6">
+      <div class="flex gap-3">
+        <Icon name="mdi:information" class="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+        <div class="text-sm text-slate-300 space-y-2">
+          <p>
+            <strong class="text-white">Note:</strong> Changes to packages will be reflected immediately on the public request form.
+          </p>
+          <p>
+            The package slug is used as the unique identifier and cannot be changed after creation.
+          </p>
         </div>
       </div>
+    </div>
 
     <!-- Create/Edit Modal -->
     <AdminPackageFormModal

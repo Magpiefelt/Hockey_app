@@ -1,9 +1,18 @@
 <template>
   <div class="max-w-7xl mx-auto">
     <!-- Header -->
-    <div class="mb-8">
-      <h1 class="text-2xl lg:text-3xl font-bold text-white mb-1">Calendar</h1>
-      <p class="text-slate-400">Manage availability and block dates for your business</p>
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+      <div>
+        <h1 class="text-2xl lg:text-3xl font-bold text-white mb-1">Calendar</h1>
+        <p class="text-slate-400">Manage availability and block dates for your business</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <div class="px-4 py-2 bg-slate-800/50 border border-slate-700 rounded-xl">
+          <span class="text-sm text-slate-400">
+            <span class="font-semibold text-white">{{ overrides.length }}</span> blocked dates
+          </span>
+        </div>
+      </div>
     </div>
 
     <!-- Loading State -->
@@ -35,6 +44,21 @@
         :overrides="overrides"
         @refresh="fetchOverrides"
       />
+    </div>
+
+    <!-- Info Section -->
+    <div class="mt-6 bg-blue-500/10 border border-blue-500/30 rounded-2xl p-6">
+      <div class="flex gap-3">
+        <Icon name="mdi:information" class="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+        <div class="text-sm text-slate-300 space-y-2">
+          <p>
+            <strong class="text-white">Note:</strong> Blocked dates will automatically appear as unavailable on the public calendar and in the booking system.
+          </p>
+          <p>
+            Dates with confirmed orders are also automatically shown as unavailable and don't need to be manually blocked.
+          </p>
+        </div>
+      </div>
     </div>
   </div>
 </template>

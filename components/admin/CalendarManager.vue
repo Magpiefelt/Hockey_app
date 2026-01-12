@@ -1,19 +1,19 @@
 <template>
   <div class="space-y-6">
     <!-- Add Date Block Section -->
-    <div class="card p-6">
-      <h2 class="text-xl font-bold text-white mb-4 flex items-center gap-2">
-        <Icon name="mdi:calendar-plus" class="w-6 h-6 text-brand-500" />
+    <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
+      <h2 class="text-xl font-bold text-white mb-6 flex items-center gap-2">
+        <Icon name="mdi:calendar-plus" class="w-6 h-6 text-cyan-400" />
         Block Dates
       </h2>
       
-      <div class="grid md:grid-cols-2 gap-6">
+      <div class="grid lg:grid-cols-2 gap-8">
         <!-- Calendar Selection -->
         <div class="calendar-section">
-          <label class="block text-sm font-medium text-slate-300 mb-2">
+          <label class="block text-sm font-medium text-slate-400 mb-3">
             Select Date(s) to Block
           </label>
-          <div class="calendar-container">
+          <div class="calendar-container bg-slate-800/50 border border-slate-700 rounded-xl p-4">
             <VueDatePicker 
               v-model="selectedDates"
               :dark="true"
@@ -34,73 +34,75 @@
         </div>
 
         <!-- Block Details Form -->
-        <div class="form-section">
-          <div class="space-y-4">
-            <UiInput
+        <div class="form-section space-y-5">
+          <div>
+            <label class="block text-sm font-medium text-slate-400 mb-2">Reason *</label>
+            <input
               v-model="blockForm.reason"
-              label="Reason *"
+              type="text"
               placeholder="e.g., Vacation, Holiday, Personal"
-              :error="formErrors.reason"
+              class="w-full px-4 py-2.5 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
+              :class="{ 'border-red-500/50': formErrors.reason }"
             />
+            <p v-if="formErrors.reason" class="mt-1 text-sm text-red-400">{{ formErrors.reason }}</p>
+          </div>
 
-            <UiTextarea
+          <div>
+            <label class="block text-sm font-medium text-slate-400 mb-2">Description (Optional)</label>
+            <textarea
               v-model="blockForm.description"
-              label="Description (Optional)"
               placeholder="Additional details about this block..."
               rows="4"
-            />
+              class="w-full px-4 py-2.5 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all resize-none"
+            ></textarea>
+          </div>
 
-            <!-- Date Selection Display -->
-            <div v-if="dateSelectionDisplay" class="date-selection-info">
-              <Icon name="mdi:calendar-range" class="w-4 h-4 text-brand-400" />
-              <span>{{ dateSelectionDisplay }}</span>
-            </div>
+          <!-- Date Selection Display -->
+          <div v-if="dateSelectionDisplay" class="flex items-center gap-2 px-4 py-3 bg-cyan-500/10 border border-cyan-500/30 rounded-xl">
+            <Icon name="mdi:calendar-range" class="w-5 h-5 text-cyan-400" />
+            <span class="text-sm text-cyan-300">{{ dateSelectionDisplay }}</span>
+          </div>
 
-            <!-- Action Buttons -->
-            <div class="button-group">
-              <UiButton
-                @click="addBlock"
-                :disabled="!canAddBlock || isAdding"
-                :loading="isAdding"
-                class="flex-1"
+          <!-- Action Buttons -->
+          <div class="flex gap-3">
+            <button
+              @click="addBlock"
+              :disabled="!canAddBlock || isAdding"
+              class="flex-1 px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-semibold rounded-xl transition-all shadow-lg shadow-cyan-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              <div v-if="isAdding" class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              <Icon v-else name="mdi:plus" class="w-5 h-5" />
+              Add Block
+            </button>
+
+            <button
+              @click="clearForm"
+              class="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white rounded-xl transition-all font-medium"
+            >
+              Clear
+            </button>
+          </div>
+
+          <!-- Quick Block Section -->
+          <div class="pt-5 border-t border-slate-800">
+            <p class="text-sm font-medium text-slate-400 mb-3">Quick Actions</p>
+            <div class="flex gap-3">
+              <button
+                @click="quickBlockToday"
+                :disabled="isQuickBlocking"
+                class="flex-1 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white rounded-xl transition-all font-medium disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                <Icon name="mdi:plus" class="w-5 h-5 mr-2" />
-                Add Block
-              </UiButton>
-
-              <UiButton
-                @click="clearForm"
-                variant="outline"
+                <Icon name="mdi:calendar-today" class="w-4 h-4" />
+                Block Today
+              </button>
+              <button
+                @click="quickBlockTomorrow"
+                :disabled="isQuickBlocking"
+                class="flex-1 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white rounded-xl transition-all font-medium disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                Clear
-              </UiButton>
-            </div>
-
-            <!-- Quick Block Section -->
-            <div class="mt-4 pt-4 border-t border-white/10">
-              <p class="text-sm text-slate-400 mb-2">Quick Actions</p>
-              <div class="flex gap-2">
-                <UiButton
-                  @click="quickBlockToday"
-                  variant="outline"
-                  size="sm"
-                  :loading="isQuickBlocking"
-                  :disabled="isQuickBlocking"
-                >
-                  <Icon name="mdi:calendar-today" class="w-4 h-4 mr-1" />
-                  Block Today
-                </UiButton>
-                <UiButton
-                  @click="quickBlockTomorrow"
-                  variant="outline"
-                  size="sm"
-                  :loading="isQuickBlocking"
-                  :disabled="isQuickBlocking"
-                >
-                  <Icon name="mdi:calendar-arrow-right" class="w-4 h-4 mr-1" />
-                  Block Tomorrow
-                </UiButton>
-              </div>
+                <Icon name="mdi:calendar-arrow-right" class="w-4 h-4" />
+                Block Tomorrow
+              </button>
             </div>
           </div>
         </div>
@@ -108,73 +110,61 @@
     </div>
 
     <!-- Current Blocks Section -->
-    <div class="card p-6">
-      <div class="flex items-center justify-between mb-4">
+    <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
+      <div class="flex items-center justify-between mb-6">
         <h2 class="text-xl font-bold text-white flex items-center gap-2">
-          <Icon name="mdi:calendar-remove" class="w-6 h-6 text-accent-500" />
+          <Icon name="mdi:calendar-remove" class="w-6 h-6 text-amber-400" />
           Current Blocks
         </h2>
-        <span class="text-sm text-slate-400">
+        <span class="px-3 py-1 bg-slate-800 rounded-lg text-sm text-slate-400">
           {{ overrides.length }} active block{{ overrides.length !== 1 ? 's' : '' }}
         </span>
       </div>
 
       <div v-if="overrides.length === 0" class="text-center py-12">
-        <Icon name="mdi:calendar-check" class="w-16 h-16 text-slate-600 mx-auto mb-3" />
-        <p class="text-slate-400">No dates are currently blocked</p>
-        <p class="text-sm text-slate-500 mt-1">Use the form above to block dates</p>
+        <div class="w-16 h-16 rounded-2xl bg-slate-800 flex items-center justify-center mx-auto mb-4">
+          <Icon name="mdi:calendar-check" class="w-8 h-8 text-slate-600" />
+        </div>
+        <p class="text-slate-400 mb-1">No dates are currently blocked</p>
+        <p class="text-sm text-slate-500">Use the form above to block dates</p>
       </div>
 
       <div v-else class="space-y-3">
         <div
           v-for="override in sortedOverrides"
           :key="override.id"
-          class="flex items-center justify-between p-4 rounded-lg bg-dark-secondary border border-white/10 hover:border-brand-500/30 transition-colors"
+          class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-slate-800/50 border border-slate-700 rounded-xl hover:border-slate-600 transition-colors"
         >
-          <div class="flex-1">
-            <div class="flex items-center gap-3 mb-1">
-              <Icon name="mdi:calendar-blank" class="w-5 h-5 text-brand-400" />
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-3 mb-2">
+              <Icon name="mdi:calendar-blank" class="w-5 h-5 text-cyan-400 flex-shrink-0" />
               <span class="text-white font-semibold">
                 {{ formatDateRange(override.date_from, override.date_to) }}
               </span>
             </div>
-            <p class="text-sm text-slate-300 ml-8">
-              <span class="font-medium">Reason:</span> {{ override.reason }}
-            </p>
-            <p v-if="override.description" class="text-sm text-slate-400 ml-8 mt-1">
-              {{ override.description }}
-            </p>
-            <p class="text-xs text-slate-500 ml-8 mt-1">
-              Added {{ formatDate(override.created_at) }}
-              <span v-if="override.created_by_name"> by {{ override.created_by_name }}</span>
-            </p>
+            <div class="ml-8 space-y-1">
+              <p class="text-sm text-slate-300">
+                <span class="text-slate-500">Reason:</span> {{ override.reason }}
+              </p>
+              <p v-if="override.description" class="text-sm text-slate-400">
+                {{ override.description }}
+              </p>
+              <p class="text-xs text-slate-500">
+                Added {{ formatDate(override.created_at) }}
+                <span v-if="override.created_by_name"> by {{ override.created_by_name }}</span>
+              </p>
+            </div>
           </div>
 
-          <UiButton
+          <button
             @click="removeBlock(override.id)"
-            variant="outline"
-            size="sm"
-            :loading="removingId === override.id"
             :disabled="removingId !== null"
+            class="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 font-medium rounded-xl transition-colors disabled:opacity-50 flex items-center gap-2 flex-shrink-0"
           >
-            <Icon name="mdi:delete" class="w-4 h-4 mr-1" />
+            <div v-if="removingId === override.id" class="w-4 h-4 border-2 border-red-400/30 border-t-red-400 rounded-full animate-spin"></div>
+            <Icon v-else name="mdi:delete" class="w-4 h-4" />
             Remove
-          </UiButton>
-        </div>
-      </div>
-    </div>
-
-    <!-- Info Section -->
-    <div class="card p-6 bg-blue-500/10 border-blue-500/30">
-      <div class="flex gap-3">
-        <Icon name="mdi:information" class="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
-        <div class="text-sm text-slate-300 space-y-2">
-          <p>
-            <strong class="text-white">Note:</strong> Blocked dates will automatically appear as unavailable on the public calendar and in the booking system.
-          </p>
-          <p>
-            Dates with confirmed orders are also automatically shown as unavailable and don't need to be manually blocked.
-          </p>
+          </button>
         </div>
       </div>
     </div>
@@ -317,6 +307,7 @@ const formatDisplayDate = (date: Date): string => {
   if (!isValidDate(date)) {
     return 'Invalid date'
   }
+  
   return new Intl.DateTimeFormat('en-US', {
     year: 'numeric',
     month: 'short',
@@ -522,7 +513,7 @@ const quickBlockTomorrow = () => {
   z-index: 1;
 }
 
-/* Calendar container - FIXED: Fill width properly */
+/* Calendar container */
 .calendar-container {
   display: flex;
   justify-content: center;
@@ -530,7 +521,7 @@ const quickBlockTomorrow = () => {
   overflow: hidden;
 }
 
-/* Form section - ensure it's above calendar */
+/* Form section */
 .form-section {
   position: relative;
   z-index: 2;
@@ -538,29 +529,9 @@ const quickBlockTomorrow = () => {
   flex-direction: column;
 }
 
-/* Date selection info box */
-.date-selection-info {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem;
-  background-color: rgba(30, 41, 59, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
-  color: #94a3b8;
-}
-
-/* Button group */
-.button-group {
-  display: flex;
-  gap: 0.75rem;
-  margin-top: 1rem;
-}
-
 /* Override vue-datepicker styles to match dark theme */
 :deep(.dp__theme_dark) {
-  --dp-background-color: #1e293b;
+  --dp-background-color: transparent;
   --dp-text-color: #ffffff;
   --dp-hover-color: #334155;
   --dp-hover-text-color: #ffffff;
@@ -568,8 +539,8 @@ const quickBlockTomorrow = () => {
   --dp-primary-color: #06b6d4;
   --dp-primary-text-color: #ffffff;
   --dp-secondary-color: #475569;
-  --dp-border-color: rgba(255, 255, 255, 0.1);
-  --dp-menu-border-color: rgba(255, 255, 255, 0.1);
+  --dp-border-color: transparent;
+  --dp-menu-border-color: transparent;
   --dp-border-color-hover: #06b6d4;
   --dp-disabled-color: #475569;
   --dp-scroll-bar-background: #334155;
@@ -578,7 +549,7 @@ const quickBlockTomorrow = () => {
   --dp-highlight-color: rgba(6, 182, 212, 0.1);
 }
 
-/* Main container - MUST fill width */
+/* Main container */
 :deep(.dp__main) {
   width: 100% !important;
   max-width: 100% !important;
@@ -591,22 +562,13 @@ const quickBlockTomorrow = () => {
   max-width: 100% !important;
 }
 
-/* Override the inline style div that sets --dp-menu-width */
-:deep(.dp__outer_menu_wrap > .dp__menu) {
-  width: 100% !important;
-  max-width: 100% !important;
-}
-
-:deep(.dp__menu > div[style*="--dp-menu-width"]) {
-  width: 100% !important;
-  max-width: 100% !important;
-  --dp-menu-width: 100% !important;
-}
-
 /* Menu container */
 :deep(.dp__menu) {
   width: 100% !important;
   max-width: 100% !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 :deep(.dp__menu_inner) {
@@ -625,7 +587,7 @@ const quickBlockTomorrow = () => {
   width: 100% !important;
 }
 
-/* Hide the empty first child div (input wrapper in inline mode) */
+/* Hide the empty first child div */
 :deep(.dp__flex_display > div:first-child:not(.dp__outer_menu_wrap)) {
   display: none !important;
 }
@@ -648,7 +610,7 @@ const quickBlockTomorrow = () => {
   font-family: inherit;
 }
 
-/* Calendar rows - flexbox for equal distribution */
+/* Calendar rows */
 :deep(.dp__calendar_row) {
   display: flex !important;
   width: 100% !important;
@@ -656,7 +618,7 @@ const quickBlockTomorrow = () => {
   gap: 4px;
 }
 
-/* Calendar items - equal flex sizing */
+/* Calendar items */
 :deep(.dp__calendar_item) {
   flex: 1 1 0 !important;
   min-width: 0 !important;
@@ -694,7 +656,7 @@ const quickBlockTomorrow = () => {
   height: auto !important;
   aspect-ratio: 1 / 1;
   min-height: 36px;
-  border-radius: 0.375rem;
+  border-radius: 0.5rem;
   font-size: 0.875rem;
   font-weight: 500;
   transition: all 0.2s ease;
@@ -723,7 +685,7 @@ const quickBlockTomorrow = () => {
   font-weight: 700;
   color: #ffffff;
   padding: 0.375rem 0.75rem;
-  border-radius: 0.375rem;
+  border-radius: 0.5rem;
 }
 
 :deep(.dp__month_year_select:hover) {
@@ -734,7 +696,7 @@ const quickBlockTomorrow = () => {
 :deep(.dp__inner_nav) {
   width: 36px;
   height: 36px;
-  border-radius: 0.375rem;
+  border-radius: 0.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -767,7 +729,7 @@ const quickBlockTomorrow = () => {
   background-color: rgba(6, 182, 212, 0.2);
 }
 
-/* Hide time picker elements completely */
+/* Hide time picker elements */
 :deep(.dp__time_input),
 :deep(.dp__time_col),
 :deep(.dp__time_display),
@@ -784,37 +746,10 @@ const quickBlockTomorrow = () => {
   overflow: hidden !important;
 }
 
-/* Ensure proper stacking context */
-:deep(.dp__menu) {
-  position: relative;
-  z-index: 1;
-}
-
-/* Hide any action row or button container */
-:deep(.dp__action_row) {
-  display: none !important;
-}
-
 /* Mobile responsive */
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .calendar-container {
     max-width: 100%;
-  }
-  
-  :deep(.dp__main) {
-    max-width: 100%;
-  }
-  
-  :deep(.dp__calendar) {
-    max-width: 100%;
-  }
-  
-  .button-group {
-    flex-direction: column;
-  }
-  
-  .button-group > * {
-    width: 100%;
   }
 }
 </style>

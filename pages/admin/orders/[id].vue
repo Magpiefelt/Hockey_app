@@ -1,90 +1,107 @@
 <template>
-  <div class="px-6 py-8 max-w-6xl">
+  <div class="max-w-7xl mx-auto">
     <!-- Breadcrumbs -->
     <nav class="flex items-center gap-2 text-sm mb-6">
       <NuxtLink to="/admin" class="text-slate-400 hover:text-white transition-colors">
         Dashboard
       </NuxtLink>
-      <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-      </svg>
+      <Icon name="mdi:chevron-right" class="w-4 h-4 text-slate-600" />
       <NuxtLink to="/admin/orders" class="text-slate-400 hover:text-white transition-colors">
         Orders
       </NuxtLink>
-      <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-      </svg>
+      <Icon name="mdi:chevron-right" class="w-4 h-4 text-slate-600" />
       <span class="text-white font-medium">Order #{{ orderId }}</span>
     </nav>
 
     <!-- Loading State -->
     <div v-if="loading" class="flex justify-center items-center py-20">
-      <div class="animate-spin h-12 w-12 text-brand-primary">
-        <svg fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
+      <div class="flex flex-col items-center gap-4">
+        <div class="w-12 h-12 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin"></div>
+        <p class="text-slate-400">Loading order details...</p>
       </div>
     </div>
 
     <!-- Error State -->
-    <div v-else-if="error" class="bg-red-500/10 border border-red-500/30 rounded-lg p-6 text-center">
-      <p class="text-red-600">{{ error }}</p>
+    <div v-else-if="error" class="bg-red-500/10 border border-red-500/30 rounded-2xl p-8 text-center">
+      <div class="w-16 h-16 rounded-2xl bg-red-500/20 flex items-center justify-center mx-auto mb-4">
+        <Icon name="mdi:alert-circle" class="w-8 h-8 text-red-400" />
+      </div>
+      <p class="text-red-400 text-lg mb-4">{{ error }}</p>
+      <button 
+        @click="fetchOrder"
+        class="px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-xl transition-all"
+      >
+        Try Again
+      </button>
     </div>
 
     <!-- Order Details -->
     <div v-else-if="orderData" class="space-y-6">
-      <!-- Header with Quick Actions -->
-      <div class="bg-dark-secondary border border-white/10 rounded-lg p-6">
-        <div class="flex items-start justify-between mb-6">
-          <div>
-            <h1 class="text-3xl font-bold text-white mb-2">Order #{{ orderData.order.id }}</h1>
-            <p class="text-slate-400">{{ formatDateTime(orderData.order.createdAt) }}</p>
+      <!-- Header Card -->
+      <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
+        <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
+          <div class="flex items-start gap-4">
+            <div class="w-14 h-14 rounded-xl bg-slate-800 flex items-center justify-center flex-shrink-0">
+              <span class="text-lg font-bold text-slate-400">#{{ orderData.order.id }}</span>
+            </div>
+            <div>
+              <h1 class="text-2xl lg:text-3xl font-bold text-white mb-1">{{ orderData.order.name }}</h1>
+              <p class="text-slate-400">{{ orderData.order.emailSnapshot }}</p>
+              <p class="text-sm text-slate-500 mt-1">Created {{ formatDateTime(orderData.order.createdAt) }}</p>
+            </div>
           </div>
           
-          <!-- Quick Action Buttons -->
-          <div class="flex items-center gap-3">
+          <!-- Quick Actions -->
+          <div class="flex flex-wrap items-center gap-3">
             <button
               v-if="canSubmitQuote"
               @click="showEnhancedQuoteModal = true"
-              class="px-4 py-2 bg-gradient-to-r from-brand-500 to-accent-500 text-white font-semibold rounded-lg hover:from-brand-600 hover:to-accent-600 transition-all shadow-lg"
+              class="px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-semibold rounded-xl transition-all shadow-lg shadow-cyan-500/20 flex items-center gap-2"
             >
+              <Icon name="mdi:currency-usd" class="w-5 h-5" />
               {{ orderData.order.quotedAmount ? 'Revise Quote' : 'Submit Quote' }}
             </button>
             
             <button
               @click="showCustomerDrawer = true"
-              class="px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors"
+              class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white rounded-xl transition-all font-medium flex items-center gap-2"
             >
+              <Icon name="mdi:account" class="w-4 h-4" />
               View Customer
             </button>
           </div>
         </div>
         
         <!-- Status Changer -->
-        <OrderStatusChanger
-          :order-id="orderData.order.id"
-          :current-status="orderData.order.status"
-          @status-changed="handleStatusChanged"
-        />
+        <div class="mt-6 pt-6 border-t border-slate-800">
+          <OrderStatusChanger
+            :order-id="orderData.order.id"
+            :current-status="orderData.order.status"
+            @status-changed="handleStatusChanged"
+          />
+        </div>
       </div>
 
-      <!-- Two Column Layout for Key Info -->
+      <!-- Main Content Grid -->
       <div class="grid lg:grid-cols-3 gap-6">
-        <!-- Left Column - Customer & Order Info -->
+        <!-- Left Column - Main Content -->
         <div class="lg:col-span-2 space-y-6">
-          <!-- Customer Information -->
-          <div class="bg-dark-secondary border border-white/10 rounded-lg p-6">
-            <div class="flex items-center justify-between mb-4">
-              <h2 class="text-2xl font-bold text-white">Customer Information</h2>
+          <!-- Customer & Order Info -->
+          <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
+            <div class="flex items-center justify-between mb-6">
+              <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                <Icon name="mdi:account-circle" class="w-6 h-6 text-cyan-400" />
+                Customer Information
+              </h2>
               <button
                 @click="showCustomerDrawer = true"
-                class="text-brand-400 hover:text-brand-300 text-sm font-medium transition-colors"
+                class="text-cyan-400 hover:text-cyan-300 text-sm font-medium transition-colors flex items-center gap-1"
               >
-                View Full Profile →
+                View Full Profile
+                <Icon name="mdi:arrow-right" class="w-4 h-4" />
               </button>
             </div>
-            <div class="grid md:grid-cols-2 gap-4">
+            <div class="grid sm:grid-cols-2 gap-6">
               <div>
                 <p class="text-sm text-slate-400 mb-1">Name</p>
                 <p class="text-white font-medium">{{ orderData.order.name }}</p>
@@ -104,8 +121,7 @@
                 <span 
                   :class="[
                     'inline-block px-3 py-1 text-xs font-semibold rounded-full',
-                    getStatusColor(orderData.order.status),
-                    'text-white'
+                    getStatusClasses(orderData.order.status)
                   ]"
                 >
                   {{ getStatusLabel(orderData.order.status) }}
@@ -122,14 +138,17 @@
             </div>
           </div>
 
-          <!-- Quote Section - Enhanced -->
-          <div class="bg-gradient-to-br from-[#5BA3D0]/10 to-[#4A90BA]/10 border border-brand-primary/50 rounded-lg p-6">
-            <div class="flex items-center justify-between mb-4">
-              <h2 class="text-2xl font-bold text-white">Quote Management</h2>
+          <!-- Quote Management -->
+          <div class="bg-gradient-to-br from-cyan-500/10 to-blue-600/10 border border-cyan-500/30 rounded-2xl p-6">
+            <div class="flex items-center justify-between mb-6">
+              <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                <Icon name="mdi:receipt-text" class="w-6 h-6 text-cyan-400" />
+                Quote Management
+              </h2>
               <div class="flex items-center gap-2">
                 <span 
                   v-if="orderData.order.quotedAmount"
-                  class="text-2xl font-bold text-brand-400"
+                  class="text-2xl font-bold text-cyan-400"
                 >
                   {{ formatPrice(orderData.order.quotedAmount) }}
                 </span>
@@ -138,46 +157,55 @@
             </div>
             
             <!-- Quote Status Indicators -->
-            <div v-if="orderData.order.quotedAmount" class="grid grid-cols-3 gap-4 mb-4">
-              <div class="bg-white/5 rounded-lg p-3 text-center">
+            <div v-if="orderData.order.quotedAmount" class="grid grid-cols-3 gap-4 mb-6">
+              <div class="bg-slate-800/50 rounded-xl p-4 text-center">
                 <p class="text-xs text-slate-400 mb-1">Version</p>
-                <p class="text-lg font-bold text-white">v{{ orderData.order.currentQuoteVersion || 1 }}</p>
+                <p class="text-xl font-bold text-white">v{{ orderData.order.currentQuoteVersion || 1 }}</p>
               </div>
-              <div class="bg-white/5 rounded-lg p-3 text-center">
+              <div class="bg-slate-800/50 rounded-xl p-4 text-center">
                 <p class="text-xs text-slate-400 mb-1">Viewed</p>
-                <p class="text-lg font-bold" :class="orderData.order.quoteViewedAt ? 'text-green-400' : 'text-slate-500'">
-                  {{ orderData.order.quoteViewedAt ? '✓' : '—' }}
-                </p>
+                <div class="flex items-center justify-center">
+                  <Icon 
+                    :name="orderData.order.quoteViewedAt ? 'mdi:check-circle' : 'mdi:clock-outline'" 
+                    :class="orderData.order.quoteViewedAt ? 'w-6 h-6 text-emerald-400' : 'w-6 h-6 text-slate-500'" 
+                  />
+                </div>
               </div>
-              <div class="bg-white/5 rounded-lg p-3 text-center">
+              <div class="bg-slate-800/50 rounded-xl p-4 text-center">
                 <p class="text-xs text-slate-400 mb-1">Accepted</p>
-                <p class="text-lg font-bold" :class="orderData.order.quoteAcceptedAt ? 'text-green-400' : 'text-slate-500'">
-                  {{ orderData.order.quoteAcceptedAt ? '✓' : '—' }}
-                </p>
+                <div class="flex items-center justify-center">
+                  <Icon 
+                    :name="orderData.order.quoteAcceptedAt ? 'mdi:check-circle' : 'mdi:clock-outline'" 
+                    :class="orderData.order.quoteAcceptedAt ? 'w-6 h-6 text-emerald-400' : 'w-6 h-6 text-slate-500'" 
+                  />
+                </div>
               </div>
             </div>
             
             <!-- Quote Actions -->
-            <div class="flex gap-3">
+            <div class="flex flex-wrap gap-3">
               <button
                 v-if="!orderData.order.quotedAmount"
                 @click="showEnhancedQuoteModal = true"
-                class="flex-1 px-6 py-3 bg-gradient-to-r from-brand-500 to-accent-500 text-white font-bold rounded-lg hover:from-brand-600 hover:to-accent-600 transition-all"
+                class="flex-1 px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-bold rounded-xl transition-all shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2"
               >
+                <Icon name="mdi:send" class="w-5 h-5" />
                 Submit Quote
               </button>
               <template v-else>
                 <button
                   @click="showRevisionModal = true"
-                  class="flex-1 px-6 py-3 bg-amber-500/20 text-amber-400 font-semibold rounded-lg hover:bg-amber-500/30 transition-colors"
+                  class="flex-1 px-6 py-3 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 font-semibold rounded-xl transition-colors flex items-center justify-center gap-2"
                 >
+                  <Icon name="mdi:pencil" class="w-5 h-5" />
                   Revise Quote
                 </button>
                 <button
                   @click="resendQuoteEmail"
                   :disabled="resendingEmail"
-                  class="px-6 py-3 bg-white/10 text-white font-semibold rounded-lg hover:bg-white/20 transition-colors disabled:opacity-50"
+                  class="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white font-semibold rounded-xl transition-colors disabled:opacity-50 flex items-center gap-2"
                 >
+                  <Icon :name="resendingEmail ? 'mdi:loading' : 'mdi:email-fast'" :class="resendingEmail ? 'w-5 h-5 animate-spin' : 'w-5 h-5'" />
                   {{ resendingEmail ? 'Sending...' : 'Resend Email' }}
                 </button>
               </template>
@@ -185,75 +213,87 @@
           </div>
 
           <!-- Customer Notes -->
-          <div v-if="orderData.order.notes" class="bg-dark-secondary border border-white/10 rounded-lg p-6">
-            <h2 class="text-2xl font-bold text-white mb-4">Customer Notes</h2>
-            <p class="text-slate-200 whitespace-pre-wrap">{{ orderData.order.notes }}</p>
+          <div v-if="orderData.order.notes" class="bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
+            <h2 class="text-xl font-bold text-white mb-4 flex items-center gap-2">
+              <Icon name="mdi:note-text" class="w-6 h-6 text-purple-400" />
+              Customer Notes
+            </h2>
+            <p class="text-slate-300 whitespace-pre-wrap leading-relaxed">{{ orderData.order.notes }}</p>
           </div>
 
           <!-- Form Submission Details -->
-          <div v-if="orderData.order.formData" class="bg-dark-secondary border border-white/10 rounded-lg p-6">
-            <h2 class="text-2xl font-bold text-white mb-4">Form Details</h2>
-            <div class="space-y-4">
-              <div v-if="orderData.order.formData.teamName">
-                <h3 class="text-lg font-semibold text-white mb-2">Team Information</h3>
-                <p class="text-slate-200"><strong>Team Name:</strong> {{ orderData.order.formData.teamName }}</p>
+          <div v-if="orderData.order.formData" class="bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
+            <h2 class="text-xl font-bold text-white mb-6 flex items-center gap-2">
+              <Icon name="mdi:form-select" class="w-6 h-6 text-blue-400" />
+              Form Details
+            </h2>
+            <div class="space-y-6">
+              <div v-if="orderData.order.formData.teamName" class="pb-4 border-b border-slate-800">
+                <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-2">Team Information</h3>
+                <p class="text-white">{{ orderData.order.formData.teamName }}</p>
               </div>
               
-              <div v-if="orderData.order.formData.rosterPlayers">
-                <h3 class="text-lg font-semibold text-white mb-2">Roster</h3>
-                <p class="text-slate-200 mb-2"><strong>Method:</strong> {{ orderData.order.formData.rosterMethod || 'Manual' }}</p>
-                <ul v-if="Array.isArray(orderData.order.formData.rosterPlayers)" class="list-disc list-inside text-slate-200">
-                  <li v-for="(player, idx) in orderData.order.formData.rosterPlayers" :key="idx">{{ player }}</li>
+              <div v-if="orderData.order.formData.rosterPlayers" class="pb-4 border-b border-slate-800">
+                <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-2">Roster</h3>
+                <p class="text-slate-400 text-sm mb-2">Method: {{ orderData.order.formData.rosterMethod || 'Manual' }}</p>
+                <ul v-if="Array.isArray(orderData.order.formData.rosterPlayers)" class="grid sm:grid-cols-2 gap-2">
+                  <li v-for="(player, idx) in orderData.order.formData.rosterPlayers" :key="idx" class="text-white bg-slate-800/50 px-3 py-2 rounded-lg text-sm">
+                    {{ player }}
+                  </li>
                 </ul>
               </div>
               
-              <div v-if="orderData.order.formData.introSong">
-                <h3 class="text-lg font-semibold text-white mb-2">Intro Song</h3>
-                <p class="text-slate-200">{{ formatSongInfo(orderData.order.formData.introSong) }}</p>
+              <div v-if="orderData.order.formData.introSong" class="pb-4 border-b border-slate-800">
+                <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-2">Intro Song</h3>
+                <p class="text-white">{{ formatSongInfo(orderData.order.formData.introSong) }}</p>
               </div>
               
-              <div v-if="orderData.order.formData.warmupSongs">
-                <h3 class="text-lg font-semibold text-white mb-2">Warmup Songs</h3>
-                <p class="text-slate-200">{{ formatSongInfo(orderData.order.formData.warmupSongs) }}</p>
+              <div v-if="orderData.order.formData.warmupSongs" class="pb-4 border-b border-slate-800">
+                <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-2">Warmup Songs</h3>
+                <p class="text-white">{{ formatSongInfo(orderData.order.formData.warmupSongs) }}</p>
               </div>
               
-              <div v-if="orderData.order.formData.goalHorn">
-                <h3 class="text-lg font-semibold text-white mb-2">Goal Horn</h3>
-                <p class="text-slate-200">{{ formatSongInfo(orderData.order.formData.goalHorn) }}</p>
+              <div v-if="orderData.order.formData.goalHorn" class="pb-4 border-b border-slate-800">
+                <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-2">Goal Horn</h3>
+                <p class="text-white">{{ formatSongInfo(orderData.order.formData.goalHorn) }}</p>
               </div>
               
-              <div v-if="orderData.order.formData.goalSong">
-                <h3 class="text-lg font-semibold text-white mb-2">Goal Song</h3>
-                <p class="text-slate-200">{{ formatSongInfo(orderData.order.formData.goalSong) }}</p>
+              <div v-if="orderData.order.formData.goalSong" class="pb-4 border-b border-slate-800">
+                <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-2">Goal Song</h3>
+                <p class="text-white">{{ formatSongInfo(orderData.order.formData.goalSong) }}</p>
               </div>
               
-              <div v-if="orderData.order.formData.winSong">
-                <h3 class="text-lg font-semibold text-white mb-2">Win Song</h3>
-                <p class="text-slate-200">{{ formatSongInfo(orderData.order.formData.winSong) }}</p>
+              <div v-if="orderData.order.formData.winSong" class="pb-4 border-b border-slate-800">
+                <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-2">Win Song</h3>
+                <p class="text-white">{{ formatSongInfo(orderData.order.formData.winSong) }}</p>
               </div>
               
               <div v-if="orderData.order.formData.sponsors">
-                <h3 class="text-lg font-semibold text-white mb-2">Sponsors</h3>
-                <p class="text-slate-200">{{ formatSongInfo(orderData.order.formData.sponsors) }}</p>
+                <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-2">Sponsors</h3>
+                <p class="text-white">{{ formatSongInfo(orderData.order.formData.sponsors) }}</p>
               </div>
               
-              <div v-if="orderData.order.formData.includeSample">
-                <p class="text-slate-200"><strong>Sample Requested:</strong> Yes</p>
+              <div v-if="orderData.order.formData.includeSample" class="flex items-center gap-2 text-emerald-400">
+                <Icon name="mdi:check-circle" class="w-5 h-5" />
+                <span class="font-medium">Sample Requested</span>
               </div>
             </div>
           </div>
 
           <!-- Payment Status -->
-          <div v-if="orderData.payment" class="bg-green-500/10 border border-green-500/30 rounded-lg p-6">
-            <h2 class="text-2xl font-bold text-white mb-4">Payment Received</h2>
-            <div class="grid md:grid-cols-3 gap-4">
+          <div v-if="orderData.payment" class="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-6">
+            <h2 class="text-xl font-bold text-white mb-4 flex items-center gap-2">
+              <Icon name="mdi:check-decagram" class="w-6 h-6 text-emerald-400" />
+              Payment Received
+            </h2>
+            <div class="grid sm:grid-cols-3 gap-6">
               <div>
                 <p class="text-sm text-slate-400 mb-1">Amount</p>
-                <p class="text-white font-medium">{{ formatPrice(orderData.payment.amount) }}</p>
+                <p class="text-white font-semibold text-lg">{{ formatPrice(orderData.payment.amount) }}</p>
               </div>
               <div>
                 <p class="text-sm text-slate-400 mb-1">Stripe Payment ID</p>
-                <p class="text-white font-medium text-sm">{{ orderData.payment.stripePaymentId }}</p>
+                <p class="text-white font-mono text-sm truncate">{{ orderData.payment.stripePaymentId }}</p>
               </div>
               <div>
                 <p class="text-sm text-slate-400 mb-1">Date</p>
@@ -263,9 +303,12 @@
           </div>
 
           <!-- File Upload for Deliverables -->
-          <div class="bg-dark-secondary border border-white/10 rounded-lg p-6">
-            <h2 class="text-2xl font-bold text-white mb-4">Upload Deliverables</h2>
-            <div class="border-2 border-dashed border-white/10 rounded-md p-6 text-center hover:border-brand-primary transition-colors mb-4">
+          <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
+            <h2 class="text-xl font-bold text-white mb-4 flex items-center gap-2">
+              <Icon name="mdi:cloud-upload" class="w-6 h-6 text-cyan-400" />
+              Upload Deliverables
+            </h2>
+            <div class="border-2 border-dashed border-slate-700 hover:border-cyan-500/50 rounded-xl p-8 text-center transition-colors mb-4">
               <input
                 ref="deliverableInputRef"
                 type="file"
@@ -276,14 +319,12 @@
               <button
                 type="button"
                 @click="deliverableInputRef?.click()"
-                class="inline-flex items-center gap-2 px-6 py-3 bg-brand-primary/20 hover:bg-brand-primary/30 text-brand-primary rounded-md transition-colors"
+                class="inline-flex items-center gap-2 px-6 py-3 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 rounded-xl transition-colors font-medium"
               >
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                </svg>
+                <Icon name="mdi:upload" class="w-5 h-5" />
                 Choose Files to Upload
               </button>
-              <p class="text-slate-400 text-sm mt-2">Upload completed work for the customer</p>
+              <p class="text-slate-500 text-sm mt-3">Upload completed work for the customer</p>
             </div>
 
             <!-- Deliverable Upload Queue -->
@@ -291,35 +332,24 @@
               <div
                 v-for="(file, index) in deliverableQueue"
                 :key="index"
-                class="flex items-center justify-between p-3 bg-dark-tertiary border border-white/10 rounded-md"
+                class="flex items-center justify-between p-3 bg-slate-800/50 border border-slate-700 rounded-xl"
               >
                 <div class="flex items-center gap-3 flex-1 min-w-0">
-                  <div v-if="file.uploading" class="animate-spin h-5 w-5 text-brand-primary">
-                    <svg fill="none" viewBox="0 0 24 24">
-                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                  </div>
-                  <svg v-else-if="file.uploaded" class="h-5 w-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <svg v-else class="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                  </svg>
+                  <div v-if="file.uploading" class="w-5 h-5 border-2 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin"></div>
+                  <Icon v-else-if="file.uploaded" name="mdi:check-circle" class="w-5 h-5 text-emerald-400" />
+                  <Icon v-else name="mdi:file-document" class="w-5 h-5 text-slate-400" />
                   <div class="flex-1 min-w-0">
                     <p class="text-white text-sm truncate">{{ file.file.name }}</p>
-                    <p class="text-slate-400 text-xs">{{ formatFileSize(file.file.size) }}</p>
+                    <p class="text-slate-500 text-xs">{{ formatFileSize(file.file.size) }}</p>
                   </div>
                 </div>
                 <button
                   v-if="!file.uploading && !file.uploaded"
                   type="button"
                   @click="removeDeliverable(index)"
-                  class="ml-2 p-1 text-slate-400 hover:text-red-500 transition-colors"
+                  class="ml-2 p-1 text-slate-400 hover:text-red-400 transition-colors"
                 >
-                  <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  <Icon name="mdi:close" class="w-5 h-5" />
                 </button>
               </div>
             </div>
@@ -327,32 +357,33 @@
             <button
               v-if="deliverableQueue.length > 0 && !deliverableQueue.some(f => f.uploading)"
               @click="uploadDeliverables"
-              class="w-full px-6 py-3 bg-brand-primary hover:bg-brand-primary-600 text-white font-semibold rounded-md transition-colors"
+              class="w-full px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-semibold rounded-xl transition-all shadow-lg shadow-cyan-500/20"
             >
               Upload All Deliverables
             </button>
           </div>
 
           <!-- Files List -->
-          <div class="bg-dark-secondary border border-white/10 rounded-lg p-6">
-            <h2 class="text-2xl font-bold text-white mb-4">Files</h2>
+          <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
+            <h2 class="text-xl font-bold text-white mb-4 flex items-center gap-2">
+              <Icon name="mdi:folder-open" class="w-6 h-6 text-amber-400" />
+              Files
+            </h2>
             
             <!-- Customer Uploads -->
             <div v-if="uploadedFiles.length > 0" class="mb-6">
-              <h3 class="text-lg font-semibold text-white mb-3">Customer Uploads</h3>
+              <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-3">Customer Uploads</h3>
               <div class="space-y-2">
                 <div
                   v-for="file in uploadedFiles"
                   :key="file.id"
-                  class="flex items-center justify-between p-3 bg-dark-tertiary border border-white/10 rounded-md"
+                  class="flex items-center justify-between p-3 bg-slate-800/50 border border-slate-700 rounded-xl"
                 >
                   <div class="flex items-center gap-3 flex-1 min-w-0">
-                    <svg class="h-5 w-5 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                    </svg>
+                    <Icon name="mdi:file-document" class="w-5 h-5 text-slate-400 flex-shrink-0" />
                     <div class="flex-1 min-w-0">
                       <p class="text-white text-sm truncate">{{ file.filename }}</p>
-                      <p class="text-slate-400 text-xs">{{ formatFileSize(file.fileSize) }}</p>
+                      <p class="text-slate-500 text-xs">{{ formatFileSize(file.fileSize) }}</p>
                     </div>
                   </div>
                 </div>
@@ -361,20 +392,18 @@
 
             <!-- Deliverables -->
             <div v-if="deliverableFiles.length > 0">
-              <h3 class="text-lg font-semibold text-white mb-3">Deliverables</h3>
+              <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-3">Deliverables</h3>
               <div class="space-y-2">
                 <div
                   v-for="file in deliverableFiles"
                   :key="file.id"
-                  class="flex items-center justify-between p-3 bg-dark-tertiary border border-white/10 rounded-md"
+                  class="flex items-center justify-between p-3 bg-slate-800/50 border border-slate-700 rounded-xl"
                 >
                   <div class="flex items-center gap-3 flex-1 min-w-0">
-                    <svg class="h-5 w-5 text-brand-primary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                    </svg>
+                    <Icon name="mdi:file-check" class="w-5 h-5 text-cyan-400 flex-shrink-0" />
                     <div class="flex-1 min-w-0">
                       <p class="text-white text-sm truncate">{{ file.filename }}</p>
-                      <p class="text-slate-400 text-xs">{{ formatFileSize(file.fileSize) }} • {{ formatDateTime(file.createdAt) }}</p>
+                      <p class="text-slate-500 text-xs">{{ formatFileSize(file.fileSize) }} • {{ formatDateTime(file.createdAt) }}</p>
                     </div>
                   </div>
                 </div>
@@ -382,20 +411,26 @@
             </div>
 
             <!-- No Files -->
-            <div v-if="uploadedFiles.length === 0 && deliverableFiles.length === 0" class="text-center py-8 text-slate-400">
-              <p>No files attached to this order</p>
+            <div v-if="uploadedFiles.length === 0 && deliverableFiles.length === 0" class="text-center py-8">
+              <div class="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center mx-auto mb-3">
+                <Icon name="mdi:file-hidden" class="w-6 h-6 text-slate-600" />
+              </div>
+              <p class="text-slate-400">No files attached to this order</p>
             </div>
           </div>
         </div>
 
-        <!-- Right Column - Email History & Status -->
+        <!-- Right Column - Sidebar -->
         <div class="space-y-6">
           <!-- Email History -->
           <AdminOrderEmailHistory :order-id="orderId" />
           
           <!-- Status History -->
-          <div class="bg-dark-secondary border border-white/10 rounded-lg p-6">
-            <h3 class="text-lg font-bold text-white mb-4">Status History</h3>
+          <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
+            <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+              <Icon name="mdi:history" class="w-5 h-5 text-purple-400" />
+              Status History
+            </h3>
             <OrderStatusHistory :order-id="orderData.order.id" />
           </div>
         </div>
@@ -462,6 +497,22 @@ const packages = computed(() => packagesData.value?.body || [])
 const getPackageName = (packageId: string) => {
   const pkg = packages.value.find((p: any) => p.id === packageId)
   return pkg?.name || packageId
+}
+
+const getStatusClasses = (status: string) => {
+  const classes: Record<string, string> = {
+    submitted: 'bg-amber-500/20 text-amber-400',
+    pending: 'bg-amber-500/20 text-amber-400',
+    quoted: 'bg-blue-500/20 text-blue-400',
+    in_progress: 'bg-cyan-500/20 text-cyan-400',
+    paid: 'bg-emerald-500/20 text-emerald-400',
+    completed: 'bg-emerald-500/20 text-emerald-400',
+    ready: 'bg-purple-500/20 text-purple-400',
+    delivered: 'bg-emerald-500/20 text-emerald-400',
+    cancelled: 'bg-red-500/20 text-red-400',
+    refunded: 'bg-red-500/20 text-red-400'
+  }
+  return classes[status] || 'bg-slate-500/20 text-slate-400'
 }
 
 const formatSongInfo = (songData: any) => {
