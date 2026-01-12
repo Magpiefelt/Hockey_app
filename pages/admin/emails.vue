@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen px-4 py-12 bg-dark-primary">
+  <div class="px-6 py-8">
     <div class="container mx-auto max-w-7xl">
       <!-- Header -->
       <div class="mb-8">
@@ -292,6 +292,7 @@
 import { ref, computed, onMounted } from 'vue'
 
 definePageMeta({
+  layout: 'admin',
   middleware: 'admin'
 })
 

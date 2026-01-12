@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen px-4 py-12 bg-dark-primary">
+  <div class="px-6 py-8">
     <div class="container mx-auto max-w-7xl">
       <!-- Header -->
       <div class="mb-8">
@@ -152,7 +152,7 @@
         </div>
 
         <!-- Quick Actions -->
-        <div class="grid md:grid-cols-2 lg:grid-cols-5 gap-6">
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           <NuxtLink to="/admin/orders" class="card p-6 hover:border-brand-500/30 transition-colors">
             <Icon name="mdi:file-document-multiple" class="w-8 h-8 text-brand-500 mb-3" />
             <h3 class="text-lg font-bold text-white mb-1">Manage Orders</h3>
@@ -182,6 +182,12 @@
             <h3 class="text-lg font-bold text-white mb-1">Manage Calendar</h3>
             <p class="text-sm text-slate-400">Block dates and manage availability</p>
           </NuxtLink>
+
+          <NuxtLink to="/admin/packages" class="card p-6 hover:border-orange-500/30 transition-colors">
+            <Icon name="mdi:package-variant" class="w-8 h-8 text-orange-500 mb-3" />
+            <h3 class="text-lg font-bold text-white mb-1">Manage Packages</h3>
+            <p class="text-sm text-slate-400">Create and edit service packages</p>
+          </NuxtLink>
         </div>
       </div>
     </div>
@@ -190,6 +196,7 @@
 
 <script setup lang="ts">
 definePageMeta({
+  layout: 'admin',
   middleware: 'admin'
 })
 

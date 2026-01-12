@@ -1,5 +1,5 @@
 <template>
-  <div class="container mx-auto px-4 py-12 max-w-6xl">
+  <div class="px-6 py-8 max-w-6xl">
     <!-- Breadcrumbs -->
     <nav class="flex items-center gap-2 text-sm mb-6">
       <NuxtLink to="/admin" class="text-slate-400 hover:text-white transition-colors">
@@ -440,7 +440,7 @@
 
 <script setup lang="ts">
 definePageMeta({
-  layout: 'default',
+  layout: 'admin',
   middleware: 'admin'
 })
 

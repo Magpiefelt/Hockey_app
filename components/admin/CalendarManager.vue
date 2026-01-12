@@ -75,6 +75,33 @@
                 Clear
               </UiButton>
             </div>
+
+            <!-- Quick Block Section -->
+            <div class="mt-4 pt-4 border-t border-white/10">
+              <p class="text-sm text-slate-400 mb-2">Quick Actions</p>
+              <div class="flex gap-2">
+                <UiButton
+                  @click="quickBlockToday"
+                  variant="outline"
+                  size="sm"
+                  :loading="isQuickBlocking"
+                  :disabled="isQuickBlocking"
+                >
+                  <Icon name="mdi:calendar-today" class="w-4 h-4 mr-1" />
+                  Block Today
+                </UiButton>
+                <UiButton
+                  @click="quickBlockTomorrow"
+                  variant="outline"
+                  size="sm"
+                  :loading="isQuickBlocking"
+                  :disabled="isQuickBlocking"
+                >
+                  <Icon name="mdi:calendar-arrow-right" class="w-4 h-4 mr-1" />
+                  Block Tomorrow
+                </UiButton>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -189,6 +216,7 @@ const formErrors = ref({
   reason: ''
 })
 const isAdding = ref(false)
+const isQuickBlocking = ref(false)
 const removingId = ref<number | null>(null)
 
 /**
@@ -440,6 +468,50 @@ const clearForm = () => {
     description: ''
   }
   formErrors.value = { reason: '' }
+}
+
+/**
+ * Quick block a specific date with default reason
+ */
+const quickBlock = async (date: Date, label: string) => {
+  isQuickBlocking.value = true
+  
+  try {
+    const dateStr = formatDateISO(date)
+    
+    await trpc.calendar.addOverride.mutate({
+      dateFrom: dateStr,
+      dateTo: dateStr,
+      reason: `Quick Block - ${label}`,
+      description: `Quickly blocked via admin dashboard`
+    })
+    
+    showSuccess(`${label} blocked successfully`)
+    emit('refresh')
+  } catch (err: any) {
+    console.error('Error quick blocking date:', err)
+    const { handleTrpcError } = await import('~/composables/useTrpc')
+    const errorMessage = handleTrpcError(err)
+    showError(errorMessage || 'Failed to block date')
+  } finally {
+    isQuickBlocking.value = false
+  }
+}
+
+/**
+ * Quick block today
+ */
+const quickBlockToday = () => {
+  quickBlock(new Date(), 'Today')
+}
+
+/**
+ * Quick block tomorrow
+ */
+const quickBlockTomorrow = () => {
+  const tomorrow = new Date()
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  quickBlock(tomorrow, 'Tomorrow')
 }
 </script>
 

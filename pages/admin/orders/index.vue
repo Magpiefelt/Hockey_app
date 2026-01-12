@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen px-4 py-12 bg-dark-primary">
+  <div class="px-6 py-8">
     <div class="container mx-auto max-w-7xl">
       <!-- Header -->
       <div class="mb-8">
@@ -87,13 +87,58 @@
                     class="w-4 h-4 rounded border-white/20 text-brand-500 focus:ring-brand-500 focus:ring-offset-0 bg-dark-tertiary"
                   />
                 </th>
-                <th class="text-left py-4 px-6 text-slate-200 font-semibold text-xs uppercase">Order ID</th>
-                <th class="text-left py-4 px-6 text-slate-200 font-semibold text-xs uppercase">Customer</th>
-                <th class="text-left py-4 px-6 text-slate-200 font-semibold text-xs uppercase">Email</th>
+                <th 
+                  class="text-left py-4 px-6 text-slate-200 font-semibold text-xs uppercase cursor-pointer hover:text-brand-400 transition-colors"
+                  @click="toggleSort('id')"
+                >
+                  <span class="flex items-center gap-1">
+                    Order ID
+                    <Icon v-if="sortColumn === 'id'" :name="sortDirection === 'asc' ? 'mdi:arrow-up' : 'mdi:arrow-down'" class="w-4 h-4" />
+                    <Icon v-else name="mdi:unfold-more-horizontal" class="w-4 h-4 opacity-50" />
+                  </span>
+                </th>
+                <th 
+                  class="text-left py-4 px-6 text-slate-200 font-semibold text-xs uppercase cursor-pointer hover:text-brand-400 transition-colors"
+                  @click="toggleSort('name')"
+                >
+                  <span class="flex items-center gap-1">
+                    Customer
+                    <Icon v-if="sortColumn === 'name'" :name="sortDirection === 'asc' ? 'mdi:arrow-up' : 'mdi:arrow-down'" class="w-4 h-4" />
+                    <Icon v-else name="mdi:unfold-more-horizontal" class="w-4 h-4 opacity-50" />
+                  </span>
+                </th>
+                <th 
+                  class="text-left py-4 px-6 text-slate-200 font-semibold text-xs uppercase cursor-pointer hover:text-brand-400 transition-colors"
+                  @click="toggleSort('email')"
+                >
+                  <span class="flex items-center gap-1">
+                    Email
+                    <Icon v-if="sortColumn === 'email'" :name="sortDirection === 'asc' ? 'mdi:arrow-up' : 'mdi:arrow-down'" class="w-4 h-4" />
+                    <Icon v-else name="mdi:unfold-more-horizontal" class="w-4 h-4 opacity-50" />
+                  </span>
+                </th>
                 <th class="text-left py-4 px-6 text-slate-200 font-semibold text-xs uppercase">Package</th>
-                <th class="text-left py-4 px-6 text-slate-200 font-semibold text-xs uppercase">Status</th>
+                <th 
+                  class="text-left py-4 px-6 text-slate-200 font-semibold text-xs uppercase cursor-pointer hover:text-brand-400 transition-colors"
+                  @click="toggleSort('status')"
+                >
+                  <span class="flex items-center gap-1">
+                    Status
+                    <Icon v-if="sortColumn === 'status'" :name="sortDirection === 'asc' ? 'mdi:arrow-up' : 'mdi:arrow-down'" class="w-4 h-4" />
+                    <Icon v-else name="mdi:unfold-more-horizontal" class="w-4 h-4 opacity-50" />
+                  </span>
+                </th>
                 <th class="text-left py-4 px-6 text-slate-200 font-semibold text-xs uppercase">Files</th>
-                <th class="text-left py-4 px-6 text-slate-200 font-semibold text-xs uppercase">Date</th>
+                <th 
+                  class="text-left py-4 px-6 text-slate-200 font-semibold text-xs uppercase cursor-pointer hover:text-brand-400 transition-colors"
+                  @click="toggleSort('createdAt')"
+                >
+                  <span class="flex items-center gap-1">
+                    Date
+                    <Icon v-if="sortColumn === 'createdAt'" :name="sortDirection === 'asc' ? 'mdi:arrow-up' : 'mdi:arrow-down'" class="w-4 h-4" />
+                    <Icon v-else name="mdi:unfold-more-horizontal" class="w-4 h-4 opacity-50" />
+                  </span>
+                </th>
                 <th class="text-left py-4 px-6 text-slate-200 font-semibold text-xs uppercase">Actions</th>
               </tr>
             </thead>
@@ -233,6 +278,7 @@
 import type { Order } from '~/types/trpc'
 
 definePageMeta({
+  layout: 'admin',
   middleware: 'admin'
 })
 
@@ -309,6 +355,21 @@ const filters = ref({
   search: ''
 })
 
+// Sorting state
+type SortColumn = 'id' | 'name' | 'email' | 'status' | 'createdAt'
+type SortDirection = 'asc' | 'desc'
+const sortColumn = ref<SortColumn>('createdAt')
+const sortDirection = ref<SortDirection>('desc')
+
+const toggleSort = (column: SortColumn) => {
+  if (sortColumn.value === column) {
+    sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortColumn.value = column
+    sortDirection.value = 'asc'
+  }
+}
+
 const statusOptions = [
   { label: 'All Statuses', value: '' },
   { label: 'Submitted', value: 'submitted' },
@@ -339,10 +400,11 @@ const getStatusVariant = (status: string) => {
   return variants[status] || 'neutral'
 }
 
-// Apply filters to orders
+// Apply filters and sorting to orders
 const filteredOrders = computed(() => {
-  let result = orders.value
+  let result = [...orders.value]
 
+  // Apply filters
   if (filters.value.status) {
     result = result.filter(o => o.status === filters.value.status)
   }
@@ -358,6 +420,41 @@ const filteredOrders = computed(() => {
       o.name.toLowerCase().includes(search)
     )
   }
+
+  // Apply sorting
+  result.sort((a, b) => {
+    let aVal: any
+    let bVal: any
+
+    switch (sortColumn.value) {
+      case 'id':
+        aVal = a.id
+        bVal = b.id
+        break
+      case 'name':
+        aVal = a.name?.toLowerCase() || ''
+        bVal = b.name?.toLowerCase() || ''
+        break
+      case 'email':
+        aVal = a.email?.toLowerCase() || ''
+        bVal = b.email?.toLowerCase() || ''
+        break
+      case 'status':
+        aVal = a.status || ''
+        bVal = b.status || ''
+        break
+      case 'createdAt':
+        aVal = new Date(a.createdAt || 0).getTime()
+        bVal = new Date(b.createdAt || 0).getTime()
+        break
+      default:
+        return 0
+    }
+
+    if (aVal < bVal) return sortDirection.value === 'asc' ? -1 : 1
+    if (aVal > bVal) return sortDirection.value === 'asc' ? 1 : -1
+    return 0
+  })
 
   return result
 })

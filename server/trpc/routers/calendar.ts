@@ -4,39 +4,48 @@ import { TRPCError } from '@trpc/server'
 import { query } from '../../db/connection'
 
 export const calendarRouter = router({
-  // Public: Get all unavailable dates
+  // Public: Get all unavailable dates with source type for UI differentiation
   getUnavailableDates: publicProcedure
     .query(async ({ ctx }) => {
       try {
-        // Get all active overrides and confirmed quote dates
-        // For overrides, we need to generate all dates in the range
-        // Using actual production column names: start_date, end_date, is_available
-        const result = await query<{ date: string }>(`
-          SELECT DISTINCT date 
-          FROM (
-            -- Manual overrides (generate all dates in range)
-            SELECT generate_series(
-              start_date,
-              end_date,
-              '1 day'::interval
-            )::date as date
+        // Get all active overrides and confirmed quote dates using CTE for clarity
+        // Returns both the date and the source type for UI color-coding
+        const result = await query<{ date: string; source: string }>(`
+          WITH blocked_dates AS (
+            -- Manual admin overrides (generate all dates in range)
+            SELECT 
+              generate_series(start_date, end_date, '1 day'::interval)::date as date,
+              'blocked' as source
             FROM availability_overrides
             WHERE is_available = false
               AND end_date >= CURRENT_DATE
-            
-            UNION
-            
-            -- Confirmed quotes
-            SELECT event_date as date
+          ),
+          booked_dates AS (
+            -- Dates with confirmed or in-progress orders
+            SELECT 
+              event_date as date,
+              'booked' as source
             FROM quote_requests
             WHERE status IN ('confirmed', 'in_progress')
               AND event_date >= CURRENT_DATE
               AND event_date IS NOT NULL
-          ) AS unavailable_dates
-          ORDER BY date ASC
+          ),
+          all_unavailable AS (
+            SELECT date, source FROM blocked_dates
+            UNION ALL
+            SELECT date, source FROM booked_dates
+          )
+          SELECT DISTINCT ON (date) date, source
+          FROM all_unavailable
+          ORDER BY date ASC, source ASC
         `)
         
-        return result.rows.map((row) => row.date)
+        // Return dates with source type for UI color-coding
+        // Frontend can use this to show different colors for blocked vs booked dates
+        return result.rows.map((row) => ({
+          date: row.date,
+          source: row.source // 'blocked' for admin overrides, 'booked' for confirmed orders
+        }))
       } catch (error: any) {
         console.error('Error fetching unavailable dates:', JSON.stringify({
           message: error.message,
