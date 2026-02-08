@@ -1,8 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { TRPCError } from '@trpc/server'
 
-// Mock the database module
-const queryOneMock = vi.fn()
+// Mock the database module - use vi.hoisted to ensure mock is available before vi.mock hoisting
+const { queryOneMock } = vi.hoisted(() => {
+  return { queryOneMock: vi.fn() }
+})
+
 vi.mock('../../server/utils/database', () => ({
   queryOne: queryOneMock
 }))

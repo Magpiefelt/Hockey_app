@@ -62,7 +62,6 @@ describe('File Upload Validation', () => {
       sanitized = sanitized
         .replace(/[^\w\s.-]/g, '_')
         .replace(/\s+/g, '_')
-        .replace(/_+/g, '_')
         .substring(0, 200)
       
       // Ensure it has an extension

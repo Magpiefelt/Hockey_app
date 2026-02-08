@@ -73,14 +73,17 @@ describe('Database Migrations', () => {
         '001_initial_schema.sql',
         '002_fix_email_logs_schema.sql',
         '003_add_email_webhook_columns.sql',
-        '003_add_password_reset.sql',
         '004_add_availability_overrides.sql',
         '005_fix_override_type_constraint.sql',
         '006_add_package_id_index.sql',
         '007_quote_tracking.sql',
         '008_manual_completion_support.sql',
         '009_add_event_datetime.sql',
-        '010_add_contact_submissions.sql'
+        '010_add_contact_submissions.sql',
+        '011_add_settings_table.sql',
+        '012_add_password_reset.sql',
+        '013_add_quote_access_tokens.sql',
+        '014_add_form_submissions.sql'
       ]
 
       for (const file of files) {

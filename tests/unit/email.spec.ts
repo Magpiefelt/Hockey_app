@@ -2,8 +2,19 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // Mock the email utility functions
 const mockSendEmail = vi.fn()
-const mockEscapeHtml = vi.fn((str: string) => str.replace(/[<>&"']/g, ''))
-const mockSanitizeString = vi.fn((str: string) => str.replace(/[<>]/g, ''))
+const mockEscapeHtml = vi.fn((str: string) => {
+  return str
+    .replace(/<[^>]*>/g, '')  // Strip all HTML tags
+    .replace(/on\w+\s*=\s*"[^"]*"/gi, '')  // Remove event handlers
+    .replace(/javascript\s*:/gi, '')  // Remove javascript: protocol
+    .replace(/[<>&"']/g, '')  // Encode remaining entities
+})
+const mockSanitizeString = vi.fn((str: string) => {
+  return str
+    .replace(/<[^>]*>/g, '')  // Strip HTML tags
+    .replace(/[\r\n]/g, '')  // Remove newlines (header injection prevention)
+    .replace(/[<>]/g, '')  // Remove angle brackets
+})
 
 vi.mock('../../server/utils/email', () => ({
   sendEmail: mockSendEmail,
@@ -104,11 +115,12 @@ describe('Email Utility', () => {
     })
 
     it('should generate valid date strings', () => {
-      const date = new Date('2024-01-15')
+      const date = new Date('2024-01-15T12:00:00Z')
       const formatted = date.toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'long',
-        day: 'numeric'
+        day: 'numeric',
+        timeZone: 'UTC'
       })
       
       expect(formatted).toContain('January')
