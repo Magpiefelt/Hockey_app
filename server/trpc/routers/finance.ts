@@ -258,9 +258,10 @@ export const financeRouter = router({
           COUNT(*) as order_count
         FROM quote_requests 
         WHERE status IN ('paid', 'completed', 'delivered')
-        AND created_at >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '${months - 1} months'
+        AND created_at >= DATE_TRUNC('month', CURRENT_DATE) - make_interval(months => $1)
         GROUP BY DATE_TRUNC('month', created_at)
-        ORDER BY month`
+        ORDER BY month`,
+        [months - 1]
       )
       
       // Previous year same period for comparison
@@ -270,10 +271,11 @@ export const financeRouter = router({
           COALESCE(SUM(total_amount), 0) as revenue
         FROM quote_requests 
         WHERE status IN ('paid', 'completed', 'delivered')
-        AND created_at >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '${months - 1 + 12} months'
-        AND created_at < DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '${months - 1} months'
+        AND created_at >= DATE_TRUNC('month', CURRENT_DATE) - make_interval(months => $1)
+        AND created_at < DATE_TRUNC('month', CURRENT_DATE) - make_interval(months => $2)
         GROUP BY DATE_TRUNC('month', created_at)
-        ORDER BY month`
+        ORDER BY month`,
+        [months - 1 + 12, months - 1]
       )
       
       // Create a map of previous year data
@@ -303,11 +305,13 @@ export const financeRouter = router({
       const year = input?.year || new Date().getFullYear()
       const quarter = input?.quarter
       
-      let dateFilter = `EXTRACT(YEAR FROM created_at) = ${year}`
+      const params: any[] = [year]
+      let dateFilter = `EXTRACT(YEAR FROM created_at) = $1`
       if (quarter) {
         const startMonth = (quarter - 1) * 3 + 1
         const endMonth = quarter * 3
-        dateFilter += ` AND EXTRACT(MONTH FROM created_at) BETWEEN ${startMonth} AND ${endMonth}`
+        params.push(startMonth, endMonth)
+        dateFilter += ` AND EXTRACT(MONTH FROM created_at) BETWEEN $2 AND $3`
       }
       
       // Get revenue by province
@@ -321,7 +325,8 @@ export const financeRouter = router({
         WHERE status IN ('paid', 'completed', 'delivered')
         AND ${dateFilter}
         GROUP BY COALESCE(tax_province, 'AB')
-        ORDER BY revenue DESC`
+        ORDER BY revenue DESC`,
+        params
       )
       
       // Calculate tax breakdown for each province
@@ -377,14 +382,16 @@ export const financeRouter = router({
     }))
     .query(async ({ input }) => {
       const { year, quarter } = input
-      
-      let dateFilter = `EXTRACT(YEAR FROM created_at) = ${year}`
       let periodLabel = `${year}`
+      
+      const exportParams: any[] = [year]
+      let exportDateFilter = `EXTRACT(YEAR FROM qr.created_at) = $1`
       
       if (quarter) {
         const startMonth = (quarter - 1) * 3 + 1
         const endMonth = quarter * 3
-        dateFilter += ` AND EXTRACT(MONTH FROM created_at) BETWEEN ${startMonth} AND ${endMonth}`
+        exportParams.push(startMonth, endMonth)
+        exportDateFilter += ` AND EXTRACT(MONTH FROM qr.created_at) BETWEEN $2 AND $3`
         periodLabel = `${year} Q${quarter}`
       }
       
@@ -403,8 +410,9 @@ export const financeRouter = router({
         FROM quote_requests qr
         LEFT JOIN packages p ON qr.package_id = p.id
         WHERE qr.status IN ('paid', 'completed', 'delivered')
-        AND ${dateFilter}
-        ORDER BY qr.created_at`
+        AND ${exportDateFilter}
+        ORDER BY qr.created_at`,
+        exportParams
       )
       
       const orders = result.rows.map(row => {

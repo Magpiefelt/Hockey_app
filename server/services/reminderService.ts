@@ -98,12 +98,12 @@ export async function getPendingReminders(): Promise<PendingReminder[]> {
       qr.contact_email,
       (
         SELECT COUNT(*) FROM email_logs 
-        WHERE order_id = i.quote_id 
+        WHERE quote_id = i.quote_id 
         AND template LIKE 'reminder%'
       ) as reminders_sent,
       (
         SELECT MAX(created_at) FROM email_logs 
-        WHERE order_id = i.quote_id 
+        WHERE quote_id = i.quote_id 
         AND template LIKE 'reminder%'
       ) as last_reminder_date
     FROM invoices i
@@ -202,23 +202,47 @@ export async function sendPaymentReminder(reminder: PendingReminder): Promise<bo
         urgency = `Your payment is due in ${reminder.daysUntilDue} days.`
     }
     
-    // Send email
-    await sendEmail({
-      to: reminder.customerEmail,
-      subject,
+    // Build reminder email HTML
+    const amount = (reminder.amount / 100).toFixed(2)
+    const isOverdue = reminder.daysUntilDue < 0
+    const urgencyColor = isOverdue ? '#ef4444' : (reminder.reminderType === 'due_today' ? '#f59e0b' : '#0ea5e9')
+    
+    const reminderHtml = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: ${urgencyColor}; color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+          <h1>${subject}</h1>
+        </div>
+        <div style="background: #f8fafc; padding: 30px; border-radius: 0 0 8px 8px;">
+          <p>Hi ${reminder.customerName},</p>
+          <p style="font-size: 16px; font-weight: bold; color: ${urgencyColor};">${urgency}</p>
+          <p><strong>Invoice:</strong> ${reminder.invoiceNumber}</p>
+          <p><strong>Amount:</strong> $${amount}</p>
+          <p><strong>Due Date:</strong> ${reminder.dueDate}</p>
+          <p>Please arrange payment at your earliest convenience.</p>
+          <p>Best regards,<br>${invoiceSettings.companyName}</p>
+        </div>
+      </div>
+    `
+
+    const reminderData = {
+      customerName: reminder.customerName,
+      invoiceNumber: reminder.invoiceNumber,
+      amount,
+      dueDate: reminder.dueDate,
+      urgency,
+      daysUntilDue: reminder.daysUntilDue,
+      isOverdue,
+      companyName: invoiceSettings.companyName,
+      companyEmail: invoiceSettings.companyEmail
+    }
+
+    // Send email with correct positional arguments
+    await sendEmail(
+      { to: reminder.customerEmail, subject, html: reminderHtml },
       template,
-      data: {
-        customerName: reminder.customerName,
-        invoiceNumber: reminder.invoiceNumber,
-        amount: (reminder.amount / 100).toFixed(2),
-        dueDate: reminder.dueDate,
-        urgency,
-        daysUntilDue: reminder.daysUntilDue,
-        isOverdue: reminder.daysUntilDue < 0,
-        companyName: invoiceSettings.companyName,
-        companyEmail: invoiceSettings.companyEmail
-      }
-    })
+      reminderData,
+      reminder.orderId
+    )
     
     // Log the reminder
     await logReminder(reminder, 'sent')
@@ -253,13 +277,13 @@ async function logReminder(
   try {
     await query(
       `INSERT INTO email_logs (
-        order_id, 
+        quote_id, 
         to_email, 
         subject, 
         template, 
         status, 
         error_message,
-        created_at
+        sent_at
       ) VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
       [
         reminder.orderId,
@@ -320,7 +344,7 @@ export async function getReminderHistory(orderId: number): Promise<ReminderLog[]
       status as email_status,
       error_message
     FROM email_logs
-    WHERE order_id = $1
+    WHERE quote_id = $1
     AND template LIKE 'reminder%'
     ORDER BY created_at DESC`,
     [orderId]

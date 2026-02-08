@@ -55,7 +55,7 @@ export const emailsRouter = router({
       
       const result = await query(
         `SELECT 
-          id, quote_id, recipient_email as to, subject, email_type,
+          id, quote_id, to_email, subject, template,
           status, error_message, sent_at, created_at
         FROM email_logs
         ORDER BY sent_at DESC
@@ -66,9 +66,9 @@ export const emailsRouter = router({
       return result.rows.map(row => ({
         id: row.id,
         quoteId: row.quote_id,
-        to: row.to,
+        to: row.to_email,
         subject: row.subject,
-        emailType: row.email_type,
+        emailType: row.template,
         status: row.status,
         errorMessage: row.error_message,
         sentAt: row.sent_at?.toISOString() || row.created_at.toISOString()
@@ -154,7 +154,7 @@ export const emailsRouter = router({
     .mutation(async ({ input }) => {
       // Get the original email details
       const result = await query(
-        'SELECT recipient_email, subject, email_type FROM email_logs WHERE id = $1',
+        'SELECT to_email, subject, template FROM email_logs WHERE id = $1',
         [input.logId]
       )
       
@@ -172,17 +172,17 @@ export const emailsRouter = router({
         const { sendEmail } = await import('../../utils/email')
         
         // Note: This is a basic implementation. In production, you'd want to
-        // reconstruct the full email template based on email_type
+        // reconstruct the full email template based on template type
         await sendEmail({
-          to: original.recipient_email,
+          to: original.to_email,
           subject: original.subject,
-          html: `<p>This is a resent email. Original type: ${original.email_type}</p>`,
-          text: `This is a resent email. Original type: ${original.email_type}`
-        }, original.email_type, {}, null)
+          html: `<p>This is a resent email. Original type: ${original.template}</p>`,
+          text: `This is a resent email. Original type: ${original.template}`
+        }, original.template, {}, null)
         
         logger.info('Email resent successfully', { 
           logId: input.logId, 
-          recipient: original.recipient_email 
+          recipient: original.to_email 
         })
         
         return {
@@ -191,9 +191,9 @@ export const emailsRouter = router({
         }
       } catch (error: any) {
         await query(
-          `INSERT INTO email_logs (recipient_email, subject, email_type, status, error_message, sent_at)
+          `INSERT INTO email_logs (to_email, subject, template, status, error_message, sent_at)
            VALUES ($1, $2, $3, $4, $5, NOW())`,
-          [original.recipient_email, original.subject, original.email_type, 'failed', error.message]
+          [original.to_email, original.subject, original.template, 'failed', error.message]
         )
         
         throw new TRPCError({

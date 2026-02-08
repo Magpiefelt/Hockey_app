@@ -214,12 +214,11 @@ async function handlePaymentFailed(paymentIntent: any) {
 
   try {
     // Update invoice status to failed
+    // Note: stripe_invoice_id stores the checkout session ID
     await query(
       `UPDATE invoices 
        SET status = 'failed', updated_at = NOW()
-       WHERE stripe_invoice_id IN (
-         SELECT id FROM checkout_sessions WHERE payment_intent = $1
-       )`,
+       WHERE stripe_invoice_id = $1`,
       [paymentIntent.id]
     )
   } catch (error: any) {

@@ -41,7 +41,7 @@ export const adminEnhancementsRouter = router({
         const orderResult = await client.query(
           `SELECT 
             qr.id, qr.contact_name, qr.contact_email, qr.status, qr.event_date,
-            qr.sport_type, qr.requirements_json,
+            qr.sport_type,
             p.name as package_name,
             fs.team_name
            FROM quote_requests qr
@@ -145,7 +145,8 @@ export const adminEnhancementsRouter = router({
         }
         
         // Generate URLs for email
-        const appUrl = process.env.NUXT_PUBLIC_APP_BASE_URL || 'https://elitesportsdj.com'
+        const config = useRuntimeConfig()
+        const appUrl = config.public.appBaseUrl || 'https://elitesportsdj.com'
         
         // Generate secure token-based quote view URL
         const quoteViewUrl = generateQuoteViewUrl(input.orderId, order.contact_email, appUrl)
@@ -173,8 +174,7 @@ export const adminEnhancementsRouter = router({
             eventDate: eventDateFormatted,
             teamName: order.team_name,
             sportType: order.sport_type,
-            adminNotes: input.adminNotes,
-            eventDateTime: eventDateTime?.toISOString()
+            adminNotes: input.adminNotes
           })
           logger.info('Enhanced quote email sent', { orderId: input.orderId, email: order.contact_email })
         } catch (emailError: any) {
@@ -369,11 +369,11 @@ export const adminEnhancementsRouter = router({
         `SELECT 
           id,
           subject,
-          email_type,
+          template,
           status,
           sent_at
         FROM email_logs
-        WHERE recipient_email = $1
+        WHERE to_email = $1
         ORDER BY sent_at DESC
         LIMIT 20`,
         [input.email]
@@ -403,7 +403,7 @@ export const adminEnhancementsRouter = router({
         emails: emailsResult.rows.map(row => ({
           id: row.id,
           subject: row.subject,
-          type: row.email_type,
+          type: row.template,
           status: row.status,
           sentAt: row.sent_at?.toISOString()
         }))
@@ -652,9 +652,9 @@ export const adminEnhancementsRouter = router({
       const result = await query(
         `SELECT 
           id,
-          recipient_email,
+          to_email,
           subject,
-          email_type,
+          template,
           status,
           error_message,
           sent_at,
@@ -667,9 +667,9 @@ export const adminEnhancementsRouter = router({
       
       return result.rows.map(row => ({
         id: row.id,
-        recipientEmail: row.recipient_email,
+        recipientEmail: row.to_email,
         subject: row.subject,
-        type: row.email_type,
+        type: row.template,
         status: row.status,
         errorMessage: row.error_message,
         sentAt: row.sent_at?.toISOString(),
@@ -773,7 +773,8 @@ export const adminEnhancementsRouter = router({
           COUNT(*) FILTER (WHERE status = 'quoted') as quoted,
           COUNT(*) FILTER (WHERE status IN ('paid', 'completed', 'delivered')) as converted
          FROM quote_requests
-         WHERE created_at >= NOW() - INTERVAL '${days} days'`
+         WHERE created_at >= NOW() - make_interval(days => $1)`,
+        [days]
       )
       
       const quoted = parseInt(conversionResult.rows[0].quoted) || 0
@@ -790,7 +791,8 @@ export const adminEnhancementsRouter = router({
           )) / 3600) as avg_hours
          FROM quote_requests qr
          WHERE qr.status IN ('quoted', 'paid', 'completed', 'delivered')
-         AND qr.created_at >= NOW() - INTERVAL '${days} days'`
+         AND qr.created_at >= NOW() - make_interval(days => $1)`,
+        [days]
       )
       
       const avgTimeToQuote = parseFloat(timeToQuoteResult.rows[0]?.avg_hours) || 0
@@ -803,9 +805,10 @@ export const adminEnhancementsRouter = router({
           COALESCE(SUM(total_amount), 0) as revenue
          FROM quote_requests
          WHERE status IN ('paid', 'completed', 'delivered')
-         AND created_at >= NOW() - INTERVAL '${days} days'
+         AND created_at >= NOW() - make_interval(days => $1)
          GROUP BY DATE(created_at)
-         ORDER BY date`
+         ORDER BY date`,
+        [days]
       )
       
       // Top packages
@@ -817,10 +820,11 @@ export const adminEnhancementsRouter = router({
          FROM quote_requests qr
          LEFT JOIN packages p ON qr.package_id = p.id
          WHERE qr.status IN ('paid', 'completed', 'delivered')
-         AND qr.created_at >= NOW() - INTERVAL '${days} days'
+         AND qr.created_at >= NOW() - make_interval(days => $1)
          GROUP BY p.name, qr.service_type
          ORDER BY revenue DESC
-         LIMIT 5`
+         LIMIT 5`,
+        [days]
       )
       
       // Pending actions

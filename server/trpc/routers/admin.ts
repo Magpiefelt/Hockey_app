@@ -460,12 +460,25 @@ export const adminRouter = router({
               
               const notification = statusMessages[input.status]
               if (notification && order.email) {
-                await sendCustomEmail({
-                  to: order.email,
-                  subject: `${notification.subject} - Order #${orderId}`,
-                  body: `Hi ${order.name},\n\n${notification.message}\n\nOrder #${orderId}\n\nBest regards,\nElite Sports DJ Team`,
+                const notificationHtml = `
+                  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <div style="background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+                      <h1>${notification.subject}</h1>
+                    </div>
+                    <div style="background: #f8fafc; padding: 30px; border-radius: 0 0 8px 8px;">
+                      <p>Hi ${order.name},</p>
+                      <p>${notification.message}</p>
+                      <p><strong>Order #${orderId}</strong></p>
+                      <p>Best regards,<br>Elite Sports DJ Team</p>
+                    </div>
+                  </div>
+                `
+                await sendCustomEmail(
+                  order.email,
+                  `${notification.subject} - Order #${orderId}`,
+                  notificationHtml,
                   orderId
-                })
+                )
                 logger.info('Status change notification sent', { orderId, status: input.status })
               }
             } catch (emailError: any) {
@@ -747,7 +760,7 @@ export const adminRouter = router({
         let sql = `
           SELECT 
             el.id,
-            el.quote_request_id as order_id,
+            el.quote_id as order_id,
             el.to_email,
             el.subject,
             el.template,
@@ -758,7 +771,7 @@ export const adminRouter = router({
             qr.contact_name,
             qr.status as order_status
           FROM email_logs el
-          LEFT JOIN quote_requests qr ON el.quote_request_id = qr.id
+          LEFT JOIN quote_requests qr ON el.quote_id = qr.id
           WHERE 1=1
         `
         
@@ -850,7 +863,7 @@ export const adminRouter = router({
             qr.contact_email,
             qr.status as order_status
           FROM email_logs el
-          LEFT JOIN quote_requests qr ON el.quote_request_id = qr.id
+          LEFT JOIN quote_requests qr ON el.quote_id = qr.id
           WHERE el.id = $1`,
           [input.id]
         )
@@ -865,7 +878,7 @@ export const adminRouter = router({
         const row = result.rows[0]
         return {
           id: row.id,
-          orderId: row.quote_request_id,
+          orderId: row.quote_id,
           toEmail: row.to_email,
           subject: row.subject,
           template: row.template,
@@ -948,12 +961,12 @@ export const adminRouter = router({
               break
               
             default:
-              await emailUtils.sendCustomEmail({
-                to: emailLog.to_email,
-                subject: emailLog.subject,
-                body: metadata.body || 'Email content',
-                orderId: emailLog.quote_request_id
-              })
+              await sendCustomEmail(
+                emailLog.to_email,
+                emailLog.subject,
+                metadata?.body || '<p>Email content</p>',
+                emailLog.quote_id
+              )
           }
           
           logger.info('Email resent successfully', { emailId: input.id, template: emailLog.template })

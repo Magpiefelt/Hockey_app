@@ -313,13 +313,15 @@ export async function calculateEstimatedTaxOwing(
   total: number
   period: string
 }> {
-  let dateFilter = `EXTRACT(YEAR FROM updated_at) = ${year}`
+  const taxParams: any[] = [year]
+  let dateFilter = `EXTRACT(YEAR FROM updated_at) = $1`
   let period = `${year}`
   
   if (quarter) {
     const startMonth = (quarter - 1) * 3 + 1
     const endMonth = quarter * 3
-    dateFilter += ` AND EXTRACT(MONTH FROM updated_at) BETWEEN ${startMonth} AND ${endMonth}`
+    taxParams.push(startMonth, endMonth)
+    dateFilter += ` AND EXTRACT(MONTH FROM updated_at) BETWEEN $2 AND $3`
     period = `Q${quarter} ${year}`
   }
   
@@ -331,7 +333,8 @@ export async function calculateEstimatedTaxOwing(
     FROM quote_requests
     WHERE status IN ('paid', 'completed', 'delivered')
     AND ${dateFilter}
-    GROUP BY COALESCE(tax_province, 'AB')`
+    GROUP BY COALESCE(tax_province, 'AB')`,
+    taxParams
   )
   
   let gstHst = 0

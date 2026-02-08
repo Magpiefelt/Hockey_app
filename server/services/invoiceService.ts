@@ -353,29 +353,63 @@ export async function sendInvoiceEmail(invoice: InvoiceData): Promise<void> {
   )
   
   // Send email
-  await sendEmail({
-    to: invoice.customerEmail,
-    subject: `Invoice ${invoice.invoiceNumber} - ${settings.companyName}`,
-    template: 'invoice',
-    data: {
-      invoiceNumber: invoice.invoiceNumber,
-      customerName: invoice.customerName,
-      issueDate: invoice.issueDate,
-      dueDate: invoice.dueDate,
-      lineItems: invoice.lineItems,
-      subtotal: (invoice.subtotal / 100).toFixed(2),
-      gst: (invoice.taxBreakdown.gst / 100).toFixed(2),
-      pst: (invoice.taxBreakdown.pst / 100).toFixed(2),
-      hst: (invoice.taxBreakdown.hst / 100).toFixed(2),
-      totalTax: (invoice.taxBreakdown.totalTax / 100).toFixed(2),
-      total: (invoice.total / 100).toFixed(2),
-      notes: invoice.notes,
-      paymentUrl: invoice.paymentUrl,
-      companyName: settings.companyName,
-      companyAddress: settings.companyAddress,
-      companyEmail: settings.companyEmail
-    }
-  })
+  const invoiceData = {
+    invoiceNumber: invoice.invoiceNumber,
+    customerName: invoice.customerName,
+    issueDate: invoice.issueDate,
+    dueDate: invoice.dueDate,
+    lineItems: invoice.lineItems,
+    subtotal: (invoice.subtotal / 100).toFixed(2),
+    gst: (invoice.taxBreakdown.gst / 100).toFixed(2),
+    pst: (invoice.taxBreakdown.pst / 100).toFixed(2),
+    hst: (invoice.taxBreakdown.hst / 100).toFixed(2),
+    totalTax: (invoice.taxBreakdown.totalTax / 100).toFixed(2),
+    total: (invoice.total / 100).toFixed(2),
+    notes: invoice.notes,
+    paymentUrl: invoice.paymentUrl,
+    companyName: settings.companyName,
+    companyAddress: settings.companyAddress,
+    companyEmail: settings.companyEmail
+  }
+
+  // Build HTML for the invoice email
+  const lineItemsHtml = invoice.lineItems.map(item =>
+    `<tr><td>${item.description}</td><td>${item.quantity}</td><td>$${(item.unitPrice / 100).toFixed(2)}</td><td>$${(item.total / 100).toFixed(2)}</td></tr>`
+  ).join('')
+
+  const invoiceHtml = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <div style="background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+        <h1>Invoice ${invoice.invoiceNumber}</h1>
+      </div>
+      <div style="background: #f8fafc; padding: 30px; border-radius: 0 0 8px 8px;">
+        <p>Hi ${invoice.customerName},</p>
+        <p>Please find your invoice details below:</p>
+        <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+          <thead><tr style="background: #e2e8f0;"><th style="padding: 8px; text-align: left;">Description</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead>
+          <tbody>${lineItemsHtml}</tbody>
+        </table>
+        <p><strong>Subtotal:</strong> $${invoiceData.subtotal}</p>
+        <p><strong>Tax:</strong> $${invoiceData.totalTax}</p>
+        <p style="font-size: 18px;"><strong>Total: $${invoiceData.total}</strong></p>
+        <p><strong>Due Date:</strong> ${invoice.dueDate}</p>
+        ${invoice.paymentUrl ? `<p><a href="${invoice.paymentUrl}" style="display: inline-block; background: #0ea5e9; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none;">Pay Now</a></p>` : ''}
+        ${invoice.notes ? `<p style="color: #64748b; font-size: 14px;">${invoice.notes}</p>` : ''}
+        <p>Best regards,<br>${settings.companyName}</p>
+      </div>
+    </div>
+  `
+
+  await sendEmail(
+    {
+      to: invoice.customerEmail,
+      subject: `Invoice ${invoice.invoiceNumber} - ${settings.companyName}`,
+      html: invoiceHtml
+    },
+    'invoice',
+    invoiceData,
+    invoice.orderId
+  )
   
   logger.info('Invoice email sent', { 
     invoiceNumber: invoice.invoiceNumber, 

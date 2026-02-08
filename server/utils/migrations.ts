@@ -47,7 +47,7 @@ async function getMigrationFiles(): Promise<Migration[]> {
   
   try {
     const files = await readdir(migrationsDir)
-    const sqlFiles = files.filter(f => f.endsWith('.sql')).sort()
+    const sqlFiles = files.filter(f => f.endsWith('.sql') && !f.includes('.rollback.')).sort()
     
     const migrations: Migration[] = []
     

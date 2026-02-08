@@ -637,16 +637,16 @@ export const ordersRouter = router({
       )
       
       // Log the cancellation
-      await logOrderEvent({
-        quoteId: orderId,
-        action: AuditAction.STATUS_CHANGE,
-        userId: ctx.user.userId,
-        details: {
+      await logOrderEvent(
+        AuditAction.ORDER_STATUS_CHANGED,
+        orderId,
+        ctx.user.userId,
+        {
           previousStatus: order.status,
           newStatus: 'cancelled',
           reason: reason || 'Customer requested cancellation'
         }
-      })
+      )
       
       logger.info('Order cancelled by customer', { 
         orderId, 

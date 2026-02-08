@@ -16,8 +16,15 @@ interface EmailOptions {
   text?: string
 }
 
-// Get app base URL from environment
-const getAppBaseUrl = () => process.env.NUXT_PUBLIC_APP_BASE_URL || 'https://elitesportsdj.com'
+// Get app base URL from runtime config (consistent with nuxt.config.ts)
+const getAppBaseUrl = () => {
+  try {
+    const config = useRuntimeConfig()
+    return config.public.appBaseUrl || 'https://elitesportsdj.com'
+  } catch {
+    return process.env.APP_URL || 'https://elitesportsdj.com'
+  }
+}
 const getAdminEmail = () => process.env.ADMIN_EMAIL || 'admin@elitesportsdj.com'
 
 /**
@@ -34,7 +41,7 @@ async function logEmail(
 ) {
   try {
     await executeQuery(
-      `INSERT INTO email_logs (quote_id, recipient_email, subject, email_type, status, error_message, sent_at)
+      `INSERT INTO email_logs (quote_id, to_email, subject, template, status, error_message, sent_at)
        VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
       [quoteRequestId, toEmail, subject, template, status, errorMessage || null]
     )

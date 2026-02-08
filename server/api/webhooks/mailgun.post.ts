@@ -138,7 +138,7 @@ export default defineEventHandler(async (event) => {
                updated_at = NOW(),
                webhook_event = $2,
                webhook_data = $3
-           WHERE recipient_email = $4 
+           WHERE to_email = $4 
              AND sent_at > NOW() - INTERVAL '7 days'
            ORDER BY sent_at DESC
            LIMIT 1
