@@ -3,11 +3,18 @@
  * Additional email functions for quote enhancements
  * 
  * Migrated from Nodemailer/SMTP to Mailgun
+ * 
+ * IMPROVED:
+ * - Stores metadata_json in email_logs for reliable email resend
+ * - Uses token-based URLs in ALL customer-facing emails (no login required)
+ * - Better error handling and input validation
+ * - Consistent URL generation via generateQuoteViewUrl
  */
 
 import { sendEmailWithMailgun } from './mailgun'
 import { logger } from './logger'
 import { executeQuery } from './database'
+import { generateQuoteViewUrl } from './quote-tokens'
 
 interface EmailOptions {
   to: string
@@ -28,7 +35,9 @@ const getAppBaseUrl = () => {
 const getAdminEmail = () => process.env.ADMIN_EMAIL || 'admin@elitesportsdj.com'
 
 /**
- * Log email to database
+ * Log email to database with metadata for resend capability
+ * 
+ * IMPROVED: Now stores metadata_json so emails can be properly reconstructed on resend
  */
 async function logEmail(
   quoteRequestId: number | null,
@@ -40,13 +49,27 @@ async function logEmail(
   errorMessage?: string
 ) {
   try {
+    // Try to store with metadata_json column
     await executeQuery(
-      `INSERT INTO email_logs (quote_id, to_email, subject, template, status, error_message, sent_at)
-       VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
-      [quoteRequestId, toEmail, subject, template, status, errorMessage || null]
+      `INSERT INTO email_logs (quote_id, to_email, subject, template, status, error_message, metadata_json, sent_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
+      [quoteRequestId, toEmail, subject, template, status, errorMessage || null, JSON.stringify(metadata || {})]
     )
-  } catch (error) {
-    logger.error('Failed to log email', { toEmail, subject })
+  } catch (error: any) {
+    // Fallback: if metadata_json column doesn't exist, insert without it
+    if (error.code === '42703') {
+      try {
+        await executeQuery(
+          `INSERT INTO email_logs (quote_id, to_email, subject, template, status, error_message, sent_at)
+           VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+          [quoteRequestId, toEmail, subject, template, status, errorMessage || null]
+        )
+      } catch (fallbackError) {
+        logger.error('Failed to log email (fallback)', { error: fallbackError, toEmail, subject })
+      }
+    } else {
+      logger.error('Failed to log email', { error, toEmail, subject })
+    }
   }
 }
 
@@ -55,6 +78,17 @@ async function logEmail(
  * Uses Mailgun API for delivery
  */
 async function sendEmail(options: EmailOptions, template: string, metadata: any, quoteRequestId?: number): Promise<boolean> {
+  // Validate required fields
+  if (!options.to) {
+    logger.error('Email recipient is required', { template })
+    return false
+  }
+
+  if (!options.subject) {
+    logger.error('Email subject is required', { template, to: options.to })
+    return false
+  }
+
   try {
     const sent = await sendEmailWithMailgun({
       to: options.to,
@@ -66,7 +100,8 @@ async function sendEmail(options: EmailOptions, template: string, metadata: any,
     if (sent) {
       logger.info('Email sent successfully', {
         to: options.to,
-        subject: options.subject
+        subject: options.subject,
+        template
       })
       
       await logEmail(quoteRequestId || null, options.to, options.subject, template, metadata, 'sent')
@@ -76,12 +111,28 @@ async function sendEmail(options: EmailOptions, template: string, metadata: any,
     }
   } catch (error: any) {
     logger.error('Failed to send email', {
+      error: error.message,
       to: options.to,
-      subject: options.subject
+      subject: options.subject,
+      template
     })
     
     await logEmail(quoteRequestId || null, options.to, options.subject, template, metadata, 'failed', error.message)
     return false
+  }
+}
+
+/**
+ * Generate a token-based quote URL for a customer
+ * This URL allows customers to view/accept quotes without logging in
+ */
+function getTokenBasedQuoteUrl(orderId: number, email: string): string {
+  const appBaseUrl = getAppBaseUrl()
+  try {
+    return generateQuoteViewUrl(orderId, email, appBaseUrl)
+  } catch (error) {
+    logger.warn('Failed to generate token-based URL, falling back to standard URL', { orderId, error })
+    return `${appBaseUrl}/orders/${orderId}/quote`
   }
 }
 
@@ -105,14 +156,14 @@ export interface EnhancedQuoteEmailData {
 }
 
 export async function sendEnhancedQuoteEmail(data: EnhancedQuoteEmailData): Promise<boolean> {
-  const appBaseUrl = getAppBaseUrl()
   const formattedAmount = `$${(data.quoteAmount / 100).toFixed(2)}`
   const expirationText = data.expirationDate 
     ? data.expirationDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
     : '30 days from today'
   
-  // Generate the quote view URL (use token-based URL if available, fallback to standard)
-  const quoteUrl = data.quoteViewUrl || `${appBaseUrl}/orders/${data.orderId}/quote`
+  // IMPROVED: Always generate a token-based URL if not provided
+  // This ensures customers can access quotes from email without logging in
+  const quoteUrl = data.quoteViewUrl || getTokenBasedQuoteUrl(data.orderId, data.to)
   
   const paymentSection = data.paymentUrl ? `
     <div style="text-align: center; margin: 30px 0;">
@@ -205,7 +256,7 @@ export async function sendEnhancedQuoteEmail(data: EnhancedQuoteEmailData): Prom
         </div>
         
         <div class="footer">
-          <p>© ${new Date().getFullYear()} Elite Sports DJ. All rights reserved.</p>
+          <p>&copy; ${new Date().getFullYear()} Elite Sports DJ. All rights reserved.</p>
           <p style="margin-top: 10px;">
             <a href="${quoteUrl}" style="color: #0ea5e9;">View Quote Online</a>
           </p>
@@ -245,9 +296,11 @@ export interface QuoteRevisionEmailData {
 }
 
 export async function sendQuoteRevisionEmail(data: QuoteRevisionEmailData): Promise<boolean> {
-  const appBaseUrl = getAppBaseUrl()
   const formattedPrevious = `$${(data.previousAmount / 100).toFixed(2)}`
   const formattedNew = `$${(data.newAmount / 100).toFixed(2)}`
+  
+  // IMPROVED: Use token-based URL so customer doesn't need to log in
+  const quoteUrl = getTokenBasedQuoteUrl(data.orderId, data.to)
   
   const html = `
     <!DOCTYPE html>
@@ -273,7 +326,7 @@ export async function sendQuoteRevisionEmail(data: QuoteRevisionEmailData): Prom
         <div class="content">
           <p>Hi ${data.name},</p>
           
-          <p>We've updated the quote for your ${data.packageName} order.</p>
+          <p>We've updated the quote for your ${data.packageName} order. Here's a summary of the changes:</p>
           
           <div class="revision-box">
             <h3 style="margin-top: 0; text-align: center;">Order #${data.orderId}</h3>
@@ -295,10 +348,13 @@ export async function sendQuoteRevisionEmail(data: QuoteRevisionEmailData): Prom
           </div>
           
           <p style="text-align: center; margin: 30px 0;">
-            <a href="${appBaseUrl}/orders/${data.orderId}" 
+            <a href="${quoteUrl}" 
                style="display: inline-block; padding: 12px 24px; background: #0ea5e9; color: white; text-decoration: none; border-radius: 6px; font-weight: bold;">
               View Updated Quote
             </a>
+          </p>
+          <p style="text-align: center; color: #64748b; font-size: 14px;">
+            No login required - this link is unique to your order.
           </p>
           
           <p>If you have any questions about this update, please don't hesitate to contact us.</p>
@@ -306,7 +362,7 @@ export async function sendQuoteRevisionEmail(data: QuoteRevisionEmailData): Prom
           <p>Best regards,<br>The Elite Sports DJ Team</p>
         </div>
         <div class="footer">
-          <p>© ${new Date().getFullYear()} Elite Sports DJ. All rights reserved.</p>
+          <p>&copy; ${new Date().getFullYear()} Elite Sports DJ. All rights reserved.</p>
         </div>
       </div>
     </body>
@@ -339,9 +395,11 @@ export interface QuoteReminderEmailData {
 }
 
 export async function sendQuoteReminderEmail(data: QuoteReminderEmailData): Promise<boolean> {
-  const appBaseUrl = getAppBaseUrl()
   const formattedAmount = `$${(data.quoteAmount / 100).toFixed(2)}`
   const daysRemaining = Math.max(0, 30 - data.daysOld)
+  
+  // IMPROVED: Use token-based URL so customer doesn't need to log in
+  const quoteUrl = getTokenBasedQuoteUrl(data.orderId, data.to)
   
   const html = `
     <!DOCTYPE html>
@@ -377,13 +435,16 @@ export async function sendQuoteReminderEmail(data: QuoteReminderEmailData): Prom
           
           ${daysRemaining <= 7 ? `
           <div class="urgency">
-            <strong>⏰ Expiring Soon!</strong>
+            <strong>Expiring Soon!</strong>
             <p style="margin: 5px 0 0 0;">This quote expires in ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''}. Don't wait - secure your spot today!</p>
           </div>
           ` : ''}
           
           <p style="text-align: center;">
-            <a href="${appBaseUrl}/orders/${data.orderId}" class="cta-button">View Quote</a>
+            <a href="${quoteUrl}" class="cta-button">View Quote</a>
+          </p>
+          <p style="text-align: center; color: #64748b; font-size: 14px;">
+            No login required - click the button above to view your quote.
           </p>
           
           <p>Questions? Just reply to this email and we'll be happy to help.</p>
@@ -391,7 +452,7 @@ export async function sendQuoteReminderEmail(data: QuoteReminderEmailData): Prom
           <p>Best regards,<br>The Elite Sports DJ Team</p>
         </div>
         <div class="footer">
-          <p>© ${new Date().getFullYear()} Elite Sports DJ. All rights reserved.</p>
+          <p>&copy; ${new Date().getFullYear()} Elite Sports DJ. All rights reserved.</p>
         </div>
       </div>
     </body>
@@ -433,7 +494,7 @@ export async function sendAdminNotificationEmail(data: AdminNotificationEmailDat
         .container { max-width: 600px; margin: 0 auto; padding: 20px; }
         .header { background: #1e293b; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
         .content { background: #f8fafc; padding: 30px; border-radius: 0 0 8px 8px; }
-        .message-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #0ea5e9; }
+        .message-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #0ea5e9; white-space: pre-wrap; }
       </style>
     </head>
     <body>
@@ -515,7 +576,7 @@ export async function sendCustomEmailEnhanced(data: CustomEmailEnhancedData): Pr
           <p style="margin-top: 30px;">Best regards,<br>The Elite Sports DJ Team</p>
         </div>
         <div class="footer">
-          <p>© ${new Date().getFullYear()} Elite Sports DJ. All rights reserved.</p>
+          <p>&copy; ${new Date().getFullYear()} Elite Sports DJ. All rights reserved.</p>
         </div>
       </div>
     </body>
@@ -577,7 +638,7 @@ export async function sendManualCompletionEmail(data: ManualCompletionEmailData)
         .container { max-width: 600px; margin: 0 auto; }
         .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 40px 30px; text-align: center; }
         .content { background: #ffffff; padding: 40px 30px; }
-        .completion-box { background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); padding: 30px; border-radius: 12px; margin: 25px 0; border: 2px solid #10b981; text-align: center; }
+        .completion-box { background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); padding: 30px; border-radius: 12px; margin: 25px 0; border: 2px solid #10b981; text-align: center; }
         .checkmark { font-size: 48px; margin-bottom: 10px; }
         .amount { font-size: 36px; font-weight: bold; color: #059669; margin: 15px 0; }
         .footer { background: #f8fafc; padding: 30px; text-align: center; color: #64748b; font-size: 14px; }
@@ -590,7 +651,7 @@ export async function sendManualCompletionEmail(data: ManualCompletionEmailData)
     <body>
       <div class="container">
         <div class="header">
-          <div class="checkmark">✓</div>
+          <div class="checkmark">&#10003;</div>
           <h1 style="margin: 0; font-size: 28px;">Order Complete!</h1>
           <p style="margin: 10px 0 0 0; opacity: 0.9;">Thank you for your business</p>
         </div>
@@ -621,7 +682,7 @@ export async function sendManualCompletionEmail(data: ManualCompletionEmailData)
             </tr>
             <tr>
               <td>Status</td>
-              <td style="color: #059669;">✓ Completed</td>
+              <td style="color: #059669;">&#10003; Completed</td>
             </tr>
           </table>
           
@@ -641,7 +702,7 @@ export async function sendManualCompletionEmail(data: ManualCompletionEmailData)
         
         <div class="footer">
           <p>Questions? Contact us at info@elitesportsdj.com</p>
-          <p style="margin-top: 10px;">© ${new Date().getFullYear()} Elite Sports DJ. All rights reserved.</p>
+          <p style="margin-top: 10px;">&copy; ${new Date().getFullYear()} Elite Sports DJ. All rights reserved.</p>
         </div>
       </div>
     </body>

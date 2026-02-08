@@ -145,15 +145,18 @@ export const adminEnhancementsRouter = router({
         }
         
         // Generate URLs for email
-        const config = useRuntimeConfig()
-        const appUrl = config.public.appBaseUrl || 'https://elitesportsdj.com'
+        let appUrl: string
+        try {
+          const config = useRuntimeConfig()
+          appUrl = config.public.appBaseUrl || 'https://elitesportsdj.com'
+        } catch {
+          appUrl = process.env.APP_URL || 'https://elitesportsdj.com'
+        }
         
         // Generate secure token-based quote view URL
+        // NOTE: generateQuoteViewUrl internally generates and stores a token,
+        // so we don't need to separately call generateQuoteToken + storeQuoteToken
         const quoteViewUrl = generateQuoteViewUrl(input.orderId, order.contact_email, appUrl)
-        
-        // Store token for tracking
-        const tokenData = generateQuoteToken(input.orderId, order.contact_email)
-        await storeQuoteToken(input.orderId, tokenData.token, tokenData.expiresAt)
         
         // Generate payment URL if requested
         let paymentUrl: string | null = null
@@ -711,24 +714,39 @@ export const adminEnhancementsRouter = router({
       
       const order = orderResult.rows[0]
       
+      // IMPROVED: Generate token-based URLs for all customer-facing email resends
+      // This ensures customers can access quotes from email without logging in
+      let appUrl: string
+      try {
+        const config = useRuntimeConfig()
+        appUrl = config.public.appBaseUrl || 'https://elitesportsdj.com'
+      } catch {
+        appUrl = process.env.APP_URL || 'https://elitesportsdj.com'
+      }
+      
       switch (input.emailType) {
-        case 'quote':
+        case 'quote': {
           if (!order.quoted_amount) {
             throw new TRPCError({
               code: 'BAD_REQUEST',
               message: 'No quote exists for this order'
             })
           }
+          // Generate fresh token-based URL for the resend
+          const quoteViewUrl = generateQuoteViewUrl(input.orderId, order.contact_email, appUrl)
+          
           await sendEnhancedQuoteEmail({
             to: order.contact_email,
             name: order.contact_name,
             quoteAmount: order.quoted_amount,
             packageName: order.package_name || 'Service Request',
-            orderId: input.orderId
+            orderId: input.orderId,
+            quoteViewUrl
           })
           break
+        }
           
-        case 'reminder':
+        case 'reminder': {
           if (!order.quoted_amount) {
             throw new TRPCError({
               code: 'BAD_REQUEST',
@@ -745,6 +763,7 @@ export const adminEnhancementsRouter = router({
             daysOld
           })
           break
+        }
           
         default:
           throw new TRPCError({

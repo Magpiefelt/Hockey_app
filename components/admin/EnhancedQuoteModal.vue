@@ -11,6 +11,7 @@
 
 import { VueDatePicker } from '@vuepic/vue-datepicker'
 import '@vuepic/vue-datepicker/dist/main.css'
+import { useCalendarStore } from '~/stores/calendar'
 
 const props = defineProps<{
   orderId: number
@@ -153,6 +154,16 @@ async function submitQuote() {
     })
     
     showSuccess('Quote submitted successfully!')
+    
+    // Refresh calendar store so availability is updated immediately
+    // (the confirmed event date should now show as booked)
+    try {
+      const calendarStore = useCalendarStore()
+      await calendarStore.refresh()
+    } catch (calErr) {
+      // Non-critical - calendar will refresh on next page load
+      console.warn('Calendar refresh after quote submission failed:', calErr)
+    }
     
     emit('submitted', {
       orderId: props.orderId,

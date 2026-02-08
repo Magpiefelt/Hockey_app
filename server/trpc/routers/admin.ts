@@ -3,6 +3,8 @@ import { TRPCError } from '@trpc/server'
 import { router, adminProcedure } from '../trpc'
 import { query, transaction } from '../../db/connection'
 import { sendCustomEmail, sendQuoteEmail, sendOrderConfirmation, sendInvoiceEmail, sendPaymentReceipt } from '../../utils/email'
+import { sendEnhancedQuoteEmail } from '../../utils/email-enhanced'
+import { generateQuoteViewUrl } from '../../utils/quote-tokens'
 import { logger } from '../../utils/logger'
 
 export const adminRouter = router({
@@ -549,15 +551,20 @@ export const adminRouter = router({
             [input.orderId, 'submitted', 'quoted', ctx.user.userId, 'Quote submitted to customer']
           )
           
-          // Send quote email to customer
+          // Send enhanced quote email to customer with token-based URL
           try {
-            // Using static import from top of file
-            await sendQuoteEmail({
+            // Generate token-based URL so customer can view quote without logging in
+            const appBaseUrl = process.env.APP_URL || 'https://elitesportsdj.com'
+            const quoteViewUrl = generateQuoteViewUrl(input.orderId, order.contact_email, appBaseUrl)
+            
+            await sendEnhancedQuoteEmail({
               to: order.contact_email,
               name: order.contact_name,
               quoteAmount: input.quoteAmount,
               packageName,
-              orderId: input.orderId
+              orderId: input.orderId,
+              quoteViewUrl,
+              adminNotes: input.adminNotes
             })
             logger.info('Quote email sent', { orderId: input.orderId, email: order.contact_email })
           } catch (emailError: any) {
@@ -901,11 +908,27 @@ export const adminRouter = router({
         id: z.number()
       }))
       .mutation(async ({ input }) => {
-        // Get email details
-        const emailResult = await query(
-          `SELECT * FROM email_logs WHERE id = $1`,
-          [input.id]
-        )
+        // Get email details - handle missing metadata_json column gracefully
+        let emailResult
+        let hasMetadataColumn = true
+        
+        try {
+          emailResult = await query(
+            `SELECT id, quote_id, to_email, subject, template, status, error_message, metadata_json FROM email_logs WHERE id = $1`,
+            [input.id]
+          )
+        } catch (err: any) {
+          if (err.code === '42703') {
+            // metadata_json column doesn't exist
+            hasMetadataColumn = false
+            emailResult = await query(
+              `SELECT id, quote_id, to_email, subject, template, status, error_message FROM email_logs WHERE id = $1`,
+              [input.id]
+            )
+          } else {
+            throw err
+          }
+        }
         
         if (emailResult.rows.length === 0) {
           throw new TRPCError({
@@ -915,7 +938,7 @@ export const adminRouter = router({
         }
         
         const emailLog = emailResult.rows[0]
-        const metadata = emailLog.metadata_json
+        const metadata = hasMetadataColumn ? (emailLog.metadata_json || {}) : {}
         
         // Determine which email function to use based on template
         try {
@@ -924,39 +947,46 @@ export const adminRouter = router({
           switch (emailLog.template) {
             case 'order_confirmation':
               await sendOrderConfirmation({
-                to: emailLog.to_email,
-                name: metadata.name,
-                serviceType: metadata.serviceType,
-                orderId: metadata.orderId
+                to: metadata.to || emailLog.to_email,
+                name: metadata.name || 'Customer',
+                serviceType: metadata.serviceType || 'Service Request',
+                orderId: metadata.orderId || emailLog.quote_id
               })
               break
               
             case 'quote':
-              await sendQuoteEmail({
-                to: emailLog.to_email,
-                name: metadata.name,
-                quoteAmount: metadata.quoteAmount,
-                packageName: metadata.packageName,
-                orderId: metadata.orderId
+            case 'quote_enhanced':
+              // Use enhanced quote email with token-based URL
+              await sendEnhancedQuoteEmail({
+                to: metadata.to || emailLog.to_email,
+                name: metadata.name || 'Customer',
+                quoteAmount: metadata.quoteAmount || 0,
+                packageName: metadata.packageName || 'Service Request',
+                orderId: metadata.orderId || emailLog.quote_id,
+                eventDate: metadata.eventDate,
+                teamName: metadata.teamName,
+                sportType: metadata.sportType,
+                adminNotes: metadata.adminNotes
               })
               break
               
             case 'invoice':
               await sendInvoiceEmail({
-                to: emailLog.to_email,
-                name: metadata.name,
-                amount: metadata.amount,
-                invoiceUrl: metadata.invoiceUrl,
-                orderId: metadata.orderId
+                to: metadata.to || emailLog.to_email,
+                name: metadata.name || 'Customer',
+                amount: metadata.amount || 0,
+                invoiceUrl: metadata.invoiceUrl || '',
+                orderId: metadata.orderId || emailLog.quote_id
               })
               break
               
             case 'payment_receipt':
+            case 'receipt':
               await sendPaymentReceipt({
-                to: emailLog.to_email,
-                name: metadata.name,
-                amount: metadata.amount,
-                orderId: metadata.orderId
+                to: metadata.to || emailLog.to_email,
+                name: metadata.name || 'Customer',
+                amount: metadata.amount || 0,
+                orderId: metadata.orderId || emailLog.quote_id
               })
               break
               
@@ -964,7 +994,7 @@ export const adminRouter = router({
               await sendCustomEmail(
                 emailLog.to_email,
                 emailLog.subject,
-                metadata?.body || '<p>Email content</p>',
+                metadata?.body || '<p>This is a resent notification. Please contact us if you need assistance.</p>',
                 emailLog.quote_id
               )
           }

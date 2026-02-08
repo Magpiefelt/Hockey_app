@@ -83,6 +83,17 @@ const fetchOverrides = async () => {
   try {
     const data = await trpc.calendar.getOverrides.query()
     overrides.value = data
+    
+    // Also refresh the centralized calendar store so the public-facing
+    // AvailabilityCalendar component stays in sync with admin changes
+    try {
+      const { useCalendarStore } = await import('~/stores/calendar')
+      const calendarStore = useCalendarStore()
+      await calendarStore.refresh()
+    } catch (storeErr) {
+      // Non-critical - public calendar will refresh on its own schedule
+      console.warn('Calendar store refresh failed:', storeErr)
+    }
   } catch (err: any) {
     const { handleTrpcError } = await import('~/composables/useTrpc')
     error.value = handleTrpcError(err)

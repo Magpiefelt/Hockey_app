@@ -1,8 +1,21 @@
+/**
+ * Emails Router (standalone)
+ * 
+ * NOTE: The admin emails page primarily uses admin.emails routes (admin.ts).
+ * This router provides additional email endpoints.
+ * 
+ * IMPROVED:
+ * - Resend now properly reconstructs emails from stored metadata_json
+ * - Better error handling and logging
+ * - Input validation
+ */
+
 import { z } from 'zod'
 import { TRPCError } from '@trpc/server'
 import { router, adminProcedure } from '../trpc'
 import { query } from '../../db/connection'
-import { sendCustomEmail } from '../../utils/email'
+import { sendCustomEmail, sendOrderConfirmation, sendQuoteEmail, sendInvoiceEmail, sendPaymentReceipt } from '../../utils/email'
+import { sendEnhancedQuoteEmail, sendQuoteReminderEmail, sendManualCompletionEmail } from '../../utils/email-enhanced'
 import { escapeHtml } from '../../utils/sanitize'
 import { logger } from '../../utils/logger'
 
@@ -58,7 +71,7 @@ export const emailsRouter = router({
           id, quote_id, to_email, subject, template,
           status, error_message, sent_at, created_at
         FROM email_logs
-        ORDER BY sent_at DESC
+        ORDER BY COALESCE(sent_at, created_at) DESC
         LIMIT $1 OFFSET $2`,
         [limit, offset]
       )
@@ -71,20 +84,18 @@ export const emailsRouter = router({
         emailType: row.template,
         status: row.status,
         errorMessage: row.error_message,
-        sentAt: row.sent_at?.toISOString() || row.created_at.toISOString()
+        sentAt: row.sent_at?.toISOString() || row.created_at?.toISOString()
       }))
     }),
 
   /**
    * Send custom email
-   * Note: This is a placeholder implementation
-   * In production, integrate with SendGrid, Postmark, or similar service
    */
   sendCustom: adminProcedure
     .input(z.object({
       to: z.string().email(),
-      subject: z.string(),
-      message: z.string(),
+      subject: z.string().min(1, 'Subject is required').max(200),
+      message: z.string().min(1, 'Message is required'),
       orderId: z.number().optional()
     }))
     .mutation(async ({ input }) => {
@@ -111,7 +122,7 @@ export const emailsRouter = router({
                 ${escapeHtml(input.message).replace(/\n/g, '<br>')}
               </div>
               <div class="footer">
-                <p>© ${new Date().getFullYear()} Elite Sports DJ. All rights reserved.</p>
+                <p>&copy; ${new Date().getFullYear()} Elite Sports DJ. All rights reserved.</p>
               </div>
             </div>
           </body>
@@ -136,27 +147,47 @@ export const emailsRouter = router({
           throw new Error('Email service returned false')
         }
       } catch (error: any) {
-        logger.error('Failed to send custom email', error, { to: input.to })
+        logger.error('Failed to send custom email', { error: error.message, to: input.to })
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
-          message: 'Failed to send email'
+          message: 'Failed to send email: ' + (error.message || 'Unknown error')
         })
       }
     }),
 
   /**
    * Resend a failed email
+   * 
+   * IMPROVED: Now properly reconstructs the email from stored metadata_json
+   * instead of sending a placeholder message. Falls back to the admin.emails.resend
+   * approach if metadata is available.
    */
   resend: adminProcedure
     .input(z.object({
       logId: z.number()
     }))
     .mutation(async ({ input }) => {
-      // Get the original email details
-      const result = await query(
-        'SELECT to_email, subject, template FROM email_logs WHERE id = $1',
-        [input.logId]
-      )
+      // Get the original email details including metadata
+      let hasMetadata = true
+      let result
+      
+      try {
+        result = await query(
+          'SELECT to_email, subject, template, quote_id, metadata_json FROM email_logs WHERE id = $1',
+          [input.logId]
+        )
+      } catch (err: any) {
+        // metadata_json column might not exist
+        if (err.code === '42703') {
+          hasMetadata = false
+          result = await query(
+            'SELECT to_email, subject, template, quote_id FROM email_logs WHERE id = $1',
+            [input.logId]
+          )
+        } else {
+          throw err
+        }
+      }
       
       if (result.rows.length === 0) {
         throw new TRPCError({
@@ -166,23 +197,146 @@ export const emailsRouter = router({
       }
       
       const original = result.rows[0]
+      const metadata = hasMetadata && original.metadata_json ? original.metadata_json : null
       
       try {
-        // Resend email using the email utility
-        const { sendEmail } = await import('../../utils/email')
+        let sent = false
         
-        // Note: This is a basic implementation. In production, you'd want to
-        // reconstruct the full email template based on template type
-        await sendEmail({
-          to: original.to_email,
-          subject: original.subject,
-          html: `<p>This is a resent email. Original type: ${original.template}</p>`,
-          text: `This is a resent email. Original type: ${original.template}`
-        }, original.template, {}, null)
+        // IMPROVED: Reconstruct the actual email based on template type and stored metadata
+        if (metadata) {
+          switch (original.template) {
+            case 'order_confirmation':
+              sent = await sendOrderConfirmation({
+                to: metadata.to || original.to_email,
+                name: metadata.name || 'Customer',
+                serviceType: metadata.serviceType || 'Service Request',
+                orderId: metadata.orderId || original.quote_id
+              })
+              break
+              
+            case 'quote':
+              sent = await sendQuoteEmail({
+                to: metadata.to || original.to_email,
+                name: metadata.name || 'Customer',
+                quoteAmount: metadata.quoteAmount || 0,
+                packageName: metadata.packageName || 'Service Request',
+                orderId: metadata.orderId || original.quote_id
+              })
+              break
+              
+            case 'quote_enhanced':
+              sent = await sendEnhancedQuoteEmail({
+                to: metadata.to || original.to_email,
+                name: metadata.name || 'Customer',
+                quoteAmount: metadata.quoteAmount || 0,
+                packageName: metadata.packageName || 'Service Request',
+                orderId: metadata.orderId || original.quote_id,
+                eventDate: metadata.eventDate,
+                teamName: metadata.teamName,
+                sportType: metadata.sportType,
+                adminNotes: metadata.adminNotes
+              })
+              break
+              
+            case 'quote_reminder':
+              sent = await sendQuoteReminderEmail({
+                to: metadata.to || original.to_email,
+                name: metadata.name || 'Customer',
+                orderId: metadata.orderId || original.quote_id,
+                quoteAmount: metadata.quoteAmount || 0,
+                packageName: metadata.packageName || 'Service Request',
+                daysOld: metadata.daysOld || 0
+              })
+              break
+              
+            case 'invoice':
+              sent = await sendInvoiceEmail({
+                to: metadata.to || original.to_email,
+                name: metadata.name || 'Customer',
+                amount: metadata.amount || 0,
+                invoiceUrl: metadata.invoiceUrl || '',
+                orderId: metadata.orderId || original.quote_id
+              })
+              break
+              
+            case 'receipt':
+            case 'payment_receipt':
+              sent = await sendPaymentReceipt({
+                to: metadata.to || original.to_email,
+                name: metadata.name || 'Customer',
+                amount: metadata.amount || 0,
+                orderId: metadata.orderId || original.quote_id
+              })
+              break
+              
+            case 'manual_completion':
+              sent = await sendManualCompletionEmail({
+                to: metadata.to || original.to_email,
+                name: metadata.name || 'Customer',
+                amount: metadata.amount || 0,
+                orderId: metadata.orderId || original.quote_id,
+                serviceType: metadata.serviceType || 'Service Request',
+                adminMessage: metadata.adminMessage
+              })
+              break
+              
+            case 'custom':
+              sent = await sendCustomEmail(
+                original.to_email,
+                original.subject,
+                metadata.body || metadata.htmlContent || '<p>Email content unavailable</p>',
+                original.quote_id
+              )
+              break
+              
+            default:
+              // Unknown template - send as custom with original subject
+              sent = await sendCustomEmail(
+                original.to_email,
+                original.subject,
+                metadata.body || `<p>Resent email (original type: ${original.template})</p>`,
+                original.quote_id
+              )
+          }
+        } else {
+          // No metadata available - try to reconstruct from order data if we have a quote_id
+          if (original.quote_id && (original.template === 'quote' || original.template === 'quote_enhanced')) {
+            const orderResult = await query(
+              `SELECT contact_name, contact_email, quoted_amount, status FROM quote_requests WHERE id = $1`,
+              [original.quote_id]
+            )
+            
+            if (orderResult.rows.length > 0) {
+              const order = orderResult.rows[0]
+              sent = await sendEnhancedQuoteEmail({
+                to: order.contact_email,
+                name: order.contact_name,
+                quoteAmount: order.quoted_amount || 0,
+                packageName: 'Service Request',
+                orderId: original.quote_id
+              })
+            }
+          }
+          
+          // Final fallback: send a basic notification
+          if (!sent) {
+            sent = await sendCustomEmail(
+              original.to_email,
+              original.subject,
+              `<p>This is a resent notification for your order. Please contact us if you need assistance.</p>`,
+              original.quote_id
+            )
+          }
+        }
+        
+        if (!sent) {
+          throw new Error('Email sending returned false')
+        }
         
         logger.info('Email resent successfully', { 
           logId: input.logId, 
-          recipient: original.to_email 
+          recipient: original.to_email,
+          template: original.template
         })
         
         return {
@@ -190,15 +344,11 @@ export const emailsRouter = router({
           message: 'Email resent successfully'
         }
       } catch (error: any) {
-        await query(
-          `INSERT INTO email_logs (to_email, subject, template, status, error_message, sent_at)
-           VALUES ($1, $2, $3, $4, $5, NOW())`,
-          [original.to_email, original.subject, original.template, 'failed', error.message]
-        )
+        logger.error('Failed to resend email', { logId: input.logId, error: error.message })
         
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
-          message: 'Failed to resend email'
+          message: 'Failed to resend email: ' + (error.message || 'Unknown error')
         })
       }
     })

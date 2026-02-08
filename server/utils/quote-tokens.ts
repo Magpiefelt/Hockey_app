@@ -103,16 +103,30 @@ export async function storeQuoteToken(orderId: number, token: string, expiresAt:
 
 /**
  * Generate a direct quote view URL with token
+ * Also stores the token in the database for tracking
  */
 export function generateQuoteViewUrl(orderId: number, email: string, baseUrl: string): string {
   const tokenData = generateQuoteToken(orderId, email)
+  
+  // Store token asynchronously - don't block URL generation
+  storeQuoteToken(orderId, tokenData.token, tokenData.expiresAt).catch(err => {
+    logger.warn('Failed to store quote view token', { orderId, error: err })
+  })
+  
   return `${baseUrl}/orders/${orderId}/quote?token=${tokenData.token}`
 }
 
 /**
  * Generate a direct quote accept URL with token
+ * Also stores the token in the database for tracking
  */
 export function generateQuoteAcceptUrl(orderId: number, email: string, baseUrl: string): string {
   const tokenData = generateQuoteToken(orderId, email)
+  
+  // Store token asynchronously - don't block URL generation
+  storeQuoteToken(orderId, tokenData.token, tokenData.expiresAt).catch(err => {
+    logger.warn('Failed to store quote accept token', { orderId, error: err })
+  })
+  
   return `${baseUrl}/orders/${orderId}/quote?token=${tokenData.token}&action=accept`
 }

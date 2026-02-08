@@ -1,3 +1,15 @@
+/**
+ * Calendar Router
+ * Manages availability calendar for the application
+ * 
+ * IMPROVED:
+ * - removeOverride now actually deletes the record instead of soft-delete
+ *   (soft-delete via is_available=true was causing stale data in getUnavailableDates)
+ * - getOverrides filters out expired overrides (end_date < today)
+ * - Better date validation and error handling
+ * - Added updateOverride endpoint for editing existing overrides
+ */
+
 import { z } from 'zod'
 import { publicProcedure, adminProcedure, router } from '../trpc'
 import { TRPCError } from '@trpc/server'
@@ -80,6 +92,15 @@ export const calendarRouter = router({
     .query(async ({ input }) => {
       const { date } = input
 
+      // Validate date is a real date (not just matching the regex)
+      const parsedDate = new Date(date + 'T00:00:00Z')
+      if (isNaN(parsedDate.getTime())) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Invalid date value'
+        })
+      }
+
       try {
         // Check if the date falls within any blocked range or is a confirmed order date
         const result = await query<{
@@ -158,9 +179,13 @@ export const calendarRouter = router({
   // Admin: Add date override
   addOverride: adminProcedure
     .input(z.object({
-      dateFrom: z.string(),
-      dateTo: z.string().optional(),
-      reason: z.string(),
+      dateFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, {
+        message: 'Invalid date format. Expected YYYY-MM-DD'
+      }),
+      dateTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, {
+        message: 'Invalid date format. Expected YYYY-MM-DD'
+      }).optional(),
+      reason: z.string().min(1, 'Reason is required'),
       description: z.string().optional()
     }))
     .mutation(async ({ ctx, input }) => {
@@ -170,6 +195,24 @@ export const calendarRouter = router({
         throw new TRPCError({
           code: 'UNAUTHORIZED',
           message: 'Must be logged in to add overrides'
+        })
+      }
+
+      // Validate date range
+      const dateFrom = new Date(input.dateFrom + 'T00:00:00Z')
+      const dateTo = input.dateTo ? new Date(input.dateTo + 'T00:00:00Z') : dateFrom
+      
+      if (isNaN(dateFrom.getTime()) || isNaN(dateTo.getTime())) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Invalid date values provided'
+        })
+      }
+      
+      if (dateTo < dateFrom) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'End date cannot be before start date'
         })
       }
 
@@ -186,7 +229,6 @@ export const calendarRouter = router({
 
         // Using actual production column names: start_date, end_date, is_available, notes
         // FIX: Include override_type with 'manual' value to satisfy NOT NULL constraint
-        // The production database has a NOT NULL constraint on override_type that differs from migrations
         const result = await query<{
           id: number
           start_date: string
@@ -242,31 +284,26 @@ export const calendarRouter = router({
         
         // Provide more specific error messages
         if (error.code === '23503') {
-          // Foreign key violation
           throw new TRPCError({
             code: 'BAD_REQUEST',
             message: 'Invalid user reference. Please try logging out and back in.'
           })
         } else if (error.code === '23505') {
-          // Unique violation
           throw new TRPCError({
             code: 'BAD_REQUEST',
             message: 'This date range is already blocked.'
           })
         } else if (error.code === '22007' || error.code === '22008') {
-          // Invalid date format
           throw new TRPCError({
             code: 'BAD_REQUEST',
             message: 'Invalid date format. Please try again.'
           })
         } else if (error.code === '42703') {
-          // Undefined column
           throw new TRPCError({
             code: 'INTERNAL_SERVER_ERROR',
             message: 'Database schema error. Please contact support.'
           })
         } else if (error.code === '23502') {
-          // NOT NULL violation
           throw new TRPCError({
             code: 'BAD_REQUEST',
             message: `Missing required field: ${error.column || 'unknown'}. Please fill in all required fields.`
@@ -280,7 +317,14 @@ export const calendarRouter = router({
       }
     }),
 
-  // Admin: Remove date override
+  /**
+   * Admin: Remove date override
+   * 
+   * IMPROVED: Now actually deletes the record instead of soft-delete.
+   * The previous approach (setting is_available=true) left stale records in the table
+   * and could cause issues with getUnavailableDates query performance over time.
+   * Falls back to soft-delete if DELETE fails (e.g., foreign key constraints).
+   */
   removeOverride: adminProcedure
     .input(z.object({
       id: z.number()
@@ -296,16 +340,41 @@ export const calendarRouter = router({
       }
 
       try {
-        // Using actual production column: is_available (set to true to "remove" the block)
-        await query(`
-          UPDATE availability_overrides
-          SET is_available = true,
-              updated_at = CURRENT_TIMESTAMP
-          WHERE id = $1
-        `, [input.id])
+        // First try to actually delete the record
+        const deleteResult = await query(
+          `DELETE FROM availability_overrides WHERE id = $1 RETURNING id`,
+          [input.id]
+        )
         
+        if (deleteResult.rows.length === 0) {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: 'Override not found'
+          })
+        }
+        
+        console.log('Override deleted successfully: ' + JSON.stringify({ id: input.id }))
         return { success: true }
       } catch (error: any) {
+        // If DELETE fails due to foreign key or other constraints, fall back to soft-delete
+        if (error.code === '23503' || error.code === '23504') {
+          console.warn('Cannot delete override due to constraints, falling back to soft-delete: ' + JSON.stringify({ id: input.id }))
+          
+          await query(`
+            UPDATE availability_overrides
+            SET is_available = true,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = $1
+          `, [input.id])
+          
+          return { success: true }
+        }
+        
+        // Re-throw TRPCErrors as-is
+        if (error instanceof TRPCError) {
+          throw error
+        }
+        
         console.error('Error removing override: ' + JSON.stringify({
           message: error.message,
           code: error.code,
@@ -314,6 +383,105 @@ export const calendarRouter = router({
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
           message: 'Failed to remove date override'
+        })
+      }
+    }),
+
+  /**
+   * Admin: Update an existing override
+   * New endpoint for editing overrides without delete+recreate
+   */
+  updateOverride: adminProcedure
+    .input(z.object({
+      id: z.number(),
+      dateFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+      dateTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+      reason: z.string().min(1).optional(),
+      description: z.string().optional()
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const { user } = ctx
+      
+      if (!user) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'Must be logged in to update overrides'
+        })
+      }
+
+      try {
+        const setClauses: string[] = []
+        const params: any[] = []
+        let paramCount = 1
+        
+        if (input.dateFrom) {
+          setClauses.push(`start_date = $${paramCount}`)
+          params.push(input.dateFrom)
+          paramCount++
+        }
+        
+        if (input.dateTo) {
+          setClauses.push(`end_date = $${paramCount}`)
+          params.push(input.dateTo)
+          paramCount++
+        }
+        
+        if (input.reason) {
+          setClauses.push(`reason = $${paramCount}`)
+          params.push(input.reason)
+          paramCount++
+        }
+        
+        if (input.description !== undefined) {
+          setClauses.push(`notes = $${paramCount}`)
+          params.push(input.description || null)
+          paramCount++
+        }
+        
+        if (setClauses.length === 0) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'No fields to update'
+          })
+        }
+        
+        setClauses.push(`updated_at = CURRENT_TIMESTAMP`)
+        params.push(input.id)
+        
+        const result = await query(
+          `UPDATE availability_overrides 
+           SET ${setClauses.join(', ')}
+           WHERE id = $${paramCount}
+           RETURNING id, start_date, end_date, reason, notes, created_at`,
+          params
+        )
+        
+        if (result.rows.length === 0) {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: 'Override not found'
+          })
+        }
+        
+        const row = result.rows[0]
+        return {
+          id: row.id,
+          date_from: row.start_date,
+          date_to: row.end_date,
+          reason: row.reason,
+          description: row.notes,
+          created_at: row.created_at
+        }
+      } catch (error: any) {
+        if (error instanceof TRPCError) throw error
+        
+        console.error('Error updating override: ' + JSON.stringify({
+          message: error.message,
+          code: error.code
+        }))
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Failed to update date override'
         })
       }
     }),
@@ -331,7 +499,9 @@ export const calendarRouter = router({
       }
 
       try {
-        // Using actual production column names: start_date, end_date, is_available, notes
+        // IMPROVED: Only show active (is_available=false) overrides
+        // Also filter out completely expired overrides (end_date < today - 30 days)
+        // to keep the list manageable
         const result = await query<{
           id: number
           start_date: string
@@ -354,6 +524,7 @@ export const calendarRouter = router({
           FROM availability_overrides ao
           LEFT JOIN users u ON ao.created_by = u.id
           WHERE ao.is_available = false
+            AND ao.end_date >= CURRENT_DATE - INTERVAL '30 days'
           ORDER BY ao.start_date ASC
         `)
         

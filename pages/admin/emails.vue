@@ -88,8 +88,13 @@
               <option value="">All Templates</option>
               <option value="order_confirmation">Order Confirmation</option>
               <option value="quote">Quote</option>
+              <option value="quote_enhanced">Enhanced Quote</option>
+              <option value="quote_revision">Quote Revision</option>
+              <option value="quote_reminder">Quote Reminder</option>
               <option value="invoice">Invoice</option>
               <option value="payment_receipt">Payment Receipt</option>
+              <option value="manual_completion">Completion</option>
+              <option value="contact_notification">Contact Form</option>
               <option value="custom">Custom</option>
           </select>
         </div>
@@ -494,8 +499,15 @@ function getTemplateIcon(template: string) {
   const icons: Record<string, string> = {
     order_confirmation: 'mdi:check-decagram',
     quote: 'mdi:currency-usd',
+    quote_enhanced: 'mdi:currency-usd',
+    quote_revision: 'mdi:file-refresh',
+    quote_reminder: 'mdi:bell-ring',
     invoice: 'mdi:file-document',
     payment_receipt: 'mdi:receipt',
+    receipt: 'mdi:receipt',
+    manual_completion: 'mdi:check-all',
+    admin_notification: 'mdi:shield-account',
+    contact_notification: 'mdi:message-text',
     custom: 'mdi:email-edit'
   }
   return icons[template] || 'mdi:email'
@@ -505,8 +517,15 @@ function formatTemplate(template: string) {
   const names: Record<string, string> = {
     order_confirmation: 'Order Confirmation',
     quote: 'Quote',
+    quote_enhanced: 'Enhanced Quote',
+    quote_revision: 'Quote Revision',
+    quote_reminder: 'Quote Reminder',
     invoice: 'Invoice',
     payment_receipt: 'Payment Receipt',
+    receipt: 'Receipt',
+    manual_completion: 'Completion',
+    admin_notification: 'Admin Notification',
+    contact_notification: 'Contact Form',
     custom: 'Custom'
   }
   return names[template] || template
