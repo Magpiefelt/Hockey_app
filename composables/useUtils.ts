@@ -27,10 +27,25 @@ export const useUtils = () => {
 
     /**
      * Format date (simple)
+     * FIX: Handle YYYY-MM-DD strings with timezone-safe parsing.
+     * new Date("2026-03-15") parses as UTC midnight, which displays as
+     * the previous day in timezones behind UTC (MST, PST, etc).
      */
     formatDate: (date: string | Date | null) => {
       if (!date) return 'N/A'
-      const d = typeof date === 'string' ? new Date(date) : date
+      let d: Date
+      if (typeof date === 'string') {
+        // FIX: For YYYY-MM-DD format, parse as local date to avoid timezone shift
+        const isoMatch = date.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+        if (isoMatch) {
+          d = new Date(parseInt(isoMatch[1]), parseInt(isoMatch[2]) - 1, parseInt(isoMatch[3]))
+        } else {
+          d = new Date(date)
+        }
+      } else {
+        d = date
+      }
+      if (isNaN(d.getTime())) return 'Invalid date'
       return d.toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'short',

@@ -23,52 +23,89 @@
       <RevealOnScroll animation="fade-up">
         <div class="calendar-outer-container">
           <div class="calendar-card">
+            <!-- Loading State -->
+            <div v-if="isLoading && !hasData" class="calendar-loading">
+              <Icon name="mdi:loading" class="w-8 h-8 text-cyan-400 animate-spin" />
+              <p class="text-slate-400 mt-3">Loading availability...</p>
+            </div>
+
+            <!-- Error State -->
+            <div v-else-if="calendarError && !hasData" class="calendar-error">
+              <Icon name="mdi:alert-circle" class="w-8 h-8 text-amber-400" />
+              <p class="text-slate-300 mt-3">Unable to load availability data</p>
+              <button 
+                @click="retryFetch" 
+                class="mt-3 px-4 py-2 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 rounded-lg text-sm font-medium transition-colors"
+              >
+                Try Again
+              </button>
+            </div>
+
             <!-- Calendar -->
-            <div class="calendar-wrapper">
-              <VueDatePicker 
-                v-model="selectedDate"
-                :dark="true"
-                inline
-                auto-apply
-                :enable-time-picker="false"
-                :disabled-dates="unavailableDates"
-                :min-date="new Date()"
-                :six-weeks="true"
-                :month-change-on-scroll="false"
-                month-name-format="long"
-                :action-row="{ showNow: false, showPreview: false, showSelect: false, showCancel: false }"
-                @update:model-value="handleDateSelect"
-              />
-            </div>
+            <template v-else>
+              <div class="calendar-wrapper">
+                <VueDatePicker 
+                  v-model="selectedDate"
+                  :dark="true"
+                  inline
+                  auto-apply
+                  :enable-time-picker="false"
+                  :disabled-dates="disabledDatesFunction"
+                  :min-date="new Date()"
+                  :six-weeks="true"
+                  :month-change-on-scroll="false"
+                  month-name-format="long"
+                  :action-row="{ showNow: false, showPreview: false, showSelect: false, showCancel: false }"
+                  @update:model-value="handleDateSelect"
+                />
+              </div>
 
-            <!-- Legend -->
-            <div class="calendar-legend">
-              <div class="legend-item">
-                <div class="legend-dot legend-today"></div>
-                <span>Today</span>
+              <!-- Inline loading indicator when refreshing -->
+              <div v-if="isLoading && hasData" class="flex items-center justify-center gap-2 mt-3 text-sm text-cyan-400/70">
+                <Icon name="mdi:loading" class="w-4 h-4 animate-spin" />
+                <span>Refreshing availability...</span>
               </div>
-              <div class="legend-item">
-                <div class="legend-dot legend-available"></div>
-                <span>Available</span>
-              </div>
-              <div class="legend-item">
-                <div class="legend-dot legend-unavailable"></div>
-                <span>Unavailable</span>
-              </div>
-            </div>
 
-            <!-- Selected Date Info -->
-            <div v-if="selectedDate" class="selected-date-info">
-              <p class="text-slate-300">
-                Selected: <span class="font-semibold text-white">{{ formatDate(selectedDate) }}</span>
-              </p>
-              <p v-if="isDateAvailable(selectedDate)" class="mt-2 text-green-400">
-                ✓ This date is available
-              </p>
-              <p v-else class="mt-2 text-red-400">
-                ✗ This date is unavailable
-              </p>
-            </div>
+              <!-- Legend -->
+              <div class="calendar-legend">
+                <div class="legend-item">
+                  <div class="legend-dot legend-today"></div>
+                  <span>Today</span>
+                </div>
+                <div class="legend-item">
+                  <div class="legend-dot legend-available"></div>
+                  <span>Available</span>
+                </div>
+                <div class="legend-item">
+                  <div class="legend-dot legend-unavailable"></div>
+                  <span>Unavailable</span>
+                </div>
+              </div>
+
+              <!-- Selected Date Info -->
+              <div v-if="selectedDate" class="selected-date-info">
+                <p class="text-slate-300">
+                  Selected: <span class="font-semibold text-white">{{ formatDate(selectedDate) }}</span>
+                </p>
+                <p v-if="isDateAvailable(selectedDate)" class="mt-2 text-green-400 flex items-center justify-center gap-1">
+                  <Icon name="mdi:check-circle" class="w-4 h-4" />
+                  This date is available
+                </p>
+                <p v-else class="mt-2 text-red-400 flex items-center justify-center gap-1">
+                  <Icon name="mdi:close-circle" class="w-4 h-4" />
+                  This date is unavailable
+                </p>
+              </div>
+
+              <!-- Error banner when data is stale -->
+              <div v-if="calendarError && hasData" class="mt-4 px-4 py-2 bg-amber-500/10 border border-amber-500/30 rounded-lg text-center">
+                <p class="text-sm text-amber-400">
+                  <Icon name="mdi:alert" class="w-4 h-4 inline" />
+                  Availability data may be outdated. 
+                  <button @click="retryFetch" class="underline hover:text-amber-300">Refresh</button>
+                </p>
+              </div>
+            </template>
           </div>
         </div>
       </RevealOnScroll>
@@ -87,12 +124,42 @@ const selectedDate = ref<Date | null>(null)
 
 // Use centralized calendar store
 const calendarStore = useCalendarStore()
-const { unavailableDates } = storeToRefs(calendarStore)
+const { isLoading, error: calendarError } = storeToRefs(calendarStore)
+
+// Computed: whether we have data loaded at least once
+const hasData = computed(() => calendarStore.hasData)
+
+/**
+ * FIX: Use a function-based disabled dates check instead of passing the Date array directly.
+ * VueDatePicker compares dates using local timezone, but the store creates Date objects at UTC noon.
+ * By using a function that compares YYYY-MM-DD strings, we avoid all timezone mismatch issues.
+ */
+const formatLocalDateToISO = (date: Date): string => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+const disabledDatesFunction = computed(() => {
+  if (!calendarStore.hasData || calendarStore.unavailableDateStrings.length === 0) {
+    return undefined
+  }
+  
+  return (date: Date): boolean => {
+    const dateStr = formatLocalDateToISO(date)
+    return calendarStore.unavailableDateStrings.includes(dateStr)
+  }
+})
 
 // Fetch unavailable dates from API via store
 onMounted(async () => {
   await calendarStore.fetchUnavailableDates()
 })
+
+const retryFetch = async () => {
+  await calendarStore.refresh()
+}
 
 const handleDateSelect = (date: Date | null) => {
   selectedDate.value = date
@@ -115,16 +182,6 @@ const formatDate = (date: Date): string => {
     month: 'long',
     day: 'numeric'
   }).format(date)
-}
-
-const formatDateISO = (date: Date): string => {
-  if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
-    return ''
-  }
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
 }
 </script>
 
@@ -169,6 +226,24 @@ const formatDateISO = (date: Date): string => {
 /* Calendar wrapper - ensures calendar fills width */
 .calendar-wrapper {
   width: 100%;
+}
+
+/* Loading state */
+.calendar-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+}
+
+/* Error state */
+.calendar-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
 }
 
 /* Legend styling */

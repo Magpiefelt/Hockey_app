@@ -53,6 +53,41 @@
       </div>
     </div>
 
+    <!-- Event Hosting specific fields -->
+    <div v-if="formData.eventType || formData.venueName || formData.eventDuration" class="card p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h4 class="text-xl font-bold text-white flex items-center gap-2">
+          <Icon name="mdi:calendar-star" class="w-6 h-6 text-cyan-400" />
+          Event Details
+        </h4>
+        <button
+          type="button"
+          @click="$emit('edit', 'team-info')"
+          class="text-sm text-cyan-400 hover:text-cyan-300 underline"
+          aria-label="Edit event details"
+        >
+          Edit
+        </button>
+      </div>
+      <div class="space-y-2 text-slate-300">
+        <p v-if="formData.eventDate">
+          <strong class="text-white">Event Date:</strong> {{ formatDate(formData.eventDate) }}
+        </p>
+        <p v-if="formData.eventType">
+          <strong class="text-white">Event Type:</strong> {{ formatEventType(formData.eventType) }}
+        </p>
+        <p v-if="formData.eventDuration">
+          <strong class="text-white">Duration:</strong> {{ formData.eventDuration }} hours
+        </p>
+        <p v-if="formData.venueName">
+          <strong class="text-white">Venue:</strong> {{ formData.venueName }}
+        </p>
+        <p v-if="formData.attendance">
+          <strong class="text-white">Expected Attendance:</strong> {{ formData.attendance }}
+        </p>
+      </div>
+    </div>
+
     <!-- Roster Information -->
     <div v-if="formData.roster" class="card p-6">
       <div class="flex items-center justify-between mb-4">
@@ -300,9 +335,30 @@ function formatSong(song: any): string {
   return 'Not specified'
 }
 
+/**
+ * FIX: Parse YYYY-MM-DD date strings as local dates to avoid timezone shift.
+ * Previously used `new Date(date)` which parses "2026-03-15" as UTC midnight,
+ * causing it to display as "March 14" in timezones behind UTC (MST, PST, etc).
+ */
 function formatDate(date: string): string {
   if (!date) return ''
   try {
+    // FIX: Handle YYYY-MM-DD format with timezone-safe parsing
+    const isoMatch = date.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+    if (isoMatch) {
+      const d = new Date(
+        parseInt(isoMatch[1], 10),
+        parseInt(isoMatch[2], 10) - 1,
+        parseInt(isoMatch[3], 10)
+      )
+      return d.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      })
+    }
+    
+    // Fallback for other date formats
     return new Date(date).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
@@ -311,6 +367,26 @@ function formatDate(date: string): string {
   } catch {
     return date
   }
+}
+
+/**
+ * Format event type slug to human-readable string
+ */
+function formatEventType(type: string): string {
+  const typeMap: Record<string, string> = {
+    'tournament': 'Tournament',
+    'championship': 'Championship',
+    'playoff': 'Playoff Game',
+    'regular': 'Regular Season Game',
+    'exhibition': 'Exhibition Game',
+    'ceremony': 'Ceremony/Awards',
+    'hockey': 'Hockey Game',
+    'lacrosse': 'Lacrosse Game',
+    'baseball': 'Baseball Game',
+    'basketball': 'Basketball Game',
+    'other': 'Other'
+  }
+  return typeMap[type] || type
 }
 
 function formatFileSize(bytes: number): string {

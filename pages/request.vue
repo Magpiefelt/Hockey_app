@@ -310,8 +310,17 @@ watch(
   { deep: true }
 )
 
+// FIX: Pre-fetch calendar availability data on mount so it's ready
+// before the user opens any form. This prevents race conditions where
+// the form renders before availability data is loaded, allowing users
+// to select dates that are actually unavailable.
+const calendarStoreInstance = useCalendarStore()
+
 // Check for package query parameter and pre-select
-onMounted(() => {
+onMounted(async () => {
+  // Start fetching calendar data immediately (non-blocking)
+  calendarStoreInstance.fetchUnavailableDates()
+
   const packageParam = route.query.package as string
   if (packageParam && ['game-day-dj', 'player-intros-basic', 'player-intros-warmup', 'player-intros-ultimate', 'event-hosting'].includes(packageParam)) {
     selectedPackageId.value = packageParam

@@ -174,6 +174,7 @@
 <script setup lang="ts">
 import { VueDatePicker } from '@vuepic/vue-datepicker'
 import '@vuepic/vue-datepicker/dist/main.css'
+import { useCalendarStore } from '~/stores/calendar'
 
 interface Override {
   id: number
@@ -196,6 +197,9 @@ const emit = defineEmits<{
 const trpc = useTrpc()
 const { showError, showSuccess } = useNotification()
 const { formatDate: utilFormatDate } = useUtils()
+
+// FIX: Get calendar store to sync public availability after admin changes
+const calendarStore = useCalendarStore()
 
 const selectedDates = ref<Date[] | null>(null)
 const blockForm = ref({
@@ -317,11 +321,23 @@ const formatDisplayDate = (date: Date): string => {
 
 /**
  * Format a date string or Date object for display
+ * FIX: Handle YYYY-MM-DD strings with timezone-safe parsing
  */
 const formatDate = (date: string | Date): string => {
   if (!date) return 'Invalid date'
   
-  const d = typeof date === 'string' ? new Date(date) : date
+  let d: Date
+  if (typeof date === 'string') {
+    // FIX: For YYYY-MM-DD strings, parse as local date to avoid timezone shift
+    const isoMatch = date.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+    if (isoMatch) {
+      d = new Date(parseInt(isoMatch[1]), parseInt(isoMatch[2]) - 1, parseInt(isoMatch[3]))
+    } else {
+      d = new Date(date)
+    }
+  } else {
+    d = date
+  }
   
   if (!isValidDate(d)) {
     return 'Invalid date'
@@ -346,6 +362,7 @@ const formatDateRange = (dateFrom: string, dateTo: string): string => {
 
 /**
  * Format a Date object to ISO date string (YYYY-MM-DD)
+ * Uses local date parts to avoid timezone issues.
  * Throws if date is invalid
  */
 const formatDateISO = (date: Date): string => {
@@ -391,6 +408,20 @@ const validateForm = (): boolean => {
 }
 
 /**
+ * FIX: Refresh the centralized calendar store after any change.
+ * This ensures the public-facing calendar and all UiDatePicker instances
+ * across the app reflect the latest availability data.
+ */
+const refreshCalendarStore = async () => {
+  try {
+    await calendarStore.refresh()
+  } catch (err) {
+    // Non-critical - log but don't show error to admin
+    console.warn('Failed to refresh public calendar store:', err)
+  }
+}
+
+/**
  * Add a new date block
  */
 const addBlock = async () => {
@@ -415,6 +446,9 @@ const addBlock = async () => {
     showSuccess('Date block added successfully')
     clearForm()
     emit('refresh')
+    
+    // FIX: Also refresh the centralized calendar store
+    await refreshCalendarStore()
   } catch (err: any) {
     console.error('Error adding date block:', err)
     const { handleTrpcError } = await import('~/composables/useTrpc')
@@ -439,6 +473,9 @@ const removeBlock = async (id: number) => {
     await trpc.calendar.removeOverride.mutate({ id })
     showSuccess('Date block removed successfully')
     emit('refresh')
+    
+    // FIX: Also refresh the centralized calendar store
+    await refreshCalendarStore()
   } catch (err: any) {
     console.error('Error removing date block:', err)
     const { handleTrpcError } = await import('~/composables/useTrpc')
@@ -479,6 +516,9 @@ const quickBlock = async (date: Date, label: string) => {
     
     showSuccess(`${label} blocked successfully`)
     emit('refresh')
+    
+    // FIX: Also refresh the centralized calendar store
+    await refreshCalendarStore()
   } catch (err: any) {
     console.error('Error quick blocking date:', err)
     const { handleTrpcError } = await import('~/composables/useTrpc')

@@ -11,7 +11,7 @@
       :required="required"
       :disabled="disabled || isLoadingAvailability"
       :loading="isLoadingAvailability"
-      :disabled-dates="disabledDates"
+      :disabled-dates="disabledDatesFunction"
       :class="customClass"
       @update:model-value="handleUpdate"
     >
@@ -20,11 +20,15 @@
         <Icon v-else name="mdi:loading" class="w-5 h-5 animate-spin" />
       </template>
       <template #dp-input="{ value }">
-        <div class="dp-custom-input">
+        <div class="dp-custom-input" :class="{ 'dp-custom-input--loading': isLoadingAvailability }">
           <Icon v-if="!isLoadingAvailability" name="mdi:calendar" class="w-5 h-5 text-slate-400" />
           <Icon v-else name="mdi:loading" class="w-5 h-5 animate-spin text-cyan-400" />
           <span :class="value ? 'text-white' : 'text-slate-500'">
             {{ value || placeholder }}
+          </span>
+          <!-- Small loading indicator when fetching availability -->
+          <span v-if="isLoadingAvailability" class="ml-auto text-xs text-cyan-400/70">
+            Loading dates...
           </span>
         </div>
       </template>
@@ -42,7 +46,15 @@
       </div>
       <div v-else class="flex items-center gap-2 text-red-400">
         <Icon name="mdi:alert-circle" class="w-4 h-4" />
-        <span>This date is unavailable</span>
+        <span>This date is unavailable — please choose another date</span>
+      </div>
+    </div>
+
+    <!-- Calendar store error indicator -->
+    <div v-if="checkAvailability && calendarStore.error && !isLoadingAvailability" class="mt-2 text-sm">
+      <div class="flex items-center gap-2 text-amber-400">
+        <Icon name="mdi:alert" class="w-4 h-4" />
+        <span>Could not load availability — some dates may be unavailable</span>
       </div>
     </div>
   </div>
@@ -87,19 +99,91 @@ const emit = defineEmits<{
 
 // Calendar store integration
 const calendarStore = useCalendarStore()
-const { unavailableDates, isLoading: isLoadingAvailability } = storeToRefs(calendarStore)
+const { isLoading: isLoadingAvailability } = storeToRefs(calendarStore)
 
-// Local state
+/**
+ * FIX: Parse a date string (YYYY-MM-DD) into a local Date object correctly.
+ * Using `new Date("2026-03-15")` parses as UTC midnight, which can display as
+ * the previous day in timezones behind UTC (e.g., MST, PST).
+ * Instead, we parse the parts manually and create a local date.
+ */
+const parseDateStringToLocal = (dateStr: string): Date | null => {
+  if (!dateStr) return null
+  
+  // If it's already a Date object somehow
+  if (dateStr instanceof Date) {
+    return isNaN((dateStr as Date).getTime()) ? null : dateStr as unknown as Date
+  }
+  
+  const str = String(dateStr)
+  
+  // Handle YYYY-MM-DD format (most common from our forms)
+  const isoMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (isoMatch) {
+    const year = parseInt(isoMatch[1], 10)
+    const month = parseInt(isoMatch[2], 10) - 1 // JS months are 0-indexed
+    const day = parseInt(isoMatch[3], 10)
+    const d = new Date(year, month, day)
+    return isNaN(d.getTime()) ? null : d
+  }
+  
+  // Handle ISO datetime strings (e.g., "2026-03-15T12:00:00Z")
+  if (str.includes('T')) {
+    const d = new Date(str)
+    if (!isNaN(d.getTime())) {
+      // Convert to local date (strip time)
+      return new Date(d.getFullYear(), d.getMonth(), d.getDate())
+    }
+    return null
+  }
+  
+  // Fallback: try native parsing but create local date from result
+  const d = new Date(str)
+  if (!isNaN(d.getTime())) {
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate())
+  }
+  
+  return null
+}
+
+/**
+ * Format a local Date object to YYYY-MM-DD string using local date parts.
+ */
+const formatLocalDateToISO = (date: Date): string => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+// Local state - initialize with proper timezone handling
 const localDate = ref<Date | null>(
-  props.modelValue ? new Date(props.modelValue) : null
+  props.modelValue ? parseDateStringToLocal(props.modelValue as string) : null
 )
 
-// Computed: Disabled dates for the date picker
-const disabledDates = computed(() => {
+/**
+ * FIX: Use a function-based disabled dates check instead of an array.
+ * This avoids the mismatch between UTC-noon Date objects in the store
+ * and local Date objects used by VueDatePicker.
+ * VueDatePicker calls this function with each date cell's local Date object.
+ */
+const disabledDatesFunction = computed(() => {
   if (!props.checkAvailability) {
-    return []
+    return undefined
   }
-  return unavailableDates.value
+  
+  // If no unavailable dates loaded yet, don't disable anything
+  // (the loading state will indicate data is being fetched)
+  if (!calendarStore.hasData || calendarStore.unavailableDateStrings.length === 0) {
+    return undefined
+  }
+  
+  // Return a function that VueDatePicker will call for each date cell
+  // This compares using YYYY-MM-DD strings which avoids all timezone issues
+  return (date: Date): boolean => {
+    const dateStr = formatLocalDateToISO(date)
+    return calendarStore.unavailableDateStrings.includes(dateStr)
+  }
 })
 
 // Computed: Check if the currently selected date is available
@@ -109,19 +193,23 @@ const isSelectedDateAvailable = computed(() => {
 })
 
 // Fetch availability data on mount if checking is enabled
-onMounted(() => {
+onMounted(async () => {
   if (props.checkAvailability) {
-    calendarStore.fetchUnavailableDates()
+    await calendarStore.fetchUnavailableDates()
+    
+    // After data loads, re-check the currently selected date's availability
+    if (localDate.value) {
+      const isAvailable = calendarStore.isDateAvailable(localDate.value)
+      emit('availability-change', isAvailable)
+    }
   }
 })
 
 const handleUpdate = (value: Date | null) => {
   if (value) {
-    // Convert to YYYY-MM-DD format for HTML date inputs compatibility
-    const year = value.getFullYear()
-    const month = String(value.getMonth() + 1).padStart(2, '0')
-    const day = String(value.getDate()).padStart(2, '0')
-    const dateString = `${year}-${month}-${day}`
+    // FIX: Use local date parts to create the YYYY-MM-DD string
+    // VueDatePicker returns a local Date object, so getFullYear/getMonth/getDate are correct
+    const dateString = formatLocalDateToISO(value)
     emit('update:modelValue', dateString)
     
     // Emit availability status
@@ -136,10 +224,15 @@ const handleUpdate = (value: Date | null) => {
 // Watch for external changes to modelValue
 watch(() => props.modelValue, (newValue) => {
   if (newValue) {
-    const newDate = new Date(newValue)
-    // Only update if the date is actually different
-    if (!localDate.value || newDate.getTime() !== localDate.value.getTime()) {
-      localDate.value = newDate
+    // FIX: Use our timezone-safe parser instead of raw new Date()
+    const newDate = parseDateStringToLocal(newValue as string)
+    if (newDate) {
+      // Only update if the date is actually different (compare by date string to avoid timezone issues)
+      const newStr = formatLocalDateToISO(newDate)
+      const currentStr = localDate.value ? formatLocalDateToISO(localDate.value) : ''
+      if (newStr !== currentStr) {
+        localDate.value = newDate
+      }
     }
   } else {
     localDate.value = null
@@ -175,6 +268,10 @@ watch(() => props.checkAvailability, (shouldCheck) => {
 
 .dp-custom-input:hover {
   border-color: rgba(255, 255, 255, 0.2);
+}
+
+.dp-custom-input--loading {
+  border-color: rgba(6, 182, 212, 0.3);
 }
 
 /* Override default vue-datepicker styles for dark theme */
