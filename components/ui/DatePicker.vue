@@ -15,10 +15,6 @@
       :class="customClass"
       @update:model-value="handleUpdate"
     >
-      <template #input-icon>
-        <Icon v-if="!isLoadingAvailability" name="mdi:calendar" class="w-5 h-5" />
-        <Icon v-else name="mdi:loading" class="w-5 h-5 animate-spin" />
-      </template>
       <template #dp-input="{ value }">
         <div class="dp-custom-input" :class="{ 'dp-custom-input--loading': isLoadingAvailability }">
           <Icon v-if="!isLoadingAvailability" name="mdi:calendar" class="w-5 h-5 text-slate-400" />
@@ -322,8 +318,9 @@ watch(() => props.checkAvailability, (shouldCheck) => {
   color: #64748b;
 }
 
+/* Hide the default VueDatePicker input icon since we use a custom #dp-input slot */
 :deep(.dp__input_icon) {
-  color: #94a3b8;
+  display: none;
 }
 
 :deep(.dp__calendar) {
