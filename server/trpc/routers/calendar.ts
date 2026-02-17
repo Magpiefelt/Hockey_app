@@ -35,12 +35,12 @@ export const calendarRouter = router({
           booked_dates AS (
             -- Dates with paid, confirmed, or in-progress orders
             SELECT 
-              COALESCE(event_datetime::date, event_date) as date,
+              event_date as date,
               'booked' as source
             FROM quote_requests
             WHERE status IN ('paid', 'confirmed', 'in_progress', 'completed')
-              AND COALESCE(event_datetime::date, event_date) >= CURRENT_DATE
-              AND (event_date IS NOT NULL OR event_datetime IS NOT NULL)
+              AND event_date IS NOT NULL
+              AND event_date >= CURRENT_DATE
           ),
           all_unavailable AS (
             SELECT date, source FROM blocked_dates
@@ -122,7 +122,7 @@ export const calendarRouter = router({
                 SELECT 1
                 FROM quote_requests
                 WHERE status IN ('paid', 'confirmed', 'in_progress', 'completed')
-                  AND (event_date = $1::date OR event_datetime::date = $1::date)
+                  AND event_date = $1::date
               ) AS unavailable_check
             ) AS is_unavailable,
             (
@@ -137,7 +137,7 @@ export const calendarRouter = router({
                   WHEN EXISTS (
                     SELECT 1 FROM quote_requests 
                     WHERE status IN ('paid', 'confirmed', 'in_progress', 'completed')
-                      AND (event_date = $1::date OR event_datetime::date = $1::date)
+                      AND event_date = $1::date
                   ) THEN 'booked'
                   ELSE NULL
                 END

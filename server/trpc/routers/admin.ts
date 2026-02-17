@@ -107,7 +107,13 @@ export const adminRouter = router({
         pageSize: z.number().optional()
       }).optional())
       .query(async ({ input }) => {
-        let sql = `
+        // Check if form_submissions table exists
+        const fsCheck = await query(
+          `SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'form_submissions') as exists`
+        )
+        const hasFormSubmissions = fsCheck.rows[0]?.exists === true
+        
+        let sql = hasFormSubmissions ? `
           SELECT 
             qr.id, qr.contact_name as name, qr.contact_email as email,
             qr.contact_phone as phone, qr.organization, qr.status, qr.event_date,
@@ -121,6 +127,29 @@ export const adminRouter = router({
           FROM quote_requests qr
           LEFT JOIN packages p ON qr.package_id = p.id
           LEFT JOIN form_submissions fs ON qr.id = fs.quote_id
+          LEFT JOIN (
+            SELECT 
+              quote_id,
+              COUNT(*) as total_files,
+              COUNT(*) FILTER (WHERE kind = 'upload') as upload_count,
+              COUNT(*) FILTER (WHERE kind = 'deliverable') as deliverable_count
+            FROM file_uploads
+            GROUP BY quote_id
+          ) file_counts ON qr.id = file_counts.quote_id
+          WHERE 1=1
+        ` : `
+          SELECT 
+            qr.id, qr.contact_name as name, qr.contact_email as email,
+            qr.contact_phone as phone, NULL as organization, qr.status, qr.event_date,
+            qr.service_type, qr.sport_type, qr.quoted_amount, qr.total_amount,
+            NULL as notes, qr.created_at, qr.updated_at,
+            p.slug as package_id, COALESCE(p.name, qr.service_type) as service_name,
+            NULL as team_name,
+            COALESCE(file_counts.total_files, 0) as file_count,
+            COALESCE(file_counts.upload_count, 0) as upload_count,
+            COALESCE(file_counts.deliverable_count, 0) as deliverable_count
+          FROM quote_requests qr
+          LEFT JOIN packages p ON qr.package_id = p.id
           LEFT JOIN (
             SELECT 
               quote_id,
@@ -210,23 +239,43 @@ export const adminRouter = router({
       .query(async ({ input }) => {
         const orderId = typeof input.id === 'string' ? parseInt(input.id) : input.id
         
-        // Get order with form submission data
-        const orderResult = await query(
-          `SELECT 
-            qr.id, qr.user_id, qr.contact_name as name, qr.contact_email as email,
-            qr.contact_phone as phone, qr.organization, qr.status, qr.event_date, qr.service_type,
-            qr.sport_type, qr.notes, qr.admin_notes,
-            qr.quoted_amount, qr.total_amount, qr.created_at, qr.updated_at,
-            p.slug as package_id, p.name as package_name,
-            fs.team_name, fs.roster_method, fs.roster_players, fs.intro_song,
-            fs.warmup_songs, fs.goal_horn, fs.goal_song, fs.win_song,
-            fs.sponsors, fs.include_sample, fs.audio_files
-          FROM quote_requests qr
-          LEFT JOIN packages p ON qr.package_id = p.id
-          LEFT JOIN form_submissions fs ON qr.id = fs.quote_id
-          WHERE qr.id = $1`,
-          [orderId]
-        )
+        // Get order with form submission data - handle missing table
+        let orderResult
+        try {
+          orderResult = await query(
+            `SELECT 
+              qr.id, qr.user_id, qr.contact_name as name, qr.contact_email as email,
+              qr.contact_phone as phone, qr.organization, qr.status, qr.event_date, qr.service_type,
+              qr.sport_type, qr.notes, qr.admin_notes,
+              qr.quoted_amount, qr.total_amount, qr.created_at, qr.updated_at,
+              p.slug as package_id, p.name as package_name,
+              fs.team_name, fs.roster_method, fs.roster_players, fs.intro_song,
+              fs.warmup_songs, fs.goal_horn, fs.goal_song, fs.win_song,
+              fs.sponsors, fs.include_sample, fs.audio_files
+            FROM quote_requests qr
+            LEFT JOIN packages p ON qr.package_id = p.id
+            LEFT JOIN form_submissions fs ON qr.id = fs.quote_id
+            WHERE qr.id = $1`,
+            [orderId]
+          )
+        } catch {
+          // Fallback without form_submissions
+          orderResult = await query(
+            `SELECT 
+              qr.id, qr.user_id, qr.contact_name as name, qr.contact_email as email,
+              qr.contact_phone as phone, NULL as organization, qr.status, qr.event_date, qr.service_type,
+              qr.sport_type, NULL as notes, qr.admin_notes,
+              qr.quoted_amount, qr.total_amount, qr.created_at, qr.updated_at,
+              p.slug as package_id, p.name as package_name,
+              NULL as team_name, NULL as roster_method, NULL as roster_players, NULL as intro_song,
+              NULL as warmup_songs, NULL as goal_horn, NULL as goal_song, NULL as win_song,
+              NULL as sponsors, NULL as include_sample, NULL as audio_files
+            FROM quote_requests qr
+            LEFT JOIN packages p ON qr.package_id = p.id
+            WHERE qr.id = $1`,
+            [orderId]
+          )
+        }
         
         if (orderResult.rows.length === 0) {
           throw new TRPCError({
@@ -764,13 +813,14 @@ export const adminRouter = router({
         offset: z.number().optional().default(0)
       }).optional())
       .query(async ({ input = {} }) => {
+        // Use COALESCE to handle both old and new column names
         let sql = `
           SELECT 
             el.id,
             el.quote_id as order_id,
-            el.to_email,
+            COALESCE(el.to_email, el.recipient_email) as to_email,
             el.subject,
-            el.template,
+            COALESCE(el.template, el.email_type) as template,
             el.status,
             el.error_message,
             el.created_at,
@@ -792,16 +842,16 @@ export const adminRouter = router({
           paramCount++
         }
         
-        // Filter by template
+        // Filter by template (handle both column names)
         if (input.template) {
-          sql += ` AND el.template = $${paramCount}`
+          sql += ` AND COALESCE(el.template, el.email_type) = $${paramCount}`
           params.push(input.template)
           paramCount++
         }
         
-        // Search by email or subject
+        // Search by email or subject (handle both column names)
         if (input.search) {
-          sql += ` AND (el.to_email ILIKE $${paramCount} OR el.subject ILIKE $${paramCount})`
+          sql += ` AND (COALESCE(el.to_email, el.recipient_email) ILIKE $${paramCount} OR el.subject ILIKE $${paramCount})`
           params.push(`%${input.search}%`)
           paramCount++
         }
@@ -824,13 +874,13 @@ export const adminRouter = router({
         }
         
         if (input.template) {
-          countSql += ` AND el.template = $${countParamCount}`
+          countSql += ` AND COALESCE(el.template, el.email_type) = $${countParamCount}`
           countParams.push(input.template)
           countParamCount++
         }
         
         if (input.search) {
-          countSql += ` AND (el.to_email ILIKE $${countParamCount} OR el.subject ILIKE $${countParamCount})`
+          countSql += ` AND (COALESCE(el.to_email, el.recipient_email) ILIKE $${countParamCount} OR el.subject ILIKE $${countParamCount})`
           countParams.push(`%${input.search}%`)
         }
         
@@ -886,10 +936,10 @@ export const adminRouter = router({
         return {
           id: row.id,
           orderId: row.quote_id,
-          toEmail: row.to_email,
+          toEmail: row.to_email || row.recipient_email,
           subject: row.subject,
-          template: row.template,
-          metadataJson: row.metadata_json,
+          template: row.template || row.email_type,
+          metadataJson: row.metadata_json || null,
           status: row.status,
           errorMessage: row.error_message,
           createdAt: row.created_at?.toISOString(),
@@ -919,12 +969,20 @@ export const adminRouter = router({
           )
         } catch (err: any) {
           if (err.code === '42703') {
-            // metadata_json column doesn't exist
+            // columns might not exist
             hasMetadataColumn = false
-            emailResult = await query(
-              `SELECT id, quote_id, to_email, subject, template, status, error_message FROM email_logs WHERE id = $1`,
-              [input.id]
-            )
+            try {
+              emailResult = await query(
+                `SELECT id, quote_id, to_email, subject, template, status, error_message FROM email_logs WHERE id = $1`,
+                [input.id]
+              )
+            } catch {
+              // Fallback to old column names
+              emailResult = await query(
+                `SELECT id, quote_id, recipient_email as to_email, subject, email_type as template, status, error_message FROM email_logs WHERE id = $1`,
+                [input.id]
+              )
+            }
           } else {
             throw err
           }

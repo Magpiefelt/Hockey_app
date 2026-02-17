@@ -248,19 +248,24 @@ export const ordersRouter = router({
             ]
           )
           } catch (dbError: any) {
-            logger.error('Database JSONB insertion error', {
-              error: dbError.message,
-              code: dbError.code,
-              detail: dbError.detail,
-              hint: dbError.hint,
-              cleanedData,
-              rawInput: {
-                introSong: input.introSong,
-                warmupSongs: input.warmupSongs,
-                goalHorn: input.goalHorn
-              }
-            })
-            throw new Error(`Database error: ${dbError.message}. Please check that all song fields are properly formatted.`)
+            // If form_submissions table doesn't exist, log but don't fail
+            if (dbError.message?.includes('relation "form_submissions" does not exist')) {
+              logger.warn('form_submissions table does not exist yet, skipping form data insert', { orderId })
+            } else {
+              logger.error('Database JSONB insertion error', {
+                error: dbError.message,
+                code: dbError.code,
+                detail: dbError.detail,
+                hint: dbError.hint,
+                cleanedData,
+                rawInput: {
+                  introSong: input.introSong,
+                  warmupSongs: input.warmupSongs,
+                  goalHorn: input.goalHorn
+                }
+              })
+              throw new Error(`Database error: ${dbError.message}. Please check that all song fields are properly formatted.`)
+            }
           }
         }
         
@@ -424,53 +429,42 @@ export const ordersRouter = router({
       }
       
       // Now safe to fetch full order data
-      // Get order with form submission data
-      const order = await queryOne<{
-        id: number
-        user_id: number | null
-        name: string
-        email: string
-        phone: string
-        organization: string | null
-        status: string
-        event_date: Date | null
-        service_type: string
-        sport_type: string | null
-        notes: string | null
-        admin_notes: string | null
-        quoted_amount: number | null
-        total_amount: number | null
-        created_at: Date
-        updated_at: Date | null
-        package_id: string | null
-        package_name: string | null
-        team_name: string | null
-        roster_method: string | null
-        roster_players: any
-        intro_song: any
-        warmup_songs: any
-        goal_horn: any
-        goal_song: any
-        win_song: any
-        sponsors: any
-        include_sample: boolean | null
-        audio_files: any
-      }>(
-        `SELECT 
-          qr.id, qr.user_id, qr.contact_name as name, qr.contact_email as email,
-          qr.contact_phone as phone, qr.organization, qr.status, qr.event_date, qr.service_type,
-          qr.sport_type, qr.notes, qr.admin_notes,
-          qr.quoted_amount, qr.total_amount, qr.created_at, qr.updated_at,
-          p.slug as package_id, p.name as package_name,
-          fs.team_name, fs.roster_method, fs.roster_players, fs.intro_song,
-          fs.warmup_songs, fs.goal_horn, fs.goal_song, fs.win_song,
-          fs.sponsors, fs.include_sample, fs.audio_files
-        FROM quote_requests qr
-        LEFT JOIN packages p ON qr.package_id = p.id
-        LEFT JOIN form_submissions fs ON qr.id = fs.quote_id
-        WHERE qr.id = $1`,
-        [orderId]
-      )
+      // Get order with form submission data - handle missing table
+      let order: any
+      try {
+        order = await queryOne(
+          `SELECT 
+            qr.id, qr.user_id, qr.contact_name as name, qr.contact_email as email,
+            qr.contact_phone as phone, qr.organization, qr.status, qr.event_date, qr.service_type,
+            qr.sport_type, qr.notes, qr.admin_notes,
+            qr.quoted_amount, qr.total_amount, qr.created_at, qr.updated_at,
+            p.slug as package_id, p.name as package_name,
+            fs.team_name, fs.roster_method, fs.roster_players, fs.intro_song,
+            fs.warmup_songs, fs.goal_horn, fs.goal_song, fs.win_song,
+            fs.sponsors, fs.include_sample, fs.audio_files
+          FROM quote_requests qr
+          LEFT JOIN packages p ON qr.package_id = p.id
+          LEFT JOIN form_submissions fs ON qr.id = fs.quote_id
+          WHERE qr.id = $1`,
+          [orderId]
+        )
+      } catch {
+        order = await queryOne(
+          `SELECT 
+            qr.id, qr.user_id, qr.contact_name as name, qr.contact_email as email,
+            qr.contact_phone as phone, NULL as organization, qr.status, qr.event_date, qr.service_type,
+            qr.sport_type, NULL as notes, qr.admin_notes,
+            qr.quoted_amount, qr.total_amount, qr.created_at, qr.updated_at,
+            p.slug as package_id, p.name as package_name,
+            NULL as team_name, NULL as roster_method, NULL as roster_players, NULL as intro_song,
+            NULL as warmup_songs, NULL as goal_horn, NULL as goal_song, NULL as win_song,
+            NULL as sponsors, NULL as include_sample, NULL as audio_files
+          FROM quote_requests qr
+          LEFT JOIN packages p ON qr.package_id = p.id
+          WHERE qr.id = $1`,
+          [orderId]
+        )
+      }
       
       if (!order) {
         // This shouldn't happen since we already checked above, but handle gracefully

@@ -73,23 +73,37 @@ async function logEmail(
   errorMessage?: string
 ) {
   try {
-    // Try to store with metadata_json column first
+    // Try to store with all new columns first
     await executeQuery(
       `INSERT INTO email_logs (quote_id, to_email, subject, template, status, error_message, metadata_json, sent_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
       [quoteRequestId, toEmail, subject, template, status, errorMessage || null, JSON.stringify(metadata || {})]
     )
   } catch (error: any) {
-    // Fallback: if metadata_json column doesn't exist, insert without it
+    // Fallback chain for missing columns
     if (error.code === '42703') {
       try {
+        // Try without metadata_json
         await executeQuery(
           `INSERT INTO email_logs (quote_id, to_email, subject, template, status, error_message, sent_at)
            VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
           [quoteRequestId, toEmail, subject, template, status, errorMessage || null]
         )
-      } catch (fallbackError) {
-        logger.error('Failed to log email (fallback)', { error: fallbackError, toEmail, subject })
+      } catch (fallback1Error: any) {
+        if (fallback1Error.code === '42703') {
+          try {
+            // Fallback to old column names (recipient_email, email_type)
+            await executeQuery(
+              `INSERT INTO email_logs (quote_id, recipient_email, subject, email_type, status, error_message, sent_at)
+               VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+              [quoteRequestId, toEmail, subject, template, status, errorMessage || null]
+            )
+          } catch (fallback2Error) {
+            logger.error('Failed to log email (all fallbacks)', { error: fallback2Error, toEmail, subject })
+          }
+        } else {
+          logger.error('Failed to log email (fallback)', { error: fallback1Error, toEmail, subject })
+        }
       }
     } else {
       logger.error('Failed to log email', { error, toEmail, subject })

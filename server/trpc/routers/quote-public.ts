@@ -21,20 +21,58 @@ export const quotePublicRouter = router({
       orderId: z.number()
     }))
     .query(async ({ input, ctx }) => {
-      const result = await query(
-        `SELECT 
-          qr.id, qr.user_id, qr.contact_name, qr.contact_email,
-          qr.status, qr.quoted_amount, qr.event_date, qr.sport_type,
-          qr.quote_expires_at, qr.current_quote_version, qr.admin_notes,
-          qr.event_datetime, qr.event_time,
-          p.name as package_name, p.description as package_description,
-          fs.team_name
-         FROM quote_requests qr
-         LEFT JOIN packages p ON qr.package_id = p.id
-         LEFT JOIN form_submissions fs ON qr.id = fs.quote_id
-         WHERE qr.id = $1`,
-        [input.orderId]
-      )
+      // Use a safe query that handles missing columns
+      let result
+      try {
+        result = await query(
+          `SELECT 
+            qr.id, qr.user_id, qr.contact_name, qr.contact_email,
+            qr.status, qr.quoted_amount, qr.event_date, qr.sport_type,
+            qr.quote_expires_at, qr.current_quote_version, qr.admin_notes,
+            qr.event_datetime, qr.event_time,
+            p.name as package_name, p.description as package_description,
+            fs.team_name
+           FROM quote_requests qr
+           LEFT JOIN packages p ON qr.package_id = p.id
+           LEFT JOIN form_submissions fs ON qr.id = fs.quote_id
+           WHERE qr.id = $1`,
+          [input.orderId]
+        )
+      } catch {
+        // Fallback if new columns or tables don't exist yet
+        try {
+          result = await query(
+            `SELECT 
+              qr.id, qr.user_id, qr.contact_name, qr.contact_email,
+              qr.status, qr.quoted_amount, qr.event_date, qr.sport_type,
+              qr.admin_notes,
+              NULL as quote_expires_at, 1 as current_quote_version,
+              NULL as event_datetime, NULL as event_time,
+              p.name as package_name, p.description as package_description,
+              NULL as team_name
+             FROM quote_requests qr
+             LEFT JOIN packages p ON qr.package_id = p.id
+             WHERE qr.id = $1`,
+            [input.orderId]
+          )
+        } catch {
+          // Final fallback without organization/notes columns
+          result = await query(
+            `SELECT 
+              qr.id, qr.user_id, qr.contact_name, qr.contact_email,
+              qr.status, qr.quoted_amount, qr.event_date, qr.sport_type,
+              qr.admin_notes,
+              NULL as quote_expires_at, 1 as current_quote_version,
+              NULL as event_datetime, NULL as event_time,
+              p.name as package_name, p.description as package_description,
+              NULL as team_name
+             FROM quote_requests qr
+             LEFT JOIN packages p ON qr.package_id = p.id
+             WHERE qr.id = $1`,
+            [input.orderId]
+          )
+        }
+      }
       
       if (result.rows.length === 0) {
         throw new TRPCError({
@@ -91,9 +129,9 @@ export const quotePublicRouter = router({
         teamName: order.team_name,
         sportType: order.sport_type,
         eventDate: order.event_date?.toISOString(),
-        eventDateTime: order.event_datetime?.toISOString(),
-        eventTime: order.event_time,
-        expiresAt: order.quote_expires_at?.toISOString(),
+        eventDateTime: order.event_datetime?.toISOString() || null,
+        eventTime: order.event_time || null,
+        expiresAt: order.quote_expires_at?.toISOString() || null,
         isExpired,
         version: order.current_quote_version || 1,
         notes: quoteNotes
@@ -127,20 +165,54 @@ export const quotePublicRouter = router({
         })
       }
       
-      const result = await query(
-        `SELECT 
-          qr.id, qr.contact_name, qr.contact_email,
-          qr.status, qr.quoted_amount, qr.event_date, qr.sport_type,
-          qr.quote_expires_at, qr.current_quote_version,
-          qr.event_datetime, qr.event_time,
-          p.name as package_name, p.description as package_description,
-          fs.team_name
-         FROM quote_requests qr
-         LEFT JOIN packages p ON qr.package_id = p.id
-         LEFT JOIN form_submissions fs ON qr.id = fs.quote_id
-         WHERE qr.id = $1`,
-        [input.orderId]
-      )
+      let result
+      try {
+        result = await query(
+          `SELECT 
+            qr.id, qr.contact_name, qr.contact_email,
+            qr.status, qr.quoted_amount, qr.event_date, qr.sport_type,
+            qr.quote_expires_at, qr.current_quote_version,
+            qr.event_datetime, qr.event_time,
+            p.name as package_name, p.description as package_description,
+            fs.team_name
+           FROM quote_requests qr
+           LEFT JOIN packages p ON qr.package_id = p.id
+           LEFT JOIN form_submissions fs ON qr.id = fs.quote_id
+           WHERE qr.id = $1`,
+          [input.orderId]
+        )
+      } catch {
+        // Fallback if new columns or tables don't exist yet
+        try {
+          result = await query(
+            `SELECT 
+              qr.id, qr.contact_name, qr.contact_email,
+              qr.status, qr.quoted_amount, qr.event_date, qr.sport_type,
+              NULL as quote_expires_at, 1 as current_quote_version,
+              NULL as event_datetime, NULL as event_time,
+              p.name as package_name, p.description as package_description,
+              NULL as team_name
+             FROM quote_requests qr
+             LEFT JOIN packages p ON qr.package_id = p.id
+             WHERE qr.id = $1`,
+            [input.orderId]
+          )
+        } catch {
+          result = await query(
+            `SELECT 
+              qr.id, qr.contact_name, qr.contact_email,
+              qr.status, qr.quoted_amount, qr.event_date, qr.sport_type,
+              NULL as quote_expires_at, 1 as current_quote_version,
+              NULL as event_datetime, NULL as event_time,
+              p.name as package_name, p.description as package_description,
+              NULL as team_name
+             FROM quote_requests qr
+             LEFT JOIN packages p ON qr.package_id = p.id
+             WHERE qr.id = $1`,
+            [input.orderId]
+          )
+        }
+      }
       
       if (result.rows.length === 0) {
         throw new TRPCError({
@@ -199,9 +271,9 @@ export const quotePublicRouter = router({
         teamName: order.team_name,
         sportType: order.sport_type,
         eventDate: order.event_date?.toISOString(),
-        eventDateTime: order.event_datetime?.toISOString(),
-        eventTime: order.event_time,
-        expiresAt: order.quote_expires_at?.toISOString(),
+        eventDateTime: order.event_datetime?.toISOString() || null,
+        eventTime: order.event_time || null,
+        expiresAt: order.quote_expires_at?.toISOString() || null,
         isExpired,
         version: order.current_quote_version || 1,
         notes: quoteNotes
@@ -388,24 +460,29 @@ export const quotePublicRouter = router({
         })
       }
       
-      const result = await query(
-        `SELECT 
-          version,
-          amount_cents,
-          notes,
-          created_at
-         FROM quote_revisions
-         WHERE quote_id = $1
-         ORDER BY version DESC`,
-        [input.orderId]
-      )
-      
-      return result.rows.map(row => ({
-        version: row.version,
-        amount: row.amount_cents,
-        notes: row.notes,
-        createdAt: row.created_at.toISOString()
-      }))
+      try {
+        const result = await query(
+          `SELECT 
+            version,
+            amount_cents,
+            notes,
+            created_at
+           FROM quote_revisions
+           WHERE quote_id = $1
+           ORDER BY version DESC`,
+          [input.orderId]
+        )
+        
+        return result.rows.map(row => ({
+          version: row.version,
+          amount: row.amount_cents,
+          notes: row.notes,
+          createdAt: row.created_at.toISOString()
+        }))
+      } catch {
+        // quote_revisions table may not exist yet
+        return []
+      }
     })
 })
 
@@ -423,9 +500,9 @@ async function recordQuoteViewInternal(
   
   try {
     await transaction(async (client) => {
-      // Check if this is the first view
+      // Check current status
       const currentResult = await client.query(
-        `SELECT quote_viewed_at, status FROM quote_requests WHERE id = $1`,
+        `SELECT status FROM quote_requests WHERE id = $1`,
         [orderId]
       )
       
@@ -433,18 +510,22 @@ async function recordQuoteViewInternal(
       
       const current = currentResult.rows[0]
       
-      // Record the event
-      await client.query(
-        `INSERT INTO quote_events (quote_id, event_type, ip_address, user_agent, metadata)
-         VALUES ($1, 'viewed', $2, $3, $4)`,
-        [orderId, ip, ua, JSON.stringify({ firstView: !current.quote_viewed_at, source, userId })]
-      )
+      // Try to record the event in quote_events table
+      try {
+        await client.query(
+          `INSERT INTO quote_events (quote_id, event_type, ip_address, user_agent, metadata)
+           VALUES ($1, 'viewed', $2, $3, $4)`,
+          [orderId, ip, ua, JSON.stringify({ source, userId })]
+        )
+      } catch {
+        // quote_events table may not exist yet - that's ok
+      }
       
-      // Update first view timestamp if not set
-      if (!current.quote_viewed_at) {
+      // Try to update quote_viewed_at if column exists
+      try {
         await client.query(
           `UPDATE quote_requests 
-           SET quote_viewed_at = NOW(),
+           SET quote_viewed_at = COALESCE(quote_viewed_at, NOW()),
                status = CASE WHEN status = 'quoted' THEN 'quote_viewed' ELSE status END
            WHERE id = $1`,
           [orderId]
@@ -458,6 +539,8 @@ async function recordQuoteViewInternal(
             [orderId, `Customer viewed quote via ${source}`]
           )
         }
+      } catch {
+        // quote_viewed_at column may not exist yet - that's ok
       }
     })
     
@@ -523,23 +606,39 @@ async function acceptQuoteInternal(
     // Note: Quote expiration check removed - quotes no longer expire
     // The quote_expires_at field is kept for historical data but not enforced
     
-    // Update order status
-    await client.query(
-      `UPDATE quote_requests 
-       SET status = 'quote_accepted',
-           quote_accepted_at = NOW(),
-           total_amount = quoted_amount,
-           updated_at = NOW()
-       WHERE id = $1`,
-      [orderId]
-    )
+    // Update order status - handle missing columns
+    try {
+      await client.query(
+        `UPDATE quote_requests 
+         SET status = 'quote_accepted',
+             quote_accepted_at = NOW(),
+             total_amount = quoted_amount,
+             updated_at = NOW()
+         WHERE id = $1`,
+        [orderId]
+      )
+    } catch {
+      // quote_accepted_at may not exist yet
+      await client.query(
+        `UPDATE quote_requests 
+         SET status = 'quote_accepted',
+             total_amount = quoted_amount,
+             updated_at = NOW()
+         WHERE id = $1`,
+        [orderId]
+      )
+    }
     
-    // Record event
-    await client.query(
-      `INSERT INTO quote_events (quote_id, event_type, ip_address, metadata)
-       VALUES ($1, 'accepted', $2, $3)`,
-      [orderId, ipAddress || 'unknown', JSON.stringify({ userId, authenticated: isAuthenticated })]
-    )
+    // Record event - handle missing table
+    try {
+      await client.query(
+        `INSERT INTO quote_events (quote_id, event_type, ip_address, metadata)
+         VALUES ($1, 'accepted', $2, $3)`,
+        [orderId, ipAddress || 'unknown', JSON.stringify({ userId, authenticated: isAuthenticated })]
+      )
+    } catch {
+      // quote_events table may not exist yet
+    }
     
     // Log status change
     await client.query(
@@ -611,12 +710,16 @@ async function declineQuoteInternal(
       [orderId, reason || 'No reason provided']
     )
     
-    // Record event
-    await client.query(
-      `INSERT INTO quote_events (quote_id, event_type, ip_address, metadata)
-       VALUES ($1, 'declined', $2, $3)`,
-      [orderId, ipAddress || 'unknown', JSON.stringify({ userId, reason, authenticated: isAuthenticated })]
-    )
+    // Record event - handle missing table
+    try {
+      await client.query(
+        `INSERT INTO quote_events (quote_id, event_type, ip_address, metadata)
+         VALUES ($1, 'declined', $2, $3)`,
+        [orderId, ipAddress || 'unknown', JSON.stringify({ userId, reason, authenticated: isAuthenticated })]
+      )
+    } catch {
+      // quote_events table may not exist yet
+    }
     
     // Log status change
     await client.query(

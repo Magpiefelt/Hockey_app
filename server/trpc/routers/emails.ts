@@ -66,15 +66,29 @@ export const emailsRouter = router({
       const limit = input?.pageSize ? Math.min(Math.max(1, input.pageSize), 100) : 50
       const offset = input?.page ? (Math.max(1, input.page) - 1) * limit : 0
       
-      const result = await query(
-        `SELECT 
-          id, quote_id, to_email, subject, template,
-          status, error_message, sent_at, created_at
-        FROM email_logs
-        ORDER BY COALESCE(sent_at, created_at) DESC
-        LIMIT $1 OFFSET $2`,
-        [limit, offset]
-      )
+      let result
+      try {
+        result = await query(
+          `SELECT 
+            id, quote_id, to_email, subject, template,
+            status, error_message, sent_at, created_at
+          FROM email_logs
+          ORDER BY COALESCE(sent_at, created_at) DESC
+          LIMIT $1 OFFSET $2`,
+          [limit, offset]
+        )
+      } catch {
+        // Fallback to old column names
+        result = await query(
+          `SELECT 
+            id, quote_id, recipient_email as to_email, subject, email_type as template,
+            status, error_message, sent_at, created_at
+          FROM email_logs
+          ORDER BY COALESCE(sent_at, created_at) DESC
+          LIMIT $1 OFFSET $2`,
+          [limit, offset]
+        )
+      }
       
       return result.rows.map(row => ({
         id: row.id,
@@ -177,13 +191,21 @@ export const emailsRouter = router({
           [input.logId]
         )
       } catch (err: any) {
-        // metadata_json column might not exist
+        // columns might not exist - try various fallbacks
         if (err.code === '42703') {
           hasMetadata = false
-          result = await query(
-            'SELECT to_email, subject, template, quote_id FROM email_logs WHERE id = $1',
-            [input.logId]
-          )
+          try {
+            result = await query(
+              'SELECT to_email, subject, template, quote_id FROM email_logs WHERE id = $1',
+              [input.logId]
+            )
+          } catch {
+            // Fallback to old column names
+            result = await query(
+              'SELECT recipient_email as to_email, subject, email_type as template, quote_id FROM email_logs WHERE id = $1',
+              [input.logId]
+            )
+          }
         } else {
           throw err
         }

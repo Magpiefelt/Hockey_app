@@ -388,12 +388,36 @@ export const authRouter = router({
       // Token expires in 1 hour
       const expiresAt = new Date(Date.now() + 60 * 60 * 1000)
       
-      // Store token in database
-      await executeQuery(
-        `INSERT INTO password_reset_tokens (user_id, token, expires_at)
-         VALUES ($1, $2, $3)`,
-        [user.id, token, expiresAt]
-      )
+      // Store token in database - handle missing table
+      try {
+        await executeQuery(
+          `INSERT INTO password_reset_tokens (user_id, token, expires_at)
+           VALUES ($1, $2, $3)`,
+          [user.id, token, expiresAt]
+        )
+      } catch (dbErr: any) {
+        if (dbErr.message?.includes('password_reset_tokens')) {
+          // Create table on the fly if it doesn't exist
+          await executeQuery(`
+            CREATE TABLE IF NOT EXISTS password_reset_tokens (
+              id SERIAL PRIMARY KEY,
+              user_id INTEGER NOT NULL REFERENCES users(id),
+              token VARCHAR(255) NOT NULL UNIQUE,
+              expires_at TIMESTAMPTZ NOT NULL,
+              used BOOLEAN DEFAULT FALSE,
+              used_at TIMESTAMPTZ,
+              created_at TIMESTAMPTZ DEFAULT NOW()
+            )
+          `)
+          await executeQuery(
+            `INSERT INTO password_reset_tokens (user_id, token, expires_at)
+             VALUES ($1, $2, $3)`,
+            [user.id, token, expiresAt]
+          )
+        } else {
+          throw dbErr
+        }
+      }
       
       // Send password reset email
       const config = useRuntimeConfig()

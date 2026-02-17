@@ -123,12 +123,23 @@ async function handleCheckoutCompleted(session: any) {
       )
 
       // Get order details for email and calendar blocking (inside transaction to ensure consistency)
-      const orderResult = await client.query(
-        `SELECT contact_name, contact_email, total_amount, event_datetime, event_date, admin_confirmed_datetime
-         FROM quote_requests
-         WHERE id = $1`,
-        [orderId]
-      )
+      let orderResult
+      try {
+        orderResult = await client.query(
+          `SELECT contact_name, contact_email, total_amount, event_datetime, event_date, admin_confirmed_datetime
+           FROM quote_requests
+           WHERE id = $1`,
+          [orderId]
+        )
+      } catch {
+        // Fallback if new columns don't exist yet
+        orderResult = await client.query(
+          `SELECT contact_name, contact_email, total_amount, event_date, NULL as event_datetime, FALSE as admin_confirmed_datetime
+           FROM quote_requests
+           WHERE id = $1`,
+          [orderId]
+        )
+      }
 
       if (orderResult.rows.length > 0) {
         orderDetails = orderResult.rows[0]
@@ -143,31 +154,61 @@ async function handleCheckoutCompleted(session: any) {
           : new Date(eventDate).toISOString().split('T')[0]
         
         // Check if a booking override already exists for this order
-        const existingOverride = await client.query(
-          `SELECT id FROM availability_overrides WHERE order_id = $1`,
-          [orderId]
-        )
-        
-        if (existingOverride.rows.length === 0) {
-          // Create availability override to block this date
+        try {
+          const existingOverride = await client.query(
+            `SELECT id FROM availability_overrides WHERE order_id = $1`,
+            [orderId]
+          )
+          
+          if (existingOverride.rows.length === 0) {
+            // Create availability override to block this date
+            try {
+              await client.query(
+                `INSERT INTO availability_overrides 
+                 (start_date, end_date, is_available, reason, override_type, order_id, notes, created_at, updated_at)
+                 VALUES ($1, $2, false, $3, 'booking', $4, $5, NOW(), NOW())`,
+                [
+                  dateStr,
+                  dateStr,
+                  `Booked: Order #${orderId}`,
+                  orderId,
+                  `Auto-blocked after payment for ${orderDetails.contact_name}`
+                ]
+              )
+            } catch {
+              // Fallback without order_id column
+              await client.query(
+                `INSERT INTO availability_overrides 
+                 (start_date, end_date, is_available, reason, override_type, notes, created_at, updated_at)
+                 VALUES ($1, $2, false, $3, 'booking', $4, NOW(), NOW())`,
+                [
+                  dateStr,
+                  dateStr,
+                  `Booked: Order #${orderId}`,
+                  `Auto-blocked after payment for ${orderDetails.contact_name}`
+                ]
+              )
+            }
+            
+            logger.info('Calendar date auto-blocked after payment', { 
+              orderId, 
+              date: dateStr,
+              customerName: orderDetails.contact_name
+            })
+          }
+        } catch {
+          // order_id column may not exist, create override without it
           await client.query(
             `INSERT INTO availability_overrides 
-             (start_date, end_date, is_available, reason, override_type, order_id, notes, created_at, updated_at)
-             VALUES ($1, $2, false, $3, 'booking', $4, $5, NOW(), NOW())`,
+             (start_date, end_date, is_available, reason, override_type, notes, created_at, updated_at)
+             VALUES ($1, $2, false, $3, 'booking', $4, NOW(), NOW())`,
             [
               dateStr,
               dateStr,
               `Booked: Order #${orderId}`,
-              orderId,
               `Auto-blocked after payment for ${orderDetails.contact_name}`
             ]
           )
-          
-          logger.info('Calendar date auto-blocked after payment', { 
-            orderId, 
-            date: dateStr,
-            customerName: orderDetails.contact_name
-          })
         }
       }
     })

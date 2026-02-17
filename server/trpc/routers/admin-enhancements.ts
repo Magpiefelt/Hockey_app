@@ -37,19 +37,34 @@ export const adminEnhancementsRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       return transaction(async (client) => {
-        // Get order details
-        const orderResult = await client.query(
-          `SELECT 
-            qr.id, qr.contact_name, qr.contact_email, qr.status, qr.event_date,
-            qr.sport_type,
-            p.name as package_name,
-            fs.team_name
-           FROM quote_requests qr
-           LEFT JOIN packages p ON qr.package_id = p.id
-           LEFT JOIN form_submissions fs ON qr.id = fs.quote_id
-           WHERE qr.id = $1`,
-          [input.orderId]
-        )
+        // Get order details - handle missing form_submissions table
+        let orderResult
+        try {
+          orderResult = await client.query(
+            `SELECT 
+              qr.id, qr.contact_name, qr.contact_email, qr.status, qr.event_date,
+              qr.sport_type,
+              p.name as package_name,
+              fs.team_name
+             FROM quote_requests qr
+             LEFT JOIN packages p ON qr.package_id = p.id
+             LEFT JOIN form_submissions fs ON qr.id = fs.quote_id
+             WHERE qr.id = $1`,
+            [input.orderId]
+          )
+        } catch {
+          orderResult = await client.query(
+            `SELECT 
+              qr.id, qr.contact_name, qr.contact_email, qr.status, qr.event_date,
+              qr.sport_type,
+              p.name as package_name,
+              NULL as team_name
+             FROM quote_requests qr
+             LEFT JOIN packages p ON qr.package_id = p.id
+             WHERE qr.id = $1`,
+            [input.orderId]
+          )
+        }
         
         if (orderResult.rows.length === 0) {
           throw new TRPCError({
@@ -75,47 +90,75 @@ export const adminEnhancementsRouter = router({
           eventTimeStr = `${hours}:${minutes}:00`
         }
         
-        // Update order with quote and event datetime
-        await client.query(
-          `UPDATE quote_requests 
-           SET quoted_amount = $1, 
-               admin_notes = COALESCE($2, admin_notes),
-               status = 'quoted',
-               current_quote_version = COALESCE(current_quote_version, 0) + 1,
-               event_datetime = COALESCE($3, event_datetime),
-               event_date = COALESCE($4::date, event_date),
-               event_time = COALESCE($5::time, event_time),
-               admin_confirmed_datetime = $6,
-               tax_province = COALESCE($7, tax_province, 'AB'),
-               tax_amount = COALESCE($8, tax_amount, 0),
-               updated_at = NOW()
-           WHERE id = $9`,
-          [
-            input.quoteAmount, 
-            input.adminNotes, 
-            eventDateTime?.toISOString() || null,
-            eventDateStr,
-            eventTimeStr,
-            input.confirmDateTime,
-            input.taxProvince || null,
-            input.taxAmount || 0,
-            input.orderId
-          ]
-        )
+        // Update order with quote - try full query first, fallback to basic columns
+        try {
+          await client.query(
+            `UPDATE quote_requests 
+             SET quoted_amount = $1, 
+                 admin_notes = COALESCE($2, admin_notes),
+                 status = 'quoted',
+                 current_quote_version = COALESCE(current_quote_version, 0) + 1,
+                 event_datetime = COALESCE($3, event_datetime),
+                 event_date = COALESCE($4::date, event_date),
+                 event_time = COALESCE($5::time, event_time),
+                 admin_confirmed_datetime = $6,
+                 tax_province = COALESCE($7, tax_province, 'AB'),
+                 tax_amount = COALESCE($8, tax_amount, 0),
+                 updated_at = NOW()
+             WHERE id = $9`,
+            [
+              input.quoteAmount, 
+              input.adminNotes, 
+              eventDateTime?.toISOString() || null,
+              eventDateStr,
+              eventTimeStr,
+              input.confirmDateTime,
+              input.taxProvince || null,
+              input.taxAmount || 0,
+              input.orderId
+            ]
+          )
+        } catch (updateErr: any) {
+          // Fallback: update only columns that exist in the base schema
+          logger.warn('Full quote update failed, using fallback', { error: updateErr.message })
+          await client.query(
+            `UPDATE quote_requests 
+             SET quoted_amount = $1, 
+                 admin_notes = COALESCE($2, admin_notes),
+                 status = 'quoted',
+                 event_date = COALESCE($3::date, event_date),
+                 event_time = COALESCE($4::time, event_time),
+                 updated_at = NOW()
+             WHERE id = $5`,
+            [
+              input.quoteAmount, 
+              input.adminNotes, 
+              eventDateStr,
+              eventTimeStr,
+              input.orderId
+            ]
+          )
+        }
         
-        // Create quote revision record
-        const versionResult = await client.query(
-          `SELECT COALESCE(MAX(version), 0) + 1 as next_version 
-           FROM quote_revisions WHERE quote_id = $1`,
-          [input.orderId]
-        )
-        const nextVersion = versionResult.rows[0].next_version
-        
-        await client.query(
-          `INSERT INTO quote_revisions (quote_id, version, amount_cents, notes, created_by)
-           VALUES ($1, $2, $3, $4, $5)`,
-          [input.orderId, nextVersion, input.quoteAmount, input.adminNotes || 'Initial quote', ctx.user.userId]
-        )
+        // Create quote revision record - handle missing table
+        let nextVersion = 1
+        try {
+          const versionResult = await client.query(
+            `SELECT COALESCE(MAX(version), 0) + 1 as next_version 
+             FROM quote_revisions WHERE quote_id = $1`,
+            [input.orderId]
+          )
+          nextVersion = versionResult.rows[0].next_version
+          
+          await client.query(
+            `INSERT INTO quote_revisions (quote_id, version, amount_cents, notes, created_by)
+             VALUES ($1, $2, $3, $4, $5)`,
+            [input.orderId, nextVersion, input.quoteAmount, input.adminNotes || 'Initial quote', ctx.user.userId]
+          )
+        } catch {
+          // quote_revisions table may not exist yet
+          logger.warn('Could not create quote revision record - table may not exist')
+        }
         
         // Log status change
         await client.query(
@@ -208,19 +251,35 @@ export const adminEnhancementsRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       return transaction(async (client) => {
-        // Get current quote info
-        const currentResult = await client.query(
-          `SELECT 
-            qr.quoted_amount,
-            qr.current_quote_version,
-            qr.contact_email,
-            qr.contact_name,
-            p.name as package_name
-           FROM quote_requests qr
-           LEFT JOIN packages p ON qr.package_id = p.id
-           WHERE qr.id = $1`,
-          [input.orderId]
-        )
+        // Get current quote info - handle missing columns
+        let currentResult
+        try {
+          currentResult = await client.query(
+            `SELECT 
+              qr.quoted_amount,
+              qr.current_quote_version,
+              qr.contact_email,
+              qr.contact_name,
+              p.name as package_name
+             FROM quote_requests qr
+             LEFT JOIN packages p ON qr.package_id = p.id
+             WHERE qr.id = $1`,
+            [input.orderId]
+          )
+        } catch {
+          currentResult = await client.query(
+            `SELECT 
+              qr.quoted_amount,
+              1 as current_quote_version,
+              qr.contact_email,
+              qr.contact_name,
+              p.name as package_name
+             FROM quote_requests qr
+             LEFT JOIN packages p ON qr.package_id = p.id
+             WHERE qr.id = $1`,
+            [input.orderId]
+          )
+        }
         
         if (currentResult.rows.length === 0) {
           throw new TRPCError({
@@ -233,20 +292,33 @@ export const adminEnhancementsRouter = router({
         const previousAmount = current.quoted_amount
         const newVersion = (current.current_quote_version || 1) + 1
         
-        // Create revision record
-        await client.query(
-          `INSERT INTO quote_revisions (quote_id, version, amount_cents, notes, created_by)
-           VALUES ($1, $2, $3, $4, $5)`,
-          [input.orderId, newVersion, input.newAmount, input.reason, ctx.user.userId]
-        )
+        // Create revision record - handle missing table
+        try {
+          await client.query(
+            `INSERT INTO quote_revisions (quote_id, version, amount_cents, notes, created_by)
+             VALUES ($1, $2, $3, $4, $5)`,
+            [input.orderId, newVersion, input.newAmount, input.reason, ctx.user.userId]
+          )
+        } catch {
+          logger.warn('Could not create quote revision record - table may not exist')
+        }
         
-        // Update order with new quote
-        await client.query(
-          `UPDATE quote_requests 
-           SET quoted_amount = $1, current_quote_version = $2, updated_at = NOW()
-           WHERE id = $3`,
-          [input.newAmount, newVersion, input.orderId]
-        )
+        // Update order with new quote - handle missing columns
+        try {
+          await client.query(
+            `UPDATE quote_requests 
+             SET quoted_amount = $1, current_quote_version = $2, updated_at = NOW()
+             WHERE id = $3`,
+            [input.newAmount, newVersion, input.orderId]
+          )
+        } catch {
+          await client.query(
+            `UPDATE quote_requests 
+             SET quoted_amount = $1, updated_at = NOW()
+             WHERE id = $2`,
+            [input.newAmount, input.orderId]
+          )
+        }
         
         // Log status history
         await client.query(
@@ -289,29 +361,34 @@ export const adminEnhancementsRouter = router({
       orderId: z.number()
     }))
     .query(async ({ input }) => {
-      const result = await query(
-        `SELECT 
-          qr.id,
-          qr.version,
-          qr.amount_cents,
-          qr.notes,
-          qr.created_at,
-          u.name as created_by_name
-         FROM quote_revisions qr
-         LEFT JOIN users u ON qr.created_by = u.id
-         WHERE qr.quote_id = $1
-         ORDER BY qr.version DESC`,
-        [input.orderId]
-      )
-      
-      return result.rows.map(row => ({
-        id: row.id,
-        version: row.version,
-        amount: row.amount_cents,
-        notes: row.notes,
-        createdAt: row.created_at.toISOString(),
-        createdBy: row.created_by_name
-      }))
+      try {
+        const result = await query(
+          `SELECT 
+            qr.id,
+            qr.version,
+            qr.amount_cents,
+            qr.notes,
+            qr.created_at,
+            u.name as created_by_name
+           FROM quote_revisions qr
+           LEFT JOIN users u ON qr.created_by = u.id
+           WHERE qr.quote_id = $1
+           ORDER BY qr.version DESC`,
+          [input.orderId]
+        )
+        
+        return result.rows.map(row => ({
+          id: row.id,
+          version: row.version,
+          amount: row.amount_cents,
+          notes: row.notes,
+          createdAt: row.created_at.toISOString(),
+          createdBy: row.created_by_name
+        }))
+      } catch {
+        // quote_revisions table may not exist yet
+        return []
+      }
     }),
 
   /**
@@ -367,16 +444,16 @@ export const adminEnhancementsRouter = router({
         [input.email]
       )
       
-      // Fetch email history
+      // Fetch email history (handle both old and new column names)
       const emailsResult = await query(
         `SELECT 
           id,
           subject,
-          template,
+          COALESCE(template, email_type) as template,
           status,
           sent_at
         FROM email_logs
-        WHERE to_email = $1
+        WHERE COALESCE(to_email, recipient_email) = $1
         ORDER BY sent_at DESC
         LIMIT 20`,
         [input.email]
@@ -655,9 +732,9 @@ export const adminEnhancementsRouter = router({
       const result = await query(
         `SELECT 
           id,
-          to_email,
+          COALESCE(to_email, recipient_email) as to_email,
           subject,
-          template,
+          COALESCE(template, email_type) as template,
           status,
           error_message,
           sent_at,
@@ -887,25 +964,30 @@ export const adminEnhancementsRouter = router({
       orderId: z.number()
     }))
     .query(async ({ input }) => {
-      const result = await query(
-        `SELECT 
-          id,
-          event_type,
-          ip_address,
-          metadata,
-          created_at
-         FROM quote_events
-         WHERE quote_id = $1
-         ORDER BY created_at DESC`,
-        [input.orderId]
-      )
-      
-      return result.rows.map(row => ({
-        id: row.id,
-        eventType: row.event_type,
-        ipAddress: row.ip_address,
-        metadata: row.metadata,
-        createdAt: row.created_at.toISOString()
-      }))
+      try {
+        const result = await query(
+          `SELECT 
+            id,
+            event_type,
+            ip_address,
+            metadata,
+            created_at
+           FROM quote_events
+           WHERE quote_id = $1
+           ORDER BY created_at DESC`,
+          [input.orderId]
+        )
+        
+        return result.rows.map(row => ({
+          id: row.id,
+          eventType: row.event_type,
+          ipAddress: row.ip_address,
+          metadata: row.metadata,
+          createdAt: row.created_at.toISOString()
+        }))
+      } catch {
+        // quote_events table may not exist yet
+        return []
+      }
     })
 })

@@ -70,12 +70,16 @@ export async function saveReminderSettings(settings: Partial<ReminderSchedule>):
   const currentSettings = await getReminderSettings()
   const newSettings = { ...currentSettings, ...settings }
   
-  await query(
-    `INSERT INTO settings (key, value, updated_at)
-     VALUES ('reminder_settings', $1, NOW())
-     ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = NOW()`,
-    [JSON.stringify(newSettings)]
-  )
+  try {
+    await query(
+      `INSERT INTO settings (key, value, updated_at)
+       VALUES ('reminder_settings', $1, NOW())
+       ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = NOW()`,
+      [JSON.stringify(newSettings)]
+    )
+  } catch (error) {
+    logger.warn('Could not save reminder settings (settings table may not exist)', { error })
+  }
   
   return newSettings
 }
@@ -419,15 +423,19 @@ export async function getReminderStats(): Promise<{
  * Pause reminders for an order
  */
 export async function pauseReminders(orderId: number, reason?: string): Promise<void> {
-  await query(
-    `INSERT INTO settings (key, value, updated_at)
-     VALUES ($1, $2, NOW())
-     ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()`,
-    [
-      `reminder_paused_${orderId}`,
-      JSON.stringify({ paused: true, reason, pausedAt: new Date().toISOString() })
-    ]
-  )
+  try {
+    await query(
+      `INSERT INTO settings (key, value, updated_at)
+       VALUES ($1, $2, NOW())
+       ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()`,
+      [
+        `reminder_paused_${orderId}`,
+        JSON.stringify({ paused: true, reason, pausedAt: new Date().toISOString() })
+      ]
+    )
+  } catch (error) {
+    logger.warn('Could not pause reminders (settings table may not exist)', { error })
+  }
   
   logger.info('Reminders paused for order', { orderId, reason })
 }
@@ -436,10 +444,14 @@ export async function pauseReminders(orderId: number, reason?: string): Promise<
  * Resume reminders for an order
  */
 export async function resumeReminders(orderId: number): Promise<void> {
-  await query(
-    `DELETE FROM settings WHERE key = $1`,
-    [`reminder_paused_${orderId}`]
-  )
+  try {
+    await query(
+      `DELETE FROM settings WHERE key = $1`,
+      [`reminder_paused_${orderId}`]
+    )
+  } catch (error) {
+    logger.warn('Could not resume reminders (settings table may not exist)', { error })
+  }
   
   logger.info('Reminders resumed for order', { orderId })
 }
@@ -448,14 +460,18 @@ export async function resumeReminders(orderId: number): Promise<void> {
  * Check if reminders are paused for an order
  */
 export async function areRemindersPaused(orderId: number): Promise<boolean> {
-  const result = await query(
-    `SELECT value FROM settings WHERE key = $1`,
-    [`reminder_paused_${orderId}`]
-  )
-  
-  if (result.rows.length > 0) {
-    const value = result.rows[0].value
-    return value?.paused === true
+  try {
+    const result = await query(
+      `SELECT value FROM settings WHERE key = $1`,
+      [`reminder_paused_${orderId}`]
+    )
+    
+    if (result.rows.length > 0) {
+      const value = result.rows[0].value
+      return value?.paused === true
+    }
+  } catch {
+    // Settings table may not exist yet
   }
   
   return false

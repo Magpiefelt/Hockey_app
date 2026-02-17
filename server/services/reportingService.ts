@@ -85,17 +85,31 @@ export async function getFinancialSummary(
   const startStr = startDate.toISOString().split('T')[0]
   const endStr = endDate.toISOString().split('T')[0]
   
-  // Current period revenue
-  const revenueResult = await query(
-    `SELECT 
-      COALESCE(SUM(total_amount), 0) as gross,
-      COALESCE(SUM(total_amount - COALESCE(tax_amount, 0)), 0) as net,
-      COALESCE(SUM(tax_amount), 0) as tax
-    FROM quote_requests
-    WHERE status IN ('paid', 'completed', 'delivered')
-    AND updated_at >= $1 AND updated_at < $2`,
-    [startStr, endStr]
-  )
+  // Current period revenue - handle missing tax columns
+  let revenueResult
+  try {
+    revenueResult = await query(
+      `SELECT 
+        COALESCE(SUM(total_amount), 0) as gross,
+        COALESCE(SUM(total_amount - COALESCE(tax_amount, 0)), 0) as net,
+        COALESCE(SUM(tax_amount), 0) as tax
+      FROM quote_requests
+      WHERE status IN ('paid', 'completed', 'delivered')
+      AND updated_at >= $1 AND updated_at < $2`,
+      [startStr, endStr]
+    )
+  } catch {
+    revenueResult = await query(
+      `SELECT 
+        COALESCE(SUM(total_amount), 0) as gross,
+        COALESCE(SUM(total_amount), 0) as net,
+        0 as tax
+      FROM quote_requests
+      WHERE status IN ('paid', 'completed', 'delivered')
+      AND updated_at >= $1 AND updated_at < $2`,
+      [startStr, endStr]
+    )
+  }
   
   // Order counts
   const ordersResult = await query(
@@ -373,16 +387,29 @@ export async function generateIncomeStatement(
   const startStr = startDate.toISOString().split('T')[0]
   const endStr = endDate.toISOString().split('T')[0]
   
-  // Get revenue and tax
-  const revenueResult = await query(
-    `SELECT 
-      COALESCE(SUM(total_amount), 0) as revenue,
-      COALESCE(SUM(tax_amount), 0) as tax
-    FROM quote_requests
-    WHERE status IN ('paid', 'completed', 'delivered')
-    AND updated_at >= $1 AND updated_at < $2`,
-    [startStr, endStr]
-  )
+  // Get revenue and tax - handle missing tax columns
+  let revenueResult
+  try {
+    revenueResult = await query(
+      `SELECT 
+        COALESCE(SUM(total_amount), 0) as revenue,
+        COALESCE(SUM(tax_amount), 0) as tax
+      FROM quote_requests
+      WHERE status IN ('paid', 'completed', 'delivered')
+      AND updated_at >= $1 AND updated_at < $2`,
+      [startStr, endStr]
+    )
+  } catch {
+    revenueResult = await query(
+      `SELECT 
+        COALESCE(SUM(total_amount), 0) as revenue,
+        0 as tax
+      FROM quote_requests
+      WHERE status IN ('paid', 'completed', 'delivered')
+      AND updated_at >= $1 AND updated_at < $2`,
+      [startStr, endStr]
+    )
+  }
   
   const revenue = parseInt(revenueResult.rows[0].revenue) || 0
   const taxCollected = parseInt(revenueResult.rows[0].tax) || 0
@@ -519,18 +546,32 @@ export async function generateComprehensiveReport(
     orderCount: parseInt(row.order_count)
   }))
   
-  // Tax summary
-  const taxResult = await query(
-    `SELECT 
-      COALESCE(tax_province, 'AB') as province,
-      COALESCE(SUM(tax_amount), 0) as tax_collected,
-      COUNT(*) as order_count
-    FROM quote_requests
-    WHERE status IN ('paid', 'completed', 'delivered')
-    AND updated_at >= $1 AND updated_at <= $2
-    GROUP BY COALESCE(tax_province, 'AB')`,
-    [startDate.toISOString().split('T')[0], endDate.toISOString().split('T')[0]]
-  )
+  // Tax summary - handle missing tax columns
+  let taxResult
+  try {
+    taxResult = await query(
+      `SELECT 
+        COALESCE(tax_province, 'AB') as province,
+        COALESCE(SUM(tax_amount), 0) as tax_collected,
+        COUNT(*) as order_count
+      FROM quote_requests
+      WHERE status IN ('paid', 'completed', 'delivered')
+      AND updated_at >= $1 AND updated_at <= $2
+      GROUP BY COALESCE(tax_province, 'AB')`,
+      [startDate.toISOString().split('T')[0], endDate.toISOString().split('T')[0]]
+    )
+  } catch {
+    taxResult = await query(
+      `SELECT 
+        'AB' as province,
+        0 as tax_collected,
+        COUNT(*) as order_count
+      FROM quote_requests
+      WHERE status IN ('paid', 'completed', 'delivered')
+      AND updated_at >= $1 AND updated_at <= $2`,
+      [startDate.toISOString().split('T')[0], endDate.toISOString().split('T')[0]]
+    )
+  }
   
   const taxSummary = {
     byProvince: taxResult.rows.map(row => ({

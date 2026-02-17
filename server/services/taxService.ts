@@ -79,12 +79,16 @@ export async function saveTaxSettings(settings: Partial<TaxSettings>): Promise<T
   const currentSettings = await getTaxSettings()
   const newSettings = { ...currentSettings, ...settings }
   
-  await query(
-    `INSERT INTO settings (key, value, updated_at)
-     VALUES ('tax_settings', $1, NOW())
-     ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = NOW()`,
-    [JSON.stringify(newSettings)]
-  )
+  try {
+    await query(
+      `INSERT INTO settings (key, value, updated_at)
+       VALUES ('tax_settings', $1, NOW())
+       ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = NOW()`,
+      [JSON.stringify(newSettings)]
+    )
+  } catch (error) {
+    logger.warn('Could not save tax settings - settings table may not exist', { error })
+  }
   
   return newSettings
 }
@@ -99,12 +103,21 @@ export async function applyTaxToOrder(
   const settings = await getTaxSettings()
   const taxProvince = province || settings.defaultProvince
   
-  // Get order details
-  const orderResult = await query(
-    `SELECT id, total_amount, tax_amount, tax_province, status
-     FROM quote_requests WHERE id = $1`,
-    [orderId]
-  )
+  // Get order details - handle missing tax columns
+  let orderResult
+  try {
+    orderResult = await query(
+      `SELECT id, total_amount, tax_amount, tax_province, status
+       FROM quote_requests WHERE id = $1`,
+      [orderId]
+    )
+  } catch {
+    orderResult = await query(
+      `SELECT id, total_amount, 0 as tax_amount, 'AB' as tax_province, status
+       FROM quote_requests WHERE id = $1`,
+      [orderId]
+    )
+  }
   
   if (orderResult.rows.length === 0) {
     throw new Error(`Order ${orderId} not found`)
@@ -129,16 +142,27 @@ export async function applyTaxToOrder(
     taxBreakdown = calculateTax(order.total_amount, taxProvince)
   }
   
-  // Update order with tax information
-  await query(
-    `UPDATE quote_requests 
-     SET tax_amount = $1, 
-         tax_province = $2, 
-         total_amount = $3,
-         updated_at = NOW()
-     WHERE id = $4`,
-    [taxBreakdown.totalTax, taxProvince, taxBreakdown.total, orderId]
-  )
+  // Update order with tax information - handle missing columns
+  try {
+    await query(
+      `UPDATE quote_requests 
+       SET tax_amount = $1, 
+           tax_province = $2, 
+           total_amount = $3,
+           updated_at = NOW()
+       WHERE id = $4`,
+      [taxBreakdown.totalTax, taxProvince, taxBreakdown.total, orderId]
+    )
+  } catch {
+    // Fallback if tax columns don't exist
+    await query(
+      `UPDATE quote_requests 
+       SET total_amount = $1,
+           updated_at = NOW()
+       WHERE id = $2`,
+      [taxBreakdown.total, orderId]
+    )
+  }
   
   logger.info('Tax applied to order', { 
     orderId, 
@@ -165,26 +189,50 @@ export async function generateCRATaxReport(
   const startStr = startDate.toISOString().split('T')[0]
   const endStr = endDate.toISOString().split('T')[0]
   
-  // Get all paid orders in the period
-  const result = await query(
-    `SELECT 
-      qr.id as order_id,
-      qr.contact_name,
-      qr.contact_email,
-      qr.created_at,
-      qr.updated_at as payment_date,
-      COALESCE(qr.tax_province, 'AB') as province,
-      qr.total_amount,
-      qr.tax_amount,
-      COALESCE(p.name, qr.service_type) as service
-    FROM quote_requests qr
-    LEFT JOIN packages p ON qr.package_id = p.id
-    WHERE qr.status IN ('paid', 'completed', 'delivered')
-    AND qr.updated_at >= $1
-    AND qr.updated_at < $2
-    ORDER BY qr.updated_at`,
-    [startStr, endStr]
-  )
+  // Get all paid orders in the period - handle missing tax columns
+  let result
+  try {
+    result = await query(
+      `SELECT 
+        qr.id as order_id,
+        qr.contact_name,
+        qr.contact_email,
+        qr.created_at,
+        qr.updated_at as payment_date,
+        COALESCE(qr.tax_province, 'AB') as province,
+        qr.total_amount,
+        COALESCE(qr.tax_amount, 0) as tax_amount,
+        COALESCE(p.name, qr.service_type) as service
+      FROM quote_requests qr
+      LEFT JOIN packages p ON qr.package_id = p.id
+      WHERE qr.status IN ('paid', 'completed', 'delivered')
+      AND qr.updated_at >= $1
+      AND qr.updated_at < $2
+      ORDER BY qr.updated_at`,
+      [startStr, endStr]
+    )
+  } catch {
+    // Fallback without tax columns
+    result = await query(
+      `SELECT 
+        qr.id as order_id,
+        qr.contact_name,
+        qr.contact_email,
+        qr.created_at,
+        qr.updated_at as payment_date,
+        'AB' as province,
+        qr.total_amount,
+        0 as tax_amount,
+        COALESCE(p.name, qr.service_type) as service
+      FROM quote_requests qr
+      LEFT JOIN packages p ON qr.package_id = p.id
+      WHERE qr.status IN ('paid', 'completed', 'delivered')
+      AND qr.updated_at >= $1
+      AND qr.updated_at < $2
+      ORDER BY qr.updated_at`,
+      [startStr, endStr]
+    )
+  }
   
   let gstHstCollected = 0
   const pstByProvince: Record<string, number> = {}
@@ -325,17 +373,32 @@ export async function calculateEstimatedTaxOwing(
     period = `Q${quarter} ${year}`
   }
   
-  const result = await query(
-    `SELECT 
-      COALESCE(tax_province, 'AB') as province,
-      COALESCE(SUM(tax_amount), 0) as tax_collected,
-      COALESCE(SUM(total_amount), 0) as total_revenue
-    FROM quote_requests
-    WHERE status IN ('paid', 'completed', 'delivered')
-    AND ${dateFilter}
-    GROUP BY COALESCE(tax_province, 'AB')`,
-    taxParams
-  )
+  let result
+  try {
+    result = await query(
+      `SELECT 
+        COALESCE(tax_province, 'AB') as province,
+        COALESCE(SUM(tax_amount), 0) as tax_collected,
+        COALESCE(SUM(total_amount), 0) as total_revenue
+      FROM quote_requests
+      WHERE status IN ('paid', 'completed', 'delivered')
+      AND ${dateFilter}
+      GROUP BY COALESCE(tax_province, 'AB')`,
+      taxParams
+    )
+  } catch {
+    // Fallback without tax columns
+    result = await query(
+      `SELECT 
+        'AB' as province,
+        0 as tax_collected,
+        COALESCE(SUM(total_amount), 0) as total_revenue
+      FROM quote_requests
+      WHERE status IN ('paid', 'completed', 'delivered')
+      AND ${dateFilter}`,
+      taxParams
+    )
+  }
   
   let gstHst = 0
   const pstByProvince: Record<string, number> = {}

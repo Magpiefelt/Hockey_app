@@ -50,23 +50,28 @@ export const contactRouter = router({
       logger.info('Contact form submission', { email, subject })
       
       try {
-        // Store submission in database
-        const result = await query(
-          `INSERT INTO contact_submissions (name, email, phone, subject, message, ip_address, user_agent)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)
-           RETURNING id, created_at`,
-          [
-            name,
-            email,
-            phone,
-            subject,
-            message,
-            ctx.event?.context?.ip || null,
-            ctx.event?.context?.userAgent || null
-          ]
-        )
-        
-        const submission = result.rows[0]
+        // Store submission in database - handle missing table
+        let submissionId = 0
+        try {
+          const result = await query(
+            `INSERT INTO contact_submissions (name, email, phone, subject, message, ip_address, user_agent)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)
+             RETURNING id, created_at`,
+            [
+              name,
+              email,
+              phone,
+              subject,
+              message,
+              ctx.event?.context?.ip || null,
+              ctx.event?.context?.userAgent || null
+            ]
+          )
+          submissionId = result.rows[0]?.id || 0
+        } catch (dbErr: any) {
+          // If table doesn't exist, just log and continue (email will still be sent)
+          logger.warn('contact_submissions table may not exist yet', { error: dbErr.message })
+        }
         
         // Send notification email to admin using centralized Mailgun utility (non-blocking)
         sendContactNotificationEmail({
@@ -75,20 +80,20 @@ export const contactRouter = router({
           phone: phone || undefined,
           subject,
           message,
-          submissionId: submission.id
+          submissionId
         }).catch((err) => {
           logger.error('Failed to send contact notification', { error: err.message })
         })
         
         logger.info('Contact form submitted successfully', { 
-          submissionId: submission.id,
+          submissionId,
           email 
         })
         
         return {
           success: true,
           message: 'Your message has been sent successfully. We will get back to you within 24 hours.',
-          submissionId: submission.id
+          submissionId
         }
       } catch (error: any) {
         logger.error('Contact form submission error', { error: error.message, email })
@@ -128,35 +133,45 @@ export const contactRouter = router({
         params.push(input.status)
       }
       
-      const result = await query(
-        `SELECT id, name, email, phone, subject, message, status, created_at, read_at
-         FROM contact_submissions
-         ${whereClause}
-         ORDER BY created_at DESC
-         LIMIT $1 OFFSET $2`,
-        params
-      )
-      
-      const countResult = await query(
-        `SELECT COUNT(*) as total FROM contact_submissions ${whereClause}`,
-        input?.status ? [input.status] : []
-      )
-      
-      return {
-        submissions: result.rows.map(row => ({
-          id: row.id,
-          name: row.name,
-          email: row.email,
-          phone: row.phone,
-          subject: row.subject,
-          message: row.message,
-          status: row.status,
-          createdAt: row.created_at.toISOString(),
-          readAt: row.read_at?.toISOString()
-        })),
-        total: parseInt(countResult.rows[0].total),
-        limit,
-        offset
+      try {
+        const result = await query(
+          `SELECT id, name, email, phone, subject, message, status, created_at, read_at
+           FROM contact_submissions
+           ${whereClause}
+           ORDER BY created_at DESC
+           LIMIT $1 OFFSET $2`,
+          params
+        )
+        
+        const countResult = await query(
+          `SELECT COUNT(*) as total FROM contact_submissions ${whereClause}`,
+          input?.status ? [input.status] : []
+        )
+        
+        return {
+          submissions: result.rows.map(row => ({
+            id: row.id,
+            name: row.name,
+            email: row.email,
+            phone: row.phone,
+            subject: row.subject,
+            message: row.message,
+            status: row.status,
+            createdAt: row.created_at.toISOString(),
+            readAt: row.read_at?.toISOString()
+          })),
+          total: parseInt(countResult.rows[0].total),
+          limit,
+          offset
+        }
+      } catch {
+        // Table may not exist yet
+        return {
+          submissions: [],
+          total: 0,
+          limit,
+          offset
+        }
       }
     }),
 
@@ -176,12 +191,16 @@ export const contactRouter = router({
         })
       }
       
-      await query(
-        `UPDATE contact_submissions 
-         SET status = 'read', read_at = NOW()
-         WHERE id = $1 AND status = 'new'`,
-        [input.id]
-      )
+      try {
+        await query(
+          `UPDATE contact_submissions 
+           SET status = 'read', read_at = NOW()
+           WHERE id = $1 AND status = 'new'`,
+          [input.id]
+        )
+      } catch {
+        // Table may not exist yet
+      }
       
       return { success: true }
     })

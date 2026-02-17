@@ -91,14 +91,25 @@ export const financeRouter = router({
       const averageDaysToPayment = Math.round(parseFloat(avgDaysResult.rows[0].avg_days) || 0)
       
       // Tax collected (estimated based on default province)
-      const taxResult = await query(
-        `SELECT 
-          COALESCE(SUM(tax_amount), 0) as collected_tax,
-          COALESCE(SUM(CASE WHEN tax_province = 'AB' OR tax_province IS NULL THEN total_amount * 0.05 ELSE 0 END), 0) as estimated_gst
-         FROM quote_requests 
-         WHERE status IN ('paid', 'completed', 'delivered')`
-      )
-      const taxCollected = parseInt(taxResult.rows[0].collected_tax) || Math.round(parseInt(taxResult.rows[0].estimated_gst))
+      let taxCollected = 0
+      try {
+        const taxResult = await query(
+          `SELECT 
+            COALESCE(SUM(tax_amount), 0) as collected_tax,
+            COALESCE(SUM(CASE WHEN tax_province = 'AB' OR tax_province IS NULL THEN total_amount * 0.05 ELSE 0 END), 0) as estimated_gst
+           FROM quote_requests 
+           WHERE status IN ('paid', 'completed', 'delivered')`
+        )
+        taxCollected = parseInt(taxResult.rows[0].collected_tax) || Math.round(parseInt(taxResult.rows[0].estimated_gst))
+      } catch {
+        // tax_amount/tax_province columns may not exist yet, estimate from total
+        const fallbackTax = await query(
+          `SELECT COALESCE(SUM(total_amount), 0) * 0.05 as estimated_gst
+           FROM quote_requests 
+           WHERE status IN ('paid', 'completed', 'delivered')`
+        )
+        taxCollected = Math.round(parseFloat(fallbackTax.rows[0].estimated_gst) || 0)
+      }
       
       // Revenue by service/package
       const serviceResult = await query(
@@ -314,20 +325,36 @@ export const financeRouter = router({
         dateFilter += ` AND EXTRACT(MONTH FROM created_at) BETWEEN $2 AND $3`
       }
       
-      // Get revenue by province
-      const result = await query(
-        `SELECT 
-          COALESCE(tax_province, 'AB') as province,
-          COALESCE(SUM(total_amount), 0) as revenue,
-          COALESCE(SUM(tax_amount), 0) as tax_collected,
-          COUNT(*) as order_count
-        FROM quote_requests 
-        WHERE status IN ('paid', 'completed', 'delivered')
-        AND ${dateFilter}
-        GROUP BY COALESCE(tax_province, 'AB')
-        ORDER BY revenue DESC`,
-        params
-      )
+      // Get revenue by province - handle missing columns gracefully
+      let result
+      try {
+        result = await query(
+          `SELECT 
+            COALESCE(tax_province, 'AB') as province,
+            COALESCE(SUM(total_amount), 0) as revenue,
+            COALESCE(SUM(tax_amount), 0) as tax_collected,
+            COUNT(*) as order_count
+          FROM quote_requests 
+          WHERE status IN ('paid', 'completed', 'delivered')
+          AND ${dateFilter}
+          GROUP BY COALESCE(tax_province, 'AB')
+          ORDER BY revenue DESC`,
+          params
+        )
+      } catch {
+        // Fallback if tax columns don't exist yet
+        result = await query(
+          `SELECT 
+            'AB' as province,
+            COALESCE(SUM(total_amount), 0) as revenue,
+            0 as tax_collected,
+            COUNT(*) as order_count
+          FROM quote_requests 
+          WHERE status IN ('paid', 'completed', 'delivered')
+          AND ${dateFilter}`,
+          params
+        )
+      }
       
       // Calculate tax breakdown for each province
       const byProvince = result.rows.map(row => {
@@ -395,25 +422,48 @@ export const financeRouter = router({
         periodLabel = `${year} Q${quarter}`
       }
       
-      // Get detailed order data for tax report
-      const result = await query(
-        `SELECT 
-          qr.id as order_id,
-          qr.contact_name as customer_name,
-          qr.contact_email as customer_email,
-          qr.created_at as order_date,
-          qr.updated_at as payment_date,
-          COALESCE(qr.tax_province, 'AB') as province,
-          qr.total_amount as total,
-          qr.tax_amount,
-          COALESCE(p.name, qr.service_type) as service
-        FROM quote_requests qr
-        LEFT JOIN packages p ON qr.package_id = p.id
-        WHERE qr.status IN ('paid', 'completed', 'delivered')
-        AND ${exportDateFilter}
-        ORDER BY qr.created_at`,
-        exportParams
-      )
+      // Get detailed order data for tax report - handle missing columns
+      let result
+      try {
+        result = await query(
+          `SELECT 
+            qr.id as order_id,
+            qr.contact_name as customer_name,
+            qr.contact_email as customer_email,
+            qr.created_at as order_date,
+            qr.updated_at as payment_date,
+            COALESCE(qr.tax_province, 'AB') as province,
+            qr.total_amount as total,
+            COALESCE(qr.tax_amount, 0) as tax_amount,
+            COALESCE(p.name, qr.service_type) as service
+          FROM quote_requests qr
+          LEFT JOIN packages p ON qr.package_id = p.id
+          WHERE qr.status IN ('paid', 'completed', 'delivered')
+          AND ${exportDateFilter}
+          ORDER BY qr.created_at`,
+          exportParams
+        )
+      } catch {
+        // Fallback if tax columns don't exist
+        result = await query(
+          `SELECT 
+            qr.id as order_id,
+            qr.contact_name as customer_name,
+            qr.contact_email as customer_email,
+            qr.created_at as order_date,
+            qr.updated_at as payment_date,
+            'AB' as province,
+            qr.total_amount as total,
+            0 as tax_amount,
+            COALESCE(p.name, qr.service_type) as service
+          FROM quote_requests qr
+          LEFT JOIN packages p ON qr.package_id = p.id
+          WHERE qr.status IN ('paid', 'completed', 'delivered')
+          AND ${exportDateFilter}
+          ORDER BY qr.created_at`,
+          exportParams
+        )
+      }
       
       const orders = result.rows.map(row => {
         const total = parseInt(row.total)

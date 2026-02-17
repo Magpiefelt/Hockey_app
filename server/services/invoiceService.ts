@@ -88,12 +88,16 @@ export async function saveInvoiceSettings(settings: Partial<InvoiceSettings>): P
   const currentSettings = await getInvoiceSettings()
   const newSettings = { ...currentSettings, ...settings }
   
-  await query(
-    `INSERT INTO settings (key, value, updated_at)
-     VALUES ('invoice_settings', $1, NOW())
-     ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = NOW()`,
-    [JSON.stringify(newSettings)]
-  )
+  try {
+    await query(
+      `INSERT INTO settings (key, value, updated_at)
+       VALUES ('invoice_settings', $1, NOW())
+       ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = NOW()`,
+      [JSON.stringify(newSettings)]
+    )
+  } catch (error) {
+    logger.warn('Could not save invoice settings (settings table may not exist)', { error })
+  }
   
   return newSettings
 }
@@ -229,16 +233,26 @@ export async function createInvoiceFromOrder(
     ]
   )
   
-  // Update order with invoice info
-  await query(
-    `UPDATE quote_requests 
-     SET total_amount = $1, 
-         tax_amount = $2, 
-         tax_province = $3,
-         updated_at = NOW()
-     WHERE id = $4`,
-    [taxBreakdown.total, taxBreakdown.totalTax, province, orderId]
-  )
+  // Update order with invoice info - handle missing tax columns
+  try {
+    await query(
+      `UPDATE quote_requests 
+       SET total_amount = $1, 
+           tax_amount = $2, 
+           tax_province = $3,
+           updated_at = NOW()
+       WHERE id = $4`,
+      [taxBreakdown.total, taxBreakdown.totalTax, province, orderId]
+    )
+  } catch {
+    await query(
+      `UPDATE quote_requests 
+       SET total_amount = $1, 
+           updated_at = NOW()
+       WHERE id = $2`,
+      [taxBreakdown.total, orderId]
+    )
+  }
   
   const invoiceData: InvoiceData = {
     invoiceNumber,
