@@ -326,6 +326,10 @@ const EMBEDDED_MIGRATIONS: EmbeddedMigration[] = [
       UPDATE packages SET badge_text = 'BEST FOR SMALL TEAMS' WHERE slug = 'player-intros-basic' AND badge_text IS NULL;
       UPDATE packages SET badge_text = 'BEST VALUE' WHERE slug = 'player-intros-ultimate' AND badge_text IS NULL;
 
+      -- Hide Game Day DJ and Event Hosting from the public packages section
+      -- (they are already shown in the "Our Services" section on the home page)
+      UPDATE packages SET is_visible = FALSE WHERE slug IN ('game-day-dj', 'event-hosting');
+
       CREATE INDEX IF NOT EXISTS idx_packages_display_order ON packages(display_order);
       CREATE INDEX IF NOT EXISTS idx_packages_visible ON packages(is_visible);
     `

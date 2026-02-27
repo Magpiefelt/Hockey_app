@@ -53,11 +53,16 @@ UPDATE packages SET display_order = 5 WHERE slug = 'event-hosting'          AND 
 UPDATE packages SET badge_text = 'BEST FOR SMALL TEAMS' WHERE slug = 'player-intros-basic'    AND badge_text IS NULL;
 UPDATE packages SET badge_text = 'BEST VALUE'           WHERE slug = 'player-intros-ultimate' AND badge_text IS NULL;
 
--- 7. Indexes for the new columns
+-- 7. Hide Game Day DJ and Event Hosting from the public packages section.
+--    These are already shown in the "Our Services" section above on the home page.
+--    They remain in the database and can be re-enabled by the admin at any time.
+UPDATE packages SET is_visible = FALSE WHERE slug IN ('game-day-dj', 'event-hosting');
+
+-- 8. Indexes for the new columns
 CREATE INDEX IF NOT EXISTS idx_packages_display_order ON packages(display_order);
 CREATE INDEX IF NOT EXISTS idx_packages_visible       ON packages(is_visible);
 
--- 8. Record this migration in the schema_migrations table so the app's
+-- 9. Record this migration in the schema_migrations table so the app's
 --    embedded migration runner does not attempt to re-run it.
 INSERT INTO schema_migrations (name, filename)
 VALUES ('add_package_display_fields', '015_add_package_display_fields.sql')
@@ -73,9 +78,9 @@ COMMIT;
 --   ORDER BY display_order ASC;
 --
 -- Expected output:
---   player-intros-basic    | Package #1 - Basic    | 1 | BEST FOR SMALL TEAMS | t | /game
---   player-intros-warmup   | Package #2 - Warmup   | 2 | NULL                 | t | /game
---   player-intros-ultimate | Package #3 - Ultimate | 3 | BEST VALUE           | t | /game
---   game-day-dj            | Game Day DJ Service   | 4 | NULL                 | t | /game
---   event-hosting          | Event Hosting & MC    | 5 | NULL                 | t | /game
+--   player-intros-basic    | Package #1 - Basic Package    | 1 | BEST FOR SMALL TEAMS | t | /game
+--   player-intros-warmup   | Package #2 - Warmup Package   | 2 | NULL                 | t | /game
+--   player-intros-ultimate | Package #3 - Ultimate Package | 3 | BEST VALUE           | t | /game
+--   game-day-dj            | Game Day DJ Service           | 4 | NULL                 | f | /game
+--   event-hosting          | Event Hosting & MC Services   | 5 | NULL                 | f | /game
 -- ============================================================================

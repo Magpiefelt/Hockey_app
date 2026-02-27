@@ -1,9 +1,9 @@
 [
   {
     "id": "player-intros-basic",
-    "name": "Package #1 - Basic",
-    "description": "Professional player introductions",
-    "price_cents": 8000,
+    "name": "Package #1 - Basic Package",
+    "description": "Professional player introductions for up to 20 players",
+    "price_cents": 6000,
     "popular": false,
     "icon": "🎤",
     "display_order": 1,
@@ -11,16 +11,18 @@
     "is_visible": true,
     "price_suffix": "/game",
     "features": [
+      "Professional player introductions",
       "Up to 20 players",
       "Pronunciation audio support",
-      "Custom intro song"
+      "Custom intro song selection",
+      "High-quality audio production"
     ]
   },
   {
     "id": "player-intros-warmup",
-    "name": "Package #2 - Warmup",
-    "description": "Intros + custom warmup mix",
-    "price_cents": 11000,
+    "name": "Package #2 - Warmup Package",
+    "description": "Player introductions plus warmup music for up to 25 players",
+    "price_cents": 8000,
     "popular": true,
     "icon": "🎵",
     "display_order": 2,
@@ -28,17 +30,17 @@
     "is_visible": true,
     "price_suffix": "/game",
     "features": [
-      "Everything in Package #1",
-      "Custom warmup mix",
-      "2-3 additional songs",
-      "Professional mixing"
+      "Full Team Player Introduction",
+      "Intro Song",
+      "Goal Horn at end of player intro",
+      "2 - 3 Warmup Songs to follow after horn blast"
     ]
   },
   {
     "id": "player-intros-ultimate",
-    "name": "Package #3 - Ultimate",
-    "description": "Complete game-day audio",
-    "price_cents": 19000,
+    "name": "Package #3 - Ultimate Package",
+    "description": "Complete game day experience with intros, warmup, sponsor shout outs, customized goal horn and song, win song, last minute of play clips.",
+    "price_cents": 10000,
     "popular": false,
     "icon": "🏆",
     "display_order": 3,
@@ -46,50 +48,14 @@
     "is_visible": true,
     "price_suffix": "/game",
     "features": [
-      "Everything in Package #2",
-      "Custom goal horn",
-      "Victory celebration song",
-      "Premium audio production",
-      "Unlimited revisions"
-    ]
-  },
-  {
-    "id": "game-day-dj",
-    "name": "Game Day DJ Service",
-    "description": "Professional DJ services for your entire game day event",
-    "price_cents": 30000,
-    "popular": false,
-    "icon": "🎧",
-    "display_order": 4,
-    "badge_text": null,
-    "is_visible": false,
-    "price_suffix": "/event",
-    "features": [
-      "Full game day DJ services",
-      "Custom music selection",
-      "Professional sound system",
-      "Crowd engagement",
-      "Flexible event duration"
-    ]
-  },
-  {
-    "id": "event-hosting",
-    "name": "Event Hosting & MC Services",
-    "description": "Professional event hosting and master of ceremonies services",
-    "price_cents": 0,
-    "popular": false,
-    "icon": "🎤",
-    "display_order": 5,
-    "badge_text": null,
-    "is_visible": false,
-    "price_suffix": "/event",
-    "features": [
-      "Professional MC services",
-      "Live announcements",
-      "Contest hosting",
-      "Fan engagement activities",
-      "Awards presentations",
-      "Player/coach interviews"
+      "Full Team Player introduction",
+      "Intro Song",
+      "Goal Horn blast after intro complete",
+      "2-3 warmup songs to follow horn",
+      "Customize Team Goal Horn and Goal Song",
+      "Customized Team Horn and win song",
+      "Sponsor shout outs",
+      "Last minute of play clips"
     ]
   }
 ]

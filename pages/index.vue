@@ -519,53 +519,57 @@
             :key="pkg.slug"
             animation="fade-up"
             :delay="index * 100"
+            class="h-full"
           >
             <div
-              class="package-card group relative overflow-hidden rounded-2xl border-2 bg-gradient-to-br from-slate-900 to-slate-800 p-6 lg:p-8 transition-all duration-300 hover:scale-105 hover:shadow-2xl"
+              class="package-card group relative flex h-full flex-col overflow-hidden rounded-2xl border-2 bg-gradient-to-br from-slate-900 to-slate-800 p-6 lg:p-8 transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl"
               :class="pkg.popular
-                ? 'border-cyan-400 hover:shadow-cyan-500/30'
+                ? 'border-cyan-400 shadow-lg shadow-cyan-500/10 hover:shadow-cyan-500/30'
                 : 'border-blue-500/30 hover:border-cyan-400 hover:shadow-cyan-500/20'"
             >
-              <!-- Most Popular Badge (top-right, gradient) -->
-              <div v-if="pkg.popular" class="absolute right-4 top-4 rounded-full bg-gradient-to-r from-blue-600 to-cyan-600 px-4 py-1 text-sm font-bold text-white">
+              <!-- Most Popular Badge (top-right, gradient pill) -->
+              <div v-if="pkg.popular" class="absolute right-4 top-4 rounded-full bg-gradient-to-r from-blue-600 to-cyan-600 px-4 py-1 text-xs font-bold uppercase tracking-wide text-white shadow-lg shadow-cyan-500/20">
                 MOST POPULAR
               </div>
 
               <!-- Contextual Badge (top-left, subtle) -->
-              <div v-else-if="pkg.badgeText" class="absolute left-4 top-4 rounded-full bg-slate-800/80 px-3 py-1 text-xs font-bold text-slate-300 backdrop-blur-sm">
+              <div v-if="!pkg.popular && pkg.badgeText" class="absolute left-4 top-4 rounded-full border border-white/10 bg-slate-800/90 px-3 py-1 text-xs font-bold uppercase tracking-wide text-slate-300 backdrop-blur-sm">
                 {{ pkg.badgeText }}
               </div>
 
+              <!-- Package Info -->
               <div class="mb-6 mt-8">
-                <h3 class="mb-2 text-2xl lg:text-3xl font-black text-white">{{ pkg.name }}</h3>
+                <h3 class="mb-3 text-2xl font-black leading-tight text-white lg:text-3xl">{{ pkg.name }}</h3>
                 <div class="mb-4 flex items-baseline gap-2">
                   <template v-if="pkg.price_cents === 0">
-                    <span class="text-2xl lg:text-3xl font-black text-cyan-400">Contact Us</span>
+                    <span class="text-2xl font-black text-cyan-400 lg:text-3xl">Contact Us</span>
                   </template>
                   <template v-else>
-                    <span class="text-4xl lg:text-5xl font-black text-cyan-400">{{ formatPackagePrice(pkg.price_cents) }}</span>
-                    <span class="text-slate-400">{{ pkg.priceSuffix || '/game' }}</span>
+                    <span class="text-4xl font-black text-cyan-400 lg:text-5xl">{{ formatPackagePrice(pkg.price_cents) }}</span>
+                    <span class="text-base text-slate-400">{{ pkg.priceSuffix || '/game' }}</span>
                   </template>
                 </div>
-                <p class="text-slate-300">{{ pkg.description }}</p>
+                <p class="text-sm leading-relaxed text-slate-300 lg:text-base">{{ pkg.description }}</p>
               </div>
 
-              <ul v-if="pkg.features && pkg.features.length > 0" class="mb-8 space-y-3 text-slate-300">
-                <li v-for="(feature, fIdx) in pkg.features" :key="fIdx" class="flex items-start gap-2">
-                  <Icon name="mdi:check-circle" class="mt-1 h-5 w-5 flex-shrink-0 text-cyan-400" />
-                  <span>{{ feature }}</span>
+              <!-- Features List -->
+              <ul v-if="pkg.features && pkg.features.length > 0" class="mb-8 flex-1 space-y-3">
+                <li v-for="(feature, fIdx) in pkg.features" :key="fIdx" class="flex items-start gap-2 text-slate-300">
+                  <Icon name="mdi:check-circle" class="mt-0.5 h-5 w-5 flex-shrink-0 text-cyan-400" />
+                  <span class="text-sm lg:text-base">{{ feature }}</span>
                 </li>
               </ul>
 
-              <UiButton
+              <!-- CTA Button (always at bottom) -->
+              <NuxtLink
                 :to="`/request?package=${pkg.slug}`"
-                class="w-full px-6 py-3 font-bold text-white transition-all hover:scale-105"
+                class="mt-auto block w-full rounded-xl px-6 py-3.5 text-center text-sm font-bold text-white transition-all duration-200 hover:scale-[1.03] hover:shadow-lg lg:text-base"
                 :class="pkg.popular
-                  ? 'bg-gradient-to-r from-cyan-600 to-blue-600'
-                  : 'bg-gradient-to-r from-blue-600 to-cyan-600'"
+                  ? 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:shadow-cyan-500/30'
+                  : 'bg-gradient-to-r from-blue-600 to-cyan-600 hover:shadow-blue-500/30'"
               >
                 Get Started
-              </UiButton>
+              </NuxtLink>
             </div>
           </RevealOnScroll>
         </div>
