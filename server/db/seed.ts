@@ -25,7 +25,7 @@ export async function seedDatabase() {
 
     // Insert packages
     for (const pkg of packages) {
-      const { id, name, description, price, price_cents, popular, features, icon } = pkg
+      const { id, name, description, price, price_cents, popular, features, icon, display_order, badge_text, is_visible, price_suffix } = pkg
       
       // Handle both price and price_cents fields for backward compatibility
       // price_cents takes precedence if both are present
@@ -34,8 +34,9 @@ export async function seedDatabase() {
         : (typeof price === 'number' ? price : 0)
 
       await query(
-        `INSERT INTO packages (slug, name, description, price_cents, is_popular, features, icon)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `INSERT INTO packages (slug, name, description, price_cents, is_popular, features, icon,
+                               display_order, badge_text, is_visible, price_suffix)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
          ON CONFLICT (slug) DO UPDATE SET
            name = EXCLUDED.name,
            description = EXCLUDED.description,
@@ -43,6 +44,10 @@ export async function seedDatabase() {
            is_popular = EXCLUDED.is_popular,
            features = EXCLUDED.features,
            icon = EXCLUDED.icon,
+           display_order = EXCLUDED.display_order,
+           badge_text = EXCLUDED.badge_text,
+           is_visible = EXCLUDED.is_visible,
+           price_suffix = EXCLUDED.price_suffix,
            updated_at = NOW()`,
         [
           id,
@@ -51,7 +56,11 @@ export async function seedDatabase() {
           priceCents,
           popular || false,
           JSON.stringify(features || []),
-          icon || null
+          icon || null,
+          display_order ?? 0,
+          badge_text || null,
+          is_visible !== false,
+          price_suffix || '/game'
         ]
       )
 

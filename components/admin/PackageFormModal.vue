@@ -47,8 +47,8 @@
             rows="3"
           />
 
-          <!-- Price and Icon Row -->
-          <div class="grid md:grid-cols-2 gap-4">
+          <!-- Price, Price Suffix, and Icon Row -->
+          <div class="grid md:grid-cols-3 gap-4">
             <UiInput
               v-model.number="form.priceCents"
               label="Price (in cents) *"
@@ -59,6 +59,13 @@
             />
 
             <UiInput
+              v-model="form.priceSuffix"
+              label="Price Suffix"
+              placeholder="e.g., /game"
+              hint="Shown after the price on cards"
+            />
+
+            <UiInput
               v-model="form.icon"
               label="Icon (Emoji)"
               placeholder="e.g., 🏆"
@@ -66,17 +73,49 @@
             />
           </div>
 
-          <!-- Popular Checkbox -->
-          <div class="flex items-center gap-3">
-            <input
-              id="popular"
-              v-model="form.isPopular"
-              type="checkbox"
-              class="w-5 h-5 rounded border-white/20 text-brand-500 focus:ring-brand-500 focus:ring-offset-0 bg-dark-tertiary"
+          <!-- Display Order and Badge Text Row -->
+          <div class="grid md:grid-cols-2 gap-4">
+            <UiInput
+              v-model.number="form.displayOrder"
+              label="Display Order"
+              type="number"
+              placeholder="e.g., 1"
+              hint="Lower numbers appear first on the home page"
             />
-            <label for="popular" class="text-white font-medium cursor-pointer">
-              Mark as Popular
-            </label>
+
+            <UiInput
+              v-model="form.badgeText"
+              label="Badge Text"
+              placeholder="e.g., BEST VALUE"
+              hint="Shown as a label on the card (non-popular only)"
+            />
+          </div>
+
+          <!-- Checkboxes Row -->
+          <div class="flex items-center gap-8">
+            <div class="flex items-center gap-3">
+              <input
+                id="popular"
+                v-model="form.isPopular"
+                type="checkbox"
+                class="w-5 h-5 rounded border-white/20 text-brand-500 focus:ring-brand-500 focus:ring-offset-0 bg-dark-tertiary"
+              />
+              <label for="popular" class="text-white font-medium cursor-pointer">
+                Mark as Popular
+              </label>
+            </div>
+
+            <div class="flex items-center gap-3">
+              <input
+                id="visible"
+                v-model="form.isVisible"
+                type="checkbox"
+                class="w-5 h-5 rounded border-white/20 text-brand-500 focus:ring-brand-500 focus:ring-offset-0 bg-dark-tertiary"
+              />
+              <label for="visible" class="text-white font-medium cursor-pointer">
+                Visible on Website
+              </label>
+            </div>
           </div>
 
           <!-- Features -->
@@ -147,6 +186,10 @@ interface Package {
   popular: boolean
   features: string[]
   icon: string | null
+  displayOrder?: number
+  badgeText?: string | null
+  isVisible?: boolean
+  priceSuffix?: string
 }
 
 interface Props {
@@ -174,6 +217,10 @@ const form = ref({
   priceCents: 0,
   icon: '',
   isPopular: false,
+  isVisible: true,
+  displayOrder: 0,
+  badgeText: '',
+  priceSuffix: '/game',
   features: [''] as string[]
 })
 
@@ -195,6 +242,10 @@ watch(
         priceCents: pkg.price_cents,
         icon: pkg.icon || '',
         isPopular: pkg.popular,
+        isVisible: pkg.isVisible !== undefined ? pkg.isVisible : true,
+        displayOrder: pkg.displayOrder ?? 0,
+        badgeText: pkg.badgeText || '',
+        priceSuffix: pkg.priceSuffix || '/game',
         features: pkg.features?.length ? [...pkg.features] : ['']
       }
     } else {
@@ -212,6 +263,10 @@ const resetForm = () => {
     priceCents: 0,
     icon: '',
     isPopular: false,
+    isVisible: true,
+    displayOrder: 0,
+    badgeText: '',
+    priceSuffix: '/game',
     features: ['']
   }
   errors.value = {
@@ -284,6 +339,10 @@ const handleSubmit = async () => {
         priceCents: form.value.priceCents,
         icon: form.value.icon || undefined,
         isPopular: form.value.isPopular,
+        isVisible: form.value.isVisible,
+        displayOrder: form.value.displayOrder,
+        badgeText: form.value.badgeText || null,
+        priceSuffix: form.value.priceSuffix || '/game',
         features
       })
       showSuccess('Package updated successfully')
@@ -295,6 +354,10 @@ const handleSubmit = async () => {
         priceCents: form.value.priceCents,
         icon: form.value.icon || undefined,
         isPopular: form.value.isPopular,
+        isVisible: form.value.isVisible,
+        displayOrder: form.value.displayOrder,
+        badgeText: form.value.badgeText || null,
+        priceSuffix: form.value.priceSuffix || '/game',
         features
       })
       showSuccess('Package created successfully')

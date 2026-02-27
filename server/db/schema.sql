@@ -30,6 +30,10 @@ CREATE TABLE IF NOT EXISTS packages (
   is_popular BOOLEAN NOT NULL DEFAULT FALSE,
   features JSONB,
   icon VARCHAR(10),
+  display_order INTEGER DEFAULT 0,
+  badge_text VARCHAR(50),
+  is_visible BOOLEAN NOT NULL DEFAULT TRUE,
+  price_suffix VARCHAR(30) DEFAULT '/game',
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

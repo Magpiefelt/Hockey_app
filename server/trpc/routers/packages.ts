@@ -11,23 +11,16 @@ import { logger } from '../../utils/logger'
 export const packagesRouter = router({
   /**
    * Get all packages (public)
+   * Returns only visible packages for public consumers, ordered by display_order
    */
   getAll: publicProcedure
     .query(async () => {
       try {
         const result = await query(
-          `SELECT id, slug, name, description, price_cents, currency, is_popular, features, icon, created_at
+          `SELECT id, slug, name, description, price_cents, currency, is_popular, features, icon,
+                  display_order, badge_text, is_visible, price_suffix, created_at
            FROM packages
-           ORDER BY 
-             CASE 
-               WHEN slug = 'player-intros-basic' THEN 1
-               WHEN slug = 'player-intros-warmup' THEN 2
-               WHEN slug = 'player-intros-ultimate' THEN 3
-               WHEN slug = 'game-day-dj' THEN 4
-               WHEN slug = 'event-hosting' THEN 5
-               ELSE 6
-             END,
-             name ASC`
+           ORDER BY display_order ASC, name ASC`
         )
         
         return result.rows.map(row => ({
@@ -41,10 +34,54 @@ export const packagesRouter = router({
           popular: row.is_popular,
           features: row.features || [],
           icon: row.icon,
+          displayOrder: row.display_order ?? 0,
+          badgeText: row.badge_text || null,
+          isVisible: row.is_visible ?? true,
+          priceSuffix: row.price_suffix || '/game',
           createdAt: row.created_at?.toISOString()
         }))
       } catch (error: any) {
         logger.error('Failed to fetch packages', error)
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Failed to load packages'
+        })
+      }
+    }),
+
+  /**
+   * Get visible packages only (public, for home page and request form)
+   */
+  getVisible: publicProcedure
+    .query(async () => {
+      try {
+        const result = await query(
+          `SELECT id, slug, name, description, price_cents, currency, is_popular, features, icon,
+                  display_order, badge_text, is_visible, price_suffix, created_at
+           FROM packages
+           WHERE is_visible = TRUE
+           ORDER BY display_order ASC, name ASC`
+        )
+        
+        return result.rows.map(row => ({
+          id: row.slug,
+          slug: row.slug,
+          name: row.name,
+          description: row.description,
+          price: row.price_cents / 100,
+          price_cents: row.price_cents,
+          currency: row.currency,
+          popular: row.is_popular,
+          features: row.features || [],
+          icon: row.icon,
+          displayOrder: row.display_order ?? 0,
+          badgeText: row.badge_text || null,
+          isVisible: true,
+          priceSuffix: row.price_suffix || '/game',
+          createdAt: row.created_at?.toISOString()
+        }))
+      } catch (error: any) {
+        logger.error('Failed to fetch visible packages', error)
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
           message: 'Failed to load packages'
@@ -61,7 +98,8 @@ export const packagesRouter = router({
     }))
     .query(async ({ input }) => {
       const result = await query(
-        `SELECT id, slug, name, description, price_cents, currency, is_popular, features, icon, created_at
+        `SELECT id, slug, name, description, price_cents, currency, is_popular, features, icon,
+                display_order, badge_text, is_visible, price_suffix, created_at
          FROM packages
          WHERE slug = $1`,
         [input.slug]
@@ -86,6 +124,10 @@ export const packagesRouter = router({
         popular: row.is_popular,
         features: row.features || [],
         icon: row.icon,
+        displayOrder: row.display_order ?? 0,
+        badgeText: row.badge_text || null,
+        isVisible: row.is_visible ?? true,
+        priceSuffix: row.price_suffix || '/game',
         createdAt: row.created_at?.toISOString()
       }
     }),
@@ -102,14 +144,20 @@ export const packagesRouter = router({
       currency: z.string().default('usd'),
       isPopular: z.boolean().default(false),
       features: z.array(z.string()).optional(),
-      icon: z.string().max(10).optional()
+      icon: z.string().max(10).optional(),
+      displayOrder: z.number().int().min(0).default(0),
+      badgeText: z.string().max(50).optional(),
+      isVisible: z.boolean().default(true),
+      priceSuffix: z.string().max(30).default('/game')
     }))
     .mutation(async ({ input }) => {
       try {
         const result = await query(
-          `INSERT INTO packages (slug, name, description, price_cents, currency, is_popular, features, icon)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-           RETURNING id, slug, name, description, price_cents, currency, is_popular, features, icon, created_at`,
+          `INSERT INTO packages (slug, name, description, price_cents, currency, is_popular, features, icon,
+                                 display_order, badge_text, is_visible, price_suffix)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+           RETURNING id, slug, name, description, price_cents, currency, is_popular, features, icon,
+                     display_order, badge_text, is_visible, price_suffix, created_at`,
           [
             input.slug,
             input.name,
@@ -118,7 +166,11 @@ export const packagesRouter = router({
             input.currency,
             input.isPopular,
             JSON.stringify(input.features || []),
-            input.icon || null
+            input.icon || null,
+            input.displayOrder,
+            input.badgeText || null,
+            input.isVisible,
+            input.priceSuffix
           ]
         )
         
@@ -135,7 +187,11 @@ export const packagesRouter = router({
           currency: row.currency,
           popular: row.is_popular,
           features: row.features || [],
-          icon: row.icon
+          icon: row.icon,
+          displayOrder: row.display_order ?? 0,
+          badgeText: row.badge_text || null,
+          isVisible: row.is_visible ?? true,
+          priceSuffix: row.price_suffix || '/game'
         }
       } catch (error: any) {
         if (error.code === '23505') { // Unique constraint violation
@@ -164,7 +220,11 @@ export const packagesRouter = router({
       currency: z.string().optional(),
       isPopular: z.boolean().optional(),
       features: z.array(z.string()).optional(),
-      icon: z.string().max(10).optional()
+      icon: z.string().max(10).optional(),
+      displayOrder: z.number().int().min(0).optional(),
+      badgeText: z.string().max(50).nullable().optional(),
+      isVisible: z.boolean().optional(),
+      priceSuffix: z.string().max(30).optional()
     }))
     .mutation(async ({ input }) => {
       const updates: string[] = []
@@ -212,6 +272,30 @@ export const packagesRouter = router({
         values.push(input.icon)
         paramCount++
       }
+
+      if (input.displayOrder !== undefined) {
+        updates.push(`display_order = $${paramCount}`)
+        values.push(input.displayOrder)
+        paramCount++
+      }
+
+      if (input.badgeText !== undefined) {
+        updates.push(`badge_text = $${paramCount}`)
+        values.push(input.badgeText)
+        paramCount++
+      }
+
+      if (input.isVisible !== undefined) {
+        updates.push(`is_visible = $${paramCount}`)
+        values.push(input.isVisible)
+        paramCount++
+      }
+
+      if (input.priceSuffix !== undefined) {
+        updates.push(`price_suffix = $${paramCount}`)
+        values.push(input.priceSuffix)
+        paramCount++
+      }
       
       if (updates.length === 0) {
         throw new TRPCError({
@@ -227,7 +311,8 @@ export const packagesRouter = router({
         `UPDATE packages
          SET ${updates.join(', ')}
          WHERE slug = $${paramCount}
-         RETURNING id, slug, name, description, price_cents, currency, is_popular, features, icon`,
+         RETURNING id, slug, name, description, price_cents, currency, is_popular, features, icon,
+                   display_order, badge_text, is_visible, price_suffix`,
         values
       )
       
@@ -251,7 +336,11 @@ export const packagesRouter = router({
         currency: row.currency,
         popular: row.is_popular,
         features: row.features || [],
-        icon: row.icon
+        icon: row.icon,
+        displayOrder: row.display_order ?? 0,
+        badgeText: row.badge_text || null,
+        isVisible: row.is_visible ?? true,
+        priceSuffix: row.price_suffix || '/game'
       }
     }),
 

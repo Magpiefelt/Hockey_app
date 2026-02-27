@@ -297,6 +297,38 @@ const EMBEDDED_MIGRATIONS: EmbeddedMigration[] = [
         END IF;
       END $$;
     `
+  },
+  {
+    id: 15,
+    name: 'add_package_display_fields',
+    filename: '015_add_package_display_fields.sql',
+    sql: `
+      -- Add display_order for controlling the order packages appear on the home page
+      ALTER TABLE packages ADD COLUMN IF NOT EXISTS display_order INTEGER DEFAULT 0;
+
+      -- Add badge_text for contextual badges shown on the home page cards (e.g. "BEST VALUE")
+      ALTER TABLE packages ADD COLUMN IF NOT EXISTS badge_text VARCHAR(50);
+
+      -- Add is_visible to allow hiding packages from the public site without deleting them
+      ALTER TABLE packages ADD COLUMN IF NOT EXISTS is_visible BOOLEAN NOT NULL DEFAULT TRUE;
+
+      -- Add price_suffix for the text shown after the price (e.g. "/game", "/event")
+      ALTER TABLE packages ADD COLUMN IF NOT EXISTS price_suffix VARCHAR(30) DEFAULT '/game';
+
+      -- Backfill display_order for existing packages
+      UPDATE packages SET display_order = 1 WHERE slug = 'player-intros-basic' AND display_order = 0;
+      UPDATE packages SET display_order = 2 WHERE slug = 'player-intros-warmup' AND display_order = 0;
+      UPDATE packages SET display_order = 3 WHERE slug = 'player-intros-ultimate' AND display_order = 0;
+      UPDATE packages SET display_order = 4 WHERE slug = 'game-day-dj' AND display_order = 0;
+      UPDATE packages SET display_order = 5 WHERE slug = 'event-hosting' AND display_order = 0;
+
+      -- Backfill badge_text for existing packages
+      UPDATE packages SET badge_text = 'BEST FOR SMALL TEAMS' WHERE slug = 'player-intros-basic' AND badge_text IS NULL;
+      UPDATE packages SET badge_text = 'BEST VALUE' WHERE slug = 'player-intros-ultimate' AND badge_text IS NULL;
+
+      CREATE INDEX IF NOT EXISTS idx_packages_display_order ON packages(display_order);
+      CREATE INDEX IF NOT EXISTS idx_packages_visible ON packages(is_visible);
+    `
   }
 ]
 

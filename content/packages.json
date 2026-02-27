@@ -1,46 +1,54 @@
 [
   {
     "id": "player-intros-basic",
-    "name": "Package #1 - Basic Package",
-    "description": "Professional player introductions for up to 20 players",
+    "name": "Package #1 - Basic",
+    "description": "Professional player introductions",
     "price_cents": 8000,
     "popular": false,
     "icon": "🎤",
+    "display_order": 1,
+    "badge_text": "BEST FOR SMALL TEAMS",
+    "is_visible": true,
+    "price_suffix": "/game",
     "features": [
-      "Professional player introductions",
       "Up to 20 players",
       "Pronunciation audio support",
-      "Custom intro song selection",
-      "High-quality audio production"
+      "Custom intro song"
     ]
   },
   {
     "id": "player-intros-warmup",
-    "name": "Package #2 - Warmup Package",
-    "description": "All features from Package #1 plus custom warmup mix with 2-3 additional songs",
+    "name": "Package #2 - Warmup",
+    "description": "Intros + custom warmup mix",
     "price_cents": 11000,
     "popular": true,
     "icon": "🎵",
+    "display_order": 2,
+    "badge_text": null,
+    "is_visible": true,
+    "price_suffix": "/game",
     "features": [
       "Everything in Package #1",
       "Custom warmup mix",
-      "2-3 additional warmup songs",
-      "Seamless audio transitions",
+      "2-3 additional songs",
       "Professional mixing"
     ]
   },
   {
     "id": "player-intros-ultimate",
-    "name": "Package #3 - Ultimate Game Day Package",
-    "description": "Complete game-day audio experience with all features from Package #2 plus goal horns, win songs, and custom audio packages",
+    "name": "Package #3 - Ultimate",
+    "description": "Complete game-day audio",
     "price_cents": 19000,
     "popular": false,
     "icon": "🏆",
+    "display_order": 3,
+    "badge_text": "BEST VALUE",
+    "is_visible": true,
+    "price_suffix": "/game",
     "features": [
       "Everything in Package #2",
       "Custom goal horn",
       "Victory celebration song",
-      "Complete game-day audio package",
       "Premium audio production",
       "Unlimited revisions"
     ]
@@ -52,6 +60,10 @@
     "price_cents": 30000,
     "popular": false,
     "icon": "🎧",
+    "display_order": 4,
+    "badge_text": null,
+    "is_visible": false,
+    "price_suffix": "/event",
     "features": [
       "Full game day DJ services",
       "Custom music selection",
@@ -67,6 +79,10 @@
     "price_cents": 0,
     "popular": false,
     "icon": "🎤",
+    "display_order": 5,
+    "badge_text": null,
+    "is_visible": false,
+    "price_suffix": "/event",
     "features": [
       "Professional MC services",
       "Live announcements",

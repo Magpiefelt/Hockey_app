@@ -43,18 +43,21 @@
         <table class="w-full">
           <thead>
             <tr class="border-b border-slate-800 bg-slate-800/30">
-              <th class="text-left py-4 px-6 text-slate-300 font-semibold text-xs uppercase tracking-wide">Icon</th>
-              <th class="text-left py-4 px-6 text-slate-300 font-semibold text-xs uppercase tracking-wide">Name</th>
-              <th class="text-left py-4 px-6 text-slate-300 font-semibold text-xs uppercase tracking-wide">Slug</th>
-              <th class="text-left py-4 px-6 text-slate-300 font-semibold text-xs uppercase tracking-wide">Price</th>
-              <th class="text-left py-4 px-6 text-slate-300 font-semibold text-xs uppercase tracking-wide">Status</th>
-              <th class="text-left py-4 px-6 text-slate-300 font-semibold text-xs uppercase tracking-wide">Features</th>
-              <th class="text-left py-4 px-6 text-slate-300 font-semibold text-xs uppercase tracking-wide">Actions</th>
+              <th class="text-left py-4 px-4 text-slate-300 font-semibold text-xs uppercase tracking-wide w-12">#</th>
+              <th class="text-left py-4 px-4 text-slate-300 font-semibold text-xs uppercase tracking-wide">Icon</th>
+              <th class="text-left py-4 px-4 text-slate-300 font-semibold text-xs uppercase tracking-wide">Name</th>
+              <th class="text-left py-4 px-4 text-slate-300 font-semibold text-xs uppercase tracking-wide">Slug</th>
+              <th class="text-left py-4 px-4 text-slate-300 font-semibold text-xs uppercase tracking-wide">Price</th>
+              <th class="text-left py-4 px-4 text-slate-300 font-semibold text-xs uppercase tracking-wide">Status</th>
+              <th class="text-left py-4 px-4 text-slate-300 font-semibold text-xs uppercase tracking-wide">Visibility</th>
+              <th class="text-left py-4 px-4 text-slate-300 font-semibold text-xs uppercase tracking-wide">Badge</th>
+              <th class="text-left py-4 px-4 text-slate-300 font-semibold text-xs uppercase tracking-wide">Features</th>
+              <th class="text-left py-4 px-4 text-slate-300 font-semibold text-xs uppercase tracking-wide">Actions</th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="packages.length === 0">
-              <td colspan="7" class="py-16 text-center">
+              <td colspan="10" class="py-16 text-center">
                 <div class="w-16 h-16 rounded-2xl bg-slate-800 flex items-center justify-center mx-auto mb-4">
                   <Icon name="mdi:package-variant" class="w-8 h-8 text-slate-600" />
                 </div>
@@ -67,18 +70,28 @@
               :key="pkg.slug"
               class="border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors group"
             >
-              <td class="py-4 px-6">
+              <!-- Display Order -->
+              <td class="py-4 px-4 text-slate-500 text-sm font-mono">
+                {{ pkg.displayOrder ?? 0 }}
+              </td>
+              <!-- Icon -->
+              <td class="py-4 px-4">
                 <div class="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center">
                   <span v-if="isValidEmoji(pkg.icon)" class="text-xl">{{ pkg.icon }}</span>
                   <Icon v-else :name="getPackageIconFallback(pkg.slug)" class="w-5 h-5 text-slate-400" />
                 </div>
               </td>
-              <td class="py-4 px-6 text-white font-medium">{{ pkg.name }}</td>
-              <td class="py-4 px-6 text-slate-400 font-mono text-sm">{{ pkg.slug }}</td>
-              <td class="py-4 px-6 text-white font-semibold">
-                {{ pkg.price_cents === 0 ? 'Contact' : formatPrice(pkg.price_cents) }}
+              <!-- Name -->
+              <td class="py-4 px-4 text-white font-medium">{{ pkg.name }}</td>
+              <!-- Slug -->
+              <td class="py-4 px-4 text-slate-400 font-mono text-sm">{{ pkg.slug }}</td>
+              <!-- Price -->
+              <td class="py-4 px-4 text-white font-semibold">
+                <span v-if="pkg.price_cents === 0">Contact</span>
+                <span v-else>{{ formatPrice(pkg.price_cents) }}<span class="text-slate-500 text-xs ml-1">{{ pkg.priceSuffix || '/game' }}</span></span>
               </td>
-              <td class="py-4 px-6">
+              <!-- Popular Status -->
+              <td class="py-4 px-4">
                 <span v-if="pkg.popular" class="px-3 py-1 rounded-full bg-cyan-500/20 text-cyan-400 text-xs font-semibold">
                   Popular
                 </span>
@@ -86,10 +99,28 @@
                   Standard
                 </span>
               </td>
-              <td class="py-4 px-6 text-slate-400 text-sm">
+              <!-- Visibility -->
+              <td class="py-4 px-4">
+                <span v-if="pkg.isVisible !== false" class="px-3 py-1 rounded-full bg-green-500/20 text-green-400 text-xs font-semibold">
+                  Visible
+                </span>
+                <span v-else class="px-3 py-1 rounded-full bg-yellow-500/20 text-yellow-400 text-xs font-semibold">
+                  Hidden
+                </span>
+              </td>
+              <!-- Badge -->
+              <td class="py-4 px-4 text-slate-400 text-sm">
+                <span v-if="pkg.badgeText" class="px-2 py-0.5 rounded bg-slate-700/50 text-slate-300 text-xs">
+                  {{ pkg.badgeText }}
+                </span>
+                <span v-else class="text-slate-600">—</span>
+              </td>
+              <!-- Features Count -->
+              <td class="py-4 px-4 text-slate-400 text-sm">
                 {{ pkg.features?.length || 0 }} features
               </td>
-              <td class="py-4 px-6">
+              <!-- Actions -->
+              <td class="py-4 px-4">
                 <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
                     @click="openEditModal(pkg)"
@@ -119,7 +150,10 @@
         <Icon name="mdi:information" class="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
         <div class="text-sm text-slate-300 space-y-2">
           <p>
-            <strong class="text-white">Note:</strong> Changes to packages will be reflected immediately on the public request form.
+            <strong class="text-white">Live Integration:</strong> Changes to packages are reflected on the <strong class="text-cyan-400">home page</strong> and <strong class="text-cyan-400">request form</strong> in real time.
+          </p>
+          <p>
+            Use <strong class="text-white">Display Order</strong> to control the order cards appear. Use <strong class="text-white">Visibility</strong> to hide a package without deleting it. The <strong class="text-white">Badge Text</strong> adds a label like "BEST VALUE" to non-popular cards.
           </p>
           <p>
             The package slug is used as the unique identifier and cannot be changed after creation.
@@ -179,6 +213,10 @@ interface Package {
   popular: boolean
   features: string[]
   icon: string | null
+  displayOrder?: number
+  badgeText?: string | null
+  isVisible?: boolean
+  priceSuffix?: string
 }
 
 definePageMeta({

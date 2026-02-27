@@ -444,7 +444,7 @@
       </div>
     </section>
 
-    <!-- Packages Section - Enhanced -->
+    <!-- Packages Section - Dynamic from Database -->
     <section id="packages" class="section relative bg-dark-primary overflow-hidden">
       <div class="absolute inset-0 opacity-5">
         <div class="absolute inset-0" style="
@@ -464,123 +464,86 @@
           </div>
         </RevealOnScroll>
 
-        <div class="grid gap-6 md:gap-8 md:grid-cols-2 lg:grid-cols-3 max-w-7xl mx-auto">
-          <RevealOnScroll animation="fade-up" :delay="0">
-            <div class="package-card group relative overflow-hidden rounded-2xl border-2 border-blue-500/30 bg-gradient-to-br from-slate-900 to-slate-800 p-6 lg:p-8 transition-all duration-300 hover:border-cyan-400 hover:scale-105 hover:shadow-2xl hover:shadow-cyan-500/20">
-              <!-- Best For Badge -->
-              <div class="absolute left-4 top-4 rounded-full bg-slate-800/80 px-3 py-1 text-xs font-bold text-slate-300 backdrop-blur-sm">
-                BEST FOR SMALL TEAMS
-              </div>
-              <div class="mb-6 mt-8">
-                <h3 class="mb-2 text-2xl lg:text-3xl font-black text-white">Package #1 - Basic</h3>
-                <div class="mb-4 flex items-baseline gap-2">
-                  <span class="text-4xl lg:text-5xl font-black text-cyan-400">$80</span>
-                  <span class="text-slate-400">/game</span>
-                </div>
-                <p class="text-slate-300">Professional player introductions</p>
-              </div>
-              <ul class="mb-8 space-y-3 text-slate-300">
-                <li class="flex items-start gap-2">
-                  <Icon name="mdi:check-circle" class="mt-1 h-5 w-5 flex-shrink-0 text-cyan-400" />
-                  <span>Up to 20 players</span>
-                </li>
-                <li class="flex items-start gap-2">
-                  <Icon name="mdi:check-circle" class="mt-1 h-5 w-5 flex-shrink-0 text-cyan-400" />
-                  <span>Pronunciation audio support</span>
-                </li>
-                <li class="flex items-start gap-2">
-                  <Icon name="mdi:check-circle" class="mt-1 h-5 w-5 flex-shrink-0 text-cyan-400" />
-                  <span>Custom intro song</span>
-                </li>
-              </ul>
-              <UiButton 
-                to="/request?package=player-intros-basic"
-                class="w-full bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-3 font-bold text-white transition-all hover:scale-105"
-              >
-                Get Started
-              </UiButton>
+        <!-- Loading State -->
+        <div v-if="packagesLoading" class="grid gap-6 md:gap-8 md:grid-cols-2 lg:grid-cols-3 max-w-7xl mx-auto">
+          <div v-for="i in 3" :key="i" class="rounded-2xl border-2 border-blue-500/30 bg-gradient-to-br from-slate-900 to-slate-800 p-6 lg:p-8 animate-pulse">
+            <div class="h-6 w-32 bg-slate-700 rounded-full mb-8 mt-4"></div>
+            <div class="h-8 w-48 bg-slate-700 rounded mb-4"></div>
+            <div class="h-12 w-28 bg-slate-700 rounded mb-4"></div>
+            <div class="h-4 w-56 bg-slate-700 rounded mb-8"></div>
+            <div class="space-y-3 mb-8">
+              <div class="h-4 w-full bg-slate-700/50 rounded"></div>
+              <div class="h-4 w-5/6 bg-slate-700/50 rounded"></div>
+              <div class="h-4 w-4/6 bg-slate-700/50 rounded"></div>
             </div>
-          </RevealOnScroll>
+            <div class="h-12 w-full bg-slate-700 rounded-lg"></div>
+          </div>
+        </div>
 
-          <RevealOnScroll animation="fade-up" :delay="100">
-            <div class="package-card group relative overflow-hidden rounded-2xl border-2 border-cyan-400 bg-gradient-to-br from-slate-900 to-slate-800 p-6 lg:p-8 transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-cyan-500/30">
-              <div class="absolute right-4 top-4 rounded-full bg-gradient-to-r from-blue-600 to-cyan-600 px-4 py-1 text-sm font-bold text-white">
+        <!-- Error State -->
+        <div v-else-if="packagesError" class="mx-auto max-w-lg text-center py-16">
+          <div class="w-16 h-16 rounded-2xl bg-red-500/20 flex items-center justify-center mx-auto mb-4">
+            <Icon name="mdi:alert-circle" class="w-8 h-8 text-red-400" />
+          </div>
+          <p class="text-red-400 text-lg mb-2">Unable to load packages</p>
+          <p class="text-slate-400 text-sm mb-6">Please try refreshing the page.</p>
+          <UiButton @click="refreshHomePackages" variant="primary" class="bg-gradient-to-r from-blue-600 to-cyan-600">
+            <Icon name="mdi:refresh" class="w-5 h-5 mr-2" />
+            Try Again
+          </UiButton>
+        </div>
+
+        <!-- Dynamic Package Cards -->
+        <div v-else class="grid gap-6 md:gap-8 md:grid-cols-2 lg:grid-cols-3 max-w-7xl mx-auto">
+          <RevealOnScroll
+            v-for="(pkg, index) in homePackages"
+            :key="pkg.slug"
+            animation="fade-up"
+            :delay="index * 100"
+          >
+            <div
+              class="package-card group relative overflow-hidden rounded-2xl border-2 bg-gradient-to-br from-slate-900 to-slate-800 p-6 lg:p-8 transition-all duration-300 hover:scale-105 hover:shadow-2xl"
+              :class="pkg.popular
+                ? 'border-cyan-400 hover:shadow-cyan-500/30'
+                : 'border-blue-500/30 hover:border-cyan-400 hover:shadow-cyan-500/20'"
+            >
+              <!-- Most Popular Badge (top-right, gradient) -->
+              <div v-if="pkg.popular" class="absolute right-4 top-4 rounded-full bg-gradient-to-r from-blue-600 to-cyan-600 px-4 py-1 text-sm font-bold text-white">
                 MOST POPULAR
               </div>
-              <div class="mb-6 mt-8">
-                <h3 class="mb-2 text-2xl lg:text-3xl font-black text-white">Package #2 - Warmup</h3>
-                <div class="mb-4 flex items-baseline gap-2">
-                  <span class="text-4xl lg:text-5xl font-black text-cyan-400">$110</span>
-                  <span class="text-slate-400">/game</span>
-                </div>
-                <p class="text-slate-300">Intros + custom warmup mix</p>
-              </div>
-              <ul class="mb-8 space-y-3 text-slate-300">
-                <li class="flex items-start gap-2">
-                  <Icon name="mdi:check-circle" class="mt-1 h-5 w-5 flex-shrink-0 text-cyan-400" />
-                  <span>Everything in Package #1</span>
-                </li>
-                <li class="flex items-start gap-2">
-                  <Icon name="mdi:check-circle" class="mt-1 h-5 w-5 flex-shrink-0 text-cyan-400" />
-                  <span>Custom warmup mix</span>
-                </li>
-                <li class="flex items-start gap-2">
-                  <Icon name="mdi:check-circle" class="mt-1 h-5 w-5 flex-shrink-0 text-cyan-400" />
-                  <span>2-3 additional songs</span>
-                </li>
-                <li class="flex items-start gap-2">
-                  <Icon name="mdi:check-circle" class="mt-1 h-5 w-5 flex-shrink-0 text-cyan-400" />
-                  <span>Professional mixing</span>
-                </li>
-              </ul>
-              <UiButton 
-                to="/request?package=player-intros-warmup"
-                class="w-full bg-gradient-to-r from-cyan-600 to-blue-600 px-6 py-3 font-bold text-white transition-all hover:scale-105"
-              >
-                Get Started
-              </UiButton>
-            </div>
-          </RevealOnScroll>
 
-          <RevealOnScroll animation="fade-up" :delay="200">
-            <div class="package-card group relative overflow-hidden rounded-2xl border-2 border-blue-500/30 bg-gradient-to-br from-slate-900 to-slate-800 p-6 lg:p-8 transition-all duration-300 hover:border-cyan-400 hover:scale-105 hover:shadow-2xl hover:shadow-cyan-500/20">
-              <!-- Best For Badge -->
-              <div class="absolute left-4 top-4 rounded-full bg-slate-800/80 px-3 py-1 text-xs font-bold text-slate-300 backdrop-blur-sm">
-                BEST VALUE
+              <!-- Contextual Badge (top-left, subtle) -->
+              <div v-else-if="pkg.badgeText" class="absolute left-4 top-4 rounded-full bg-slate-800/80 px-3 py-1 text-xs font-bold text-slate-300 backdrop-blur-sm">
+                {{ pkg.badgeText }}
               </div>
+
               <div class="mb-6 mt-8">
-                <h3 class="mb-2 text-2xl lg:text-3xl font-black text-white">Package #3 - Ultimate</h3>
+                <h3 class="mb-2 text-2xl lg:text-3xl font-black text-white">{{ pkg.name }}</h3>
                 <div class="mb-4 flex items-baseline gap-2">
-                  <span class="text-4xl lg:text-5xl font-black text-cyan-400">$190</span>
-                  <span class="text-slate-400">/game</span>
+                  <template v-if="pkg.price_cents === 0">
+                    <span class="text-2xl lg:text-3xl font-black text-cyan-400">Contact Us</span>
+                  </template>
+                  <template v-else>
+                    <span class="text-4xl lg:text-5xl font-black text-cyan-400">{{ formatPackagePrice(pkg.price_cents) }}</span>
+                    <span class="text-slate-400">{{ pkg.priceSuffix || '/game' }}</span>
+                  </template>
                 </div>
-                <p class="text-slate-300">Complete game-day audio</p>
+                <p class="text-slate-300">{{ pkg.description }}</p>
               </div>
-              <ul class="mb-8 space-y-3 text-slate-300">
-                <li class="flex items-start gap-2">
+
+              <ul v-if="pkg.features && pkg.features.length > 0" class="mb-8 space-y-3 text-slate-300">
+                <li v-for="(feature, fIdx) in pkg.features" :key="fIdx" class="flex items-start gap-2">
                   <Icon name="mdi:check-circle" class="mt-1 h-5 w-5 flex-shrink-0 text-cyan-400" />
-                  <span>Everything in Package #2</span>
-                </li>
-                <li class="flex items-start gap-2">
-                  <Icon name="mdi:check-circle" class="mt-1 h-5 w-5 flex-shrink-0 text-cyan-400" />
-                  <span>Custom goal horn</span>
-                </li>
-                <li class="flex items-start gap-2">
-                  <Icon name="mdi:check-circle" class="mt-1 h-5 w-5 flex-shrink-0 text-cyan-400" />
-                  <span>Victory celebration song</span>
-                </li>
-                <li class="flex items-start gap-2">
-                  <Icon name="mdi:check-circle" class="mt-1 h-5 w-5 flex-shrink-0 text-cyan-400" />
-                  <span>Premium audio production</span>
-                </li>
-                <li class="flex items-start gap-2">
-                  <Icon name="mdi:check-circle" class="mt-1 h-5 w-5 flex-shrink-0 text-cyan-400" />
-                  <span>Unlimited revisions</span>
+                  <span>{{ feature }}</span>
                 </li>
               </ul>
-              <UiButton 
-                to="/request?package=player-intros-ultimate"
-                class="w-full bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-3 font-bold text-white transition-all hover:scale-105"
+
+              <UiButton
+                :to="`/request?package=${pkg.slug}`"
+                class="w-full px-6 py-3 font-bold text-white transition-all hover:scale-105"
+                :class="pkg.popular
+                  ? 'bg-gradient-to-r from-cyan-600 to-blue-600'
+                  : 'bg-gradient-to-r from-blue-600 to-cyan-600'"
               >
                 Get Started
               </UiButton>
@@ -795,10 +758,70 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 
 definePageMeta({
   layout: 'default'
+})
+
+// ============================================
+// Dynamic Package Data (from database via tRPC)
+// ============================================
+interface HomePackage {
+  id: string
+  slug: string
+  name: string
+  description: string | null
+  price: number
+  price_cents: number
+  currency: string
+  popular: boolean
+  features: string[]
+  icon: string | null
+  displayOrder: number
+  badgeText: string | null
+  isVisible: boolean
+  priceSuffix: string
+}
+
+const trpc = useTrpc()
+const packagesLoading = ref(true)
+const packagesError = ref(false)
+const homePackagesRaw = ref<HomePackage[]>([])
+
+// Filter to only visible packages for the home page display
+const homePackages = computed(() => homePackagesRaw.value.filter(p => p.isVisible))
+
+const formatPackagePrice = (cents: number): string => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(cents / 100)
+}
+
+const fetchHomePackages = async () => {
+  packagesLoading.value = true
+  packagesError.value = false
+  try {
+    const data = await trpc.packages.getAll.query()
+    homePackagesRaw.value = data as HomePackage[]
+  } catch (err) {
+    console.error('Failed to load packages for home page:', err)
+    packagesError.value = true
+  } finally {
+    packagesLoading.value = false
+  }
+}
+
+const refreshHomePackages = () => {
+  fetchHomePackages()
+}
+
+// Fetch packages on mount
+onMounted(() => {
+  fetchHomePackages()
 })
 
 // ============================================
