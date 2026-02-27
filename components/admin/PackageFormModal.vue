@@ -36,7 +36,7 @@
             placeholder="e.g., ultimate-game-day"
             :error="errors.slug"
             :disabled="isEditing"
-            hint="Unique identifier used in URLs. Cannot be changed after creation."
+            helpText="Unique identifier used in URLs. Cannot be changed after creation."
           />
 
           <!-- Description -->
@@ -55,14 +55,14 @@
               type="number"
               placeholder="e.g., 19000 for $190"
               :error="errors.priceCents"
-              hint="Enter 0 for 'Contact for pricing'"
+              helpText="Enter 0 for 'Contact for pricing'"
             />
 
             <UiInput
               v-model="form.priceSuffix"
               label="Price Suffix"
               placeholder="e.g., /game"
-              hint="Shown after the price on cards"
+              helpText="Shown after the price on cards"
             />
 
             <UiInput
@@ -80,14 +80,14 @@
               label="Display Order"
               type="number"
               placeholder="e.g., 1"
-              hint="Lower numbers appear first on the home page"
+              helpText="Lower numbers appear first on the home page"
             />
 
             <UiInput
               v-model="form.badgeText"
               label="Badge Text"
               placeholder="e.g., BEST VALUE"
-              hint="Shown as a label on the card (non-popular only)"
+              helpText="Shown as a label on the card (non-popular only)"
             />
           </div>
 

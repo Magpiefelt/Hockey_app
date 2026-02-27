@@ -493,8 +493,27 @@
           </UiButton>
         </div>
 
+        <!-- Empty State (no visible packages) -->
+        <div v-else-if="homePackages.length === 0" class="mx-auto max-w-lg text-center py-16">
+          <div class="w-16 h-16 rounded-2xl bg-slate-800 flex items-center justify-center mx-auto mb-4">
+            <Icon name="mdi:package-variant" class="w-8 h-8 text-slate-500" />
+          </div>
+          <p class="text-slate-300 text-lg mb-2">Packages coming soon</p>
+          <p class="text-slate-400 text-sm mb-6">We're preparing our service offerings. Check back shortly.</p>
+          <UiButton to="/request" variant="primary" class="bg-gradient-to-r from-blue-600 to-cyan-600">
+            <Icon name="mdi:email" class="w-5 h-5 mr-2" />
+            Contact Us
+          </UiButton>
+        </div>
+
         <!-- Dynamic Package Cards -->
-        <div v-else class="grid gap-6 md:gap-8 md:grid-cols-2 lg:grid-cols-3 max-w-7xl mx-auto">
+        <div v-else class="grid gap-6 md:gap-8 max-w-7xl mx-auto"
+          :class="{
+            'md:grid-cols-1 max-w-xl': homePackages.length === 1,
+            'md:grid-cols-2 max-w-4xl': homePackages.length === 2,
+            'md:grid-cols-2 lg:grid-cols-3': homePackages.length >= 3
+          }"
+        >
           <RevealOnScroll
             v-for="(pkg, index) in homePackages"
             :key="pkg.slug"
@@ -789,8 +808,8 @@ const packagesLoading = ref(true)
 const packagesError = ref(false)
 const homePackagesRaw = ref<HomePackage[]>([])
 
-// Filter to only visible packages for the home page display
-const homePackages = computed(() => homePackagesRaw.value.filter(p => p.isVisible))
+// homePackagesRaw already contains only visible packages (from getVisible endpoint)
+const homePackages = computed(() => homePackagesRaw.value)
 
 const formatPackagePrice = (cents: number): string => {
   return new Intl.NumberFormat('en-US', {
@@ -805,7 +824,7 @@ const fetchHomePackages = async () => {
   packagesLoading.value = true
   packagesError.value = false
   try {
-    const data = await trpc.packages.getAll.query()
+    const data = await trpc.packages.getVisible.query()
     homePackagesRaw.value = data as HomePackage[]
   } catch (err) {
     console.error('Failed to load packages for home page:', err)

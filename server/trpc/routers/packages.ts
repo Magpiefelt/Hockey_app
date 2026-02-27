@@ -10,8 +10,9 @@ import { logger } from '../../utils/logger'
  */
 export const packagesRouter = router({
   /**
-   * Get all packages (public)
-   * Returns only visible packages for public consumers, ordered by display_order
+   * Get all packages (public + admin)
+   * Returns ALL packages ordered by display_order. Used by admin panel.
+   * For public-facing pages that should only show visible packages, use getVisible.
    */
   getAll: publicProcedure
     .query(async () => {
@@ -97,38 +98,47 @@ export const packagesRouter = router({
       slug: z.string()
     }))
     .query(async ({ input }) => {
-      const result = await query(
-        `SELECT id, slug, name, description, price_cents, currency, is_popular, features, icon,
-                display_order, badge_text, is_visible, price_suffix, created_at
-         FROM packages
-         WHERE slug = $1`,
-        [input.slug]
-      )
-      
-      if (result.rows.length === 0) {
+      try {
+        const result = await query(
+          `SELECT id, slug, name, description, price_cents, currency, is_popular, features, icon,
+                  display_order, badge_text, is_visible, price_suffix, created_at
+           FROM packages
+           WHERE slug = $1`,
+          [input.slug]
+        )
+        
+        if (result.rows.length === 0) {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: 'Package not found'
+          })
+        }
+        
+        const row = result.rows[0]
+        return {
+          id: row.slug,
+          slug: row.slug,
+          name: row.name,
+          description: row.description,
+          price: row.price_cents / 100,
+          price_cents: row.price_cents,
+          currency: row.currency,
+          popular: row.is_popular,
+          features: row.features || [],
+          icon: row.icon,
+          displayOrder: row.display_order ?? 0,
+          badgeText: row.badge_text || null,
+          isVisible: row.is_visible ?? true,
+          priceSuffix: row.price_suffix || '/game',
+          createdAt: row.created_at?.toISOString()
+        }
+      } catch (error: any) {
+        if (error instanceof TRPCError) throw error
+        logger.error('Failed to fetch package by slug', error)
         throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: 'Package not found'
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Failed to load package'
         })
-      }
-      
-      const row = result.rows[0]
-      return {
-        id: row.slug,
-        slug: row.slug,
-        name: row.name,
-        description: row.description,
-        price: row.price_cents / 100,
-        price_cents: row.price_cents,
-        currency: row.currency,
-        popular: row.is_popular,
-        features: row.features || [],
-        icon: row.icon,
-        displayOrder: row.display_order ?? 0,
-        badgeText: row.badge_text || null,
-        isVisible: row.is_visible ?? true,
-        priceSuffix: row.price_suffix || '/game',
-        createdAt: row.created_at?.toISOString()
       }
     }),
 
@@ -307,40 +317,49 @@ export const packagesRouter = router({
       updates.push(`updated_at = NOW()`)
       values.push(input.slug)
       
-      const result = await query(
-        `UPDATE packages
-         SET ${updates.join(', ')}
-         WHERE slug = $${paramCount}
-         RETURNING id, slug, name, description, price_cents, currency, is_popular, features, icon,
-                   display_order, badge_text, is_visible, price_suffix`,
-        values
-      )
-      
-      if (result.rows.length === 0) {
+      try {
+        const result = await query(
+          `UPDATE packages
+           SET ${updates.join(', ')}
+           WHERE slug = $${paramCount}
+           RETURNING id, slug, name, description, price_cents, currency, is_popular, features, icon,
+                     display_order, badge_text, is_visible, price_suffix`,
+          values
+        )
+        
+        if (result.rows.length === 0) {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: 'Package not found'
+          })
+        }
+        
+        const row = result.rows[0]
+        logger.info('Package updated', { slug: input.slug })
+        
+        return {
+          id: row.slug,
+          slug: row.slug,
+          name: row.name,
+          description: row.description,
+          price: row.price_cents / 100,
+          price_cents: row.price_cents,
+          currency: row.currency,
+          popular: row.is_popular,
+          features: row.features || [],
+          icon: row.icon,
+          displayOrder: row.display_order ?? 0,
+          badgeText: row.badge_text || null,
+          isVisible: row.is_visible ?? true,
+          priceSuffix: row.price_suffix || '/game'
+        }
+      } catch (error: any) {
+        if (error instanceof TRPCError) throw error
+        logger.error('Failed to update package', error)
         throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: 'Package not found'
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Failed to update package'
         })
-      }
-      
-      const row = result.rows[0]
-      logger.info('Package updated', { slug: input.slug })
-      
-      return {
-        id: row.slug,
-        slug: row.slug,
-        name: row.name,
-        description: row.description,
-        price: row.price_cents / 100,
-        price_cents: row.price_cents,
-        currency: row.currency,
-        popular: row.is_popular,
-        features: row.features || [],
-        icon: row.icon,
-        displayOrder: row.display_order ?? 0,
-        badgeText: row.badge_text || null,
-        isVisible: row.is_visible ?? true,
-        priceSuffix: row.price_suffix || '/game'
       }
     }),
 
@@ -352,23 +371,32 @@ export const packagesRouter = router({
       slug: z.string()
     }))
     .mutation(async ({ input }) => {
-      const result = await query(
-        'DELETE FROM packages WHERE slug = $1 RETURNING slug',
-        [input.slug]
-      )
-      
-      if (result.rows.length === 0) {
+      try {
+        const result = await query(
+          'DELETE FROM packages WHERE slug = $1 RETURNING slug',
+          [input.slug]
+        )
+        
+        if (result.rows.length === 0) {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: 'Package not found'
+          })
+        }
+        
+        logger.info('Package deleted', { slug: input.slug })
+        
+        return {
+          success: true,
+          message: 'Package deleted successfully'
+        }
+      } catch (error: any) {
+        if (error instanceof TRPCError) throw error
+        logger.error('Failed to delete package', error)
         throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: 'Package not found'
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Failed to delete package'
         })
-      }
-      
-      logger.info('Package deleted', { slug: input.slug })
-      
-      return {
-        success: true,
-        message: 'Package deleted successfully'
       }
     })
 })
