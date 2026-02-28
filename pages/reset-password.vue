@@ -76,7 +76,8 @@
                   <Icon :name="showPassword ? 'mdi:eye-off' : 'mdi:eye'" class="w-5 h-5" />
                 </button>
               </div>
-              <p class="mt-2 text-xs text-slate-500">
+              <p v-if="passwordError" class="mt-2 text-xs text-red-400">{{ passwordError }}</p>
+              <p v-else class="mt-2 text-xs text-slate-500">
                 Password must be at least 8 characters long and include uppercase, lowercase, number, and special character
               </p>
             </div>
@@ -181,14 +182,46 @@ const showConfirmPassword = ref(false)
 const loading = ref(false)
 const success = ref(false)
 const error = ref('')
+const passwordError = ref('')
+let redirectTimer: ReturnType<typeof setTimeout> | null = null
 
 onMounted(() => {
   // Get token from URL query parameter
   token.value = (route.query.token as string) || ''
 })
 
+onUnmounted(() => {
+  if (redirectTimer) {
+    clearTimeout(redirectTimer)
+    redirectTimer = null
+  }
+})
+
+const validatePassword = (): boolean => {
+  passwordError.value = ''
+  if (!password.value) {
+    passwordError.value = 'Password is required'
+    return false
+  }
+  if (password.value.length < 8) {
+    passwordError.value = 'Password must be at least 8 characters'
+    return false
+  }
+  if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password.value)) {
+    passwordError.value = 'Password must contain uppercase, lowercase, and a number'
+    return false
+  }
+  return true
+}
+
 const handleSubmit = async () => {
-  if (!password.value || !confirmPassword.value || password.value !== confirmPassword.value) {
+  // Guard against double-submit
+  if (loading.value) return
+
+  if (!validatePassword()) {
+    return
+  }
+  if (!confirmPassword.value || password.value !== confirmPassword.value) {
     return
   }
   
@@ -204,12 +237,18 @@ const handleSubmit = async () => {
     if (result.success) {
       success.value = true
       // Redirect to login after 3 seconds
-      setTimeout(() => {
+      redirectTimer = setTimeout(() => {
         router.push('/login')
       }, 3000)
     }
   } catch (err: any) {
-    error.value = err.message || 'An error occurred. Please try again.'
+    // Show user-friendly message, not raw server errors
+    const msg = err.message || ''
+    if (msg.includes('expired') || msg.includes('invalid') || msg.includes('already been used')) {
+      error.value = msg
+    } else {
+      error.value = 'Unable to reset password. The link may have expired. Please request a new one.'
+    }
   } finally {
     loading.value = false
   }

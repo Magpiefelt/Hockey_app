@@ -216,6 +216,14 @@ const showSuccess = ref(false)
 const errorMessage = ref('')
 const showPassword = ref(false)
 const showConfirmPassword = ref(false)
+let redirectTimer: ReturnType<typeof setTimeout> | null = null
+
+onUnmounted(() => {
+  if (redirectTimer) {
+    clearTimeout(redirectTimer)
+    redirectTimer = null
+  }
+})
 
 const validateField = (field: keyof typeof formData) => {
   errors[field as keyof typeof errors] = ''
@@ -243,6 +251,10 @@ const validateField = (field: keyof typeof formData) => {
       errors.password = 'Password must be at least 8 characters'
     } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.password)) {
       errors.password = 'Password must contain uppercase, lowercase, and number'
+    }
+    // Re-validate confirm password when the password field changes
+    if (formData.confirmPassword) {
+      validateField('confirmPassword')
     }
   }
 
@@ -295,12 +307,16 @@ const handleRegister = async () => {
     showSuccess.value = true
     
     // Redirect to login after 2 seconds
-    setTimeout(() => {
+    redirectTimer = setTimeout(() => {
       router.push('/login?registered=true')
     }, 2000)
   } catch (error: any) {
     console.error('Registration error:', error)
-    errorMessage.value = error.data?.message || 'Registration failed. Please try again or contact support.'
+    const serverMsg = error.data?.message || error.message || ''
+    // Don't expose raw server errors — use a user-friendly fallback
+    errorMessage.value = serverMsg.includes('Unable to create account')
+      ? serverMsg
+      : 'Registration failed. Please try again or contact support.'
   } finally {
     isSubmitting.value = false
   }

@@ -161,8 +161,8 @@ export const authRouter = router({
           ip: ctx.event.context.ip
         })
         
-        // Throw a clear error for debugging
-        throw new Error(`Database query failed during login: ${queryError.message}`)
+        // Return a user-safe error while the real cause is logged above
+        throw new AuthenticationError('Unable to process login request. Please try again.')
       }
       
       // User not found
@@ -195,7 +195,7 @@ export const authRouter = router({
           userId: user.id,
           error: verifyError.message
         })
-        throw new Error('Password verification failed')
+        throw new AuthenticationError('Unable to process login request. Please try again.')
       }
       
       if (!isValid) {
@@ -225,7 +225,7 @@ export const authRouter = router({
           error: tokenError.message,
           stack: tokenError.stack
         })
-        throw new Error('Failed to create authentication session')
+        throw new AuthenticationError('Unable to complete login. Please try again.')
       }
       
       // Log successful login

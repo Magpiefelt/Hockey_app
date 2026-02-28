@@ -323,6 +323,7 @@ const validate = (): boolean => {
 }
 
 const handleSubmit = async () => {
+  if (isSubmitting.value) return
   if (!validate()) return
 
   isSubmitting.value = true

@@ -9,10 +9,16 @@
       </p>
     </div>
 
-    <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+    <!-- Empty state -->
+    <div v-if="!packages || packages.length === 0" class="text-center py-12">
+      <Icon name="mdi:package-variant" class="w-12 h-12 text-slate-500 mx-auto mb-4" />
+      <p class="text-slate-400">No packages available at this time.</p>
+    </div>
+
+    <div v-else class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
       <div
-        v-for="(pkg, index) in packages"
-        :key="index"
+        v-for="pkg in packages"
+        :key="pkg.id || pkg.slug || pkg.name"
         :class="[
           'package-card relative rounded-xl p-6 transition-all duration-300',
           pkg.popular
@@ -173,7 +179,8 @@ const getPackageIconFallback = (slug: string): string => {
   return packageIconMap[slug] || packageIconMap['default']
 }
 
-const formatPrice = (cents: number): string => {
+const formatPrice = (cents: number | null | undefined): string => {
+  if (cents == null || isNaN(cents)) return '$0'
   return `$${(cents / 100).toFixed(0)}`
 }
 

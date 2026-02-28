@@ -20,14 +20,17 @@
       <div class="card p-8">
         <form @submit.prevent="handleLogin" class="space-y-6">
           <!-- Email -->
-          <UiInput
-            v-model="form.email"
-            label="Email Address"
-            type="email"
-            placeholder="you@example.com"
-            required
-            :disabled="isLoading"
-          />
+          <div>
+            <UiInput
+              v-model="form.email"
+              label="Email Address"
+              type="email"
+              placeholder="you@example.com"
+              required
+              :disabled="isLoading"
+            />
+            <p v-if="fieldErrors.email" class="mt-1 text-xs text-error-400">{{ fieldErrors.email }}</p>
+          </div>
 
           <!-- Password -->
           <div>
@@ -47,6 +50,7 @@
               required
               :disabled="isLoading"
             />
+            <p v-if="fieldErrors.password" class="mt-1 text-xs text-error-400">{{ fieldErrors.password }}</p>
           </div>
 
           <!-- Error Message -->
@@ -105,21 +109,66 @@ const form = ref({
 })
 
 const error = ref<string | null>(null)
+const fieldErrors = ref<{ email?: string; password?: string }>({})
+
+/**
+ * Validate the redirect path to prevent open redirect attacks.
+ * Only allows relative paths starting with "/" that don't contain "//".
+ */
+function getSafeRedirect(redirect: unknown): string | null {
+  if (typeof redirect !== 'string') return null
+  const trimmed = redirect.trim()
+  // Must start with "/" and must NOT start with "//" (protocol-relative URL)
+  // Must not contain backslashes (encoded redirect tricks)
+  if (trimmed.startsWith('/') && !trimmed.startsWith('//') && !trimmed.includes('\\')) {
+    return trimmed
+  }
+  return null
+}
+
+/**
+ * Client-side validation before submitting to the server.
+ */
+function validateForm(): boolean {
+  fieldErrors.value = {}
+  let valid = true
+
+  const email = form.value.email.trim()
+  if (!email) {
+    fieldErrors.value.email = 'Email is required'
+    valid = false
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    fieldErrors.value.email = 'Please enter a valid email address'
+    valid = false
+  }
+
+  if (!form.value.password) {
+    fieldErrors.value.password = 'Password is required'
+    valid = false
+  }
+
+  return valid
+}
 
 const handleLogin = async () => {
   error.value = null
+
+  if (!validateForm()) {
+    return
+  }
+
   isLoading.value = true
 
   try {
-    const result = await authStore.login(form.value.email, form.value.password)
+    const result = await authStore.login(form.value.email.trim(), form.value.password)
 
     if (result.success) {
       showSuccess('Login successful!')
       
-      // Redirect based on user role
-      const redirect = route.query.redirect as string
-      if (redirect) {
-        router.push(redirect)
+      // Redirect — validate the path to prevent open redirect attacks
+      const safeRedirect = getSafeRedirect(route.query.redirect)
+      if (safeRedirect) {
+        router.push(safeRedirect)
       } else {
         router.push(authStore.isAdmin ? '/admin' : '/orders')
       }
@@ -128,18 +177,13 @@ const handleLogin = async () => {
       showError(error.value)
     }
   } catch (e: any) {
-    error.value = e.message || 'An error occurred during login'
+    // Show a user-friendly message, not raw server errors
+    error.value = 'Unable to sign in. Please check your credentials and try again.'
     showError(error.value)
   } finally {
     isLoading.value = false
   }
 }
-
-// Clear form on mount
-onMounted(() => {
-  form.value = { email: '', password: '' }
-  error.value = null
-})
 
 useHead({
   title: 'Login - Elite Sports DJ',

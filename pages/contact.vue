@@ -260,6 +260,9 @@ const validateForm = () => {
 }
 
 const handleSubmit = async () => {
+  // Guard against double-submit
+  if (isSubmitting.value) return
+
   if (!validateForm()) {
     errorMessage.value = 'Please fill in all required fields correctly.'
     return

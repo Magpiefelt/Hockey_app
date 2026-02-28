@@ -124,14 +124,12 @@ export const contactRouter = router({
       
       const limit = input?.limit || 50
       const offset = input?.offset || 0
+      const status = input?.status
       
-      let whereClause = ''
-      const params: any[] = [limit, offset]
-      
-      if (input?.status) {
-        whereClause = 'WHERE status = $3'
-        params.push(input.status)
-      }
+      // Build parameterized query — status filter uses $3 when present
+      const hasStatusFilter = !!status
+      const whereClause = hasStatusFilter ? 'WHERE status = $3' : ''
+      const listParams: any[] = hasStatusFilter ? [limit, offset, status] : [limit, offset]
       
       try {
         const result = await query(
@@ -140,13 +138,18 @@ export const contactRouter = router({
            ${whereClause}
            ORDER BY created_at DESC
            LIMIT $1 OFFSET $2`,
-          params
+          listParams
         )
         
+        // Count query also uses parameterized status filter
+        const countParams: any[] = hasStatusFilter ? [status] : []
+        const countWhere = hasStatusFilter ? 'WHERE status = $1' : ''
         const countResult = await query(
-          `SELECT COUNT(*) as total FROM contact_submissions ${whereClause}`,
-          input?.status ? [input.status] : []
+          `SELECT COUNT(*) as total FROM contact_submissions ${countWhere}`,
+          countParams
         )
+        
+        const total = countResult.rows.length > 0 ? parseInt(countResult.rows[0].total) : 0
         
         return {
           submissions: result.rows.map(row => ({
@@ -157,15 +160,16 @@ export const contactRouter = router({
             subject: row.subject,
             message: row.message,
             status: row.status,
-            createdAt: row.created_at.toISOString(),
-            readAt: row.read_at?.toISOString()
+            createdAt: row.created_at?.toISOString() || null,
+            readAt: row.read_at?.toISOString() || null
           })),
-          total: parseInt(countResult.rows[0].total),
+          total,
           limit,
           offset
         }
-      } catch {
-        // Table may not exist yet
+      } catch (err: any) {
+        // Table may not exist yet — return empty rather than crashing
+        logger.warn('Failed to list contact submissions', { error: err.message })
         return {
           submissions: [],
           total: 0,
@@ -198,8 +202,8 @@ export const contactRouter = router({
            WHERE id = $1 AND status = 'new'`,
           [input.id]
         )
-      } catch {
-        // Table may not exist yet
+      } catch (err: any) {
+        logger.warn('Failed to mark contact submission as read', { error: err.message })
       }
       
       return { success: true }

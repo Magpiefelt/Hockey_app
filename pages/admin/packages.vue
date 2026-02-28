@@ -67,7 +67,7 @@
             </tr>
             <tr
               v-for="pkg in packages"
-              :key="pkg.slug"
+              :key="pkg.id || pkg.slug"
               class="border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors group"
             >
               <!-- Display Order -->
@@ -306,7 +306,7 @@ const confirmDelete = (pkg: Package) => {
 }
 
 const deletePackage = async () => {
-  if (!deletingPackage.value) return
+  if (!deletingPackage.value || isDeleting.value) return
 
   isDeleting.value = true
 

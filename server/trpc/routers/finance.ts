@@ -20,7 +20,7 @@ export const financeRouter = router({
          FROM quote_requests 
          WHERE status IN ('paid', 'completed', 'delivered')`
       )
-      const totalRevenue = parseInt(totalResult.rows[0].revenue)
+      const totalRevenue = totalResult.rows.length > 0 ? parseFloat(totalResult.rows[0].revenue) || 0 : 0
       
       // Year-to-date revenue
       const ytdResult = await query(
@@ -29,7 +29,7 @@ export const financeRouter = router({
          WHERE status IN ('paid', 'completed', 'delivered')
          AND EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM CURRENT_DATE)`
       )
-      const yearToDateRevenue = parseInt(ytdResult.rows[0].revenue)
+      const yearToDateRevenue = ytdResult.rows.length > 0 ? parseFloat(ytdResult.rows[0].revenue) || 0 : 0
       
       // Monthly revenue (current month)
       const monthlyResult = await query(
@@ -38,7 +38,7 @@ export const financeRouter = router({
          WHERE status IN ('paid', 'completed', 'delivered')
          AND DATE_TRUNC('month', created_at) = DATE_TRUNC('month', CURRENT_DATE)`
       )
-      const monthlyRevenue = parseInt(monthlyResult.rows[0].revenue)
+      const monthlyRevenue = monthlyResult.rows.length > 0 ? parseFloat(monthlyResult.rows[0].revenue) || 0 : 0
       
       // Last month revenue (for comparison)
       const lastMonthResult = await query(
@@ -47,7 +47,7 @@ export const financeRouter = router({
          WHERE status IN ('paid', 'completed', 'delivered')
          AND DATE_TRUNC('month', created_at) = DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month')`
       )
-      const lastMonthRevenue = parseInt(lastMonthResult.rows[0].revenue)
+      const lastMonthRevenue = lastMonthResult.rows.length > 0 ? parseFloat(lastMonthResult.rows[0].revenue) || 0 : 0
       
       // Pending payments (quoted but not paid)
       const pendingResult = await query(
@@ -55,7 +55,7 @@ export const financeRouter = router({
          FROM quote_requests 
          WHERE status IN ('quoted', 'invoiced')`
       )
-      const pendingPayments = parseInt(pendingResult.rows[0].amount)
+      const pendingPayments = pendingResult.rows.length > 0 ? parseFloat(pendingResult.rows[0].amount) || 0 : 0
       
       // Paid order count
       const orderCountResult = await query(
@@ -63,13 +63,13 @@ export const financeRouter = router({
          FROM quote_requests 
          WHERE status IN ('paid', 'completed', 'delivered')`
       )
-      const paidOrderCount = parseInt(orderCountResult.rows[0].count)
+      const paidOrderCount = orderCountResult.rows.length > 0 ? parseInt(orderCountResult.rows[0].count) || 0 : 0
       
       // Total quotes sent
       const quotesResult = await query(
         `SELECT COUNT(*) as count FROM quote_requests WHERE quoted_amount IS NOT NULL`
       )
-      const totalQuotesSent = parseInt(quotesResult.rows[0].count)
+      const totalQuotesSent = quotesResult.rows.length > 0 ? parseInt(quotesResult.rows[0].count) || 0 : 0
       
       // Conversion rate (paid / quoted)
       const conversionRate = totalQuotesSent > 0 
@@ -88,7 +88,7 @@ export const financeRouter = router({
          WHERE status IN ('paid', 'completed', 'delivered')
          AND updated_at IS NOT NULL`
       )
-      const averageDaysToPayment = Math.round(parseFloat(avgDaysResult.rows[0].avg_days) || 0)
+      const averageDaysToPayment = avgDaysResult.rows.length > 0 ? Math.round(parseFloat(avgDaysResult.rows[0].avg_days) || 0) : 0
       
       // Tax collected (estimated based on default province)
       let taxCollected = 0
@@ -100,7 +100,9 @@ export const financeRouter = router({
            FROM quote_requests 
            WHERE status IN ('paid', 'completed', 'delivered')`
         )
-        taxCollected = parseInt(taxResult.rows[0].collected_tax) || Math.round(parseInt(taxResult.rows[0].estimated_gst))
+        const collectedTax = taxResult.rows.length > 0 ? parseFloat(taxResult.rows[0].collected_tax) || 0 : 0
+        const estimatedGst = taxResult.rows.length > 0 ? parseFloat(taxResult.rows[0].estimated_gst) || 0 : 0
+        taxCollected = collectedTax > 0 ? Math.round(collectedTax) : Math.round(estimatedGst)
       } catch {
         // tax_amount/tax_province columns may not exist yet, estimate from total
         const fallbackTax = await query(
@@ -108,7 +110,7 @@ export const financeRouter = router({
            FROM quote_requests 
            WHERE status IN ('paid', 'completed', 'delivered')`
         )
-        taxCollected = Math.round(parseFloat(fallbackTax.rows[0].estimated_gst) || 0)
+        taxCollected = fallbackTax.rows.length > 0 ? Math.round(parseFloat(fallbackTax.rows[0].estimated_gst) || 0) : 0
       }
       
       // Revenue by service/package
@@ -152,8 +154,8 @@ export const financeRouter = router({
       const agingMap: Record<string, { count: number; amount: number }> = {}
       agingResult.rows.forEach(row => {
         agingMap[row.age_bucket] = {
-          count: parseInt(row.count),
-          amount: parseInt(row.amount)
+          count: parseInt(row.count) || 0,
+          amount: parseFloat(row.amount) || 0
         }
       })
       
@@ -211,8 +213,8 @@ export const financeRouter = router({
         // Revenue breakdown
         revenueByService: serviceResult.rows.map(row => ({
           service: row.service,
-          revenue: parseInt(row.revenue),
-          orderCount: parseInt(row.order_count)
+          revenue: parseFloat(row.revenue) || 0,
+          orderCount: parseInt(row.order_count) || 0
         })),
         
         // Pipeline
@@ -244,8 +246,8 @@ export const financeRouter = router({
         topCustomers: topCustomersResult.rows.map(row => ({
           email: row.email,
           name: row.name,
-          orderCount: parseInt(row.order_count),
-          totalSpent: parseInt(row.total_spent)
+          orderCount: parseInt(row.order_count) || 0,
+          totalSpent: parseFloat(row.total_spent) || 0
         }))
       }
     }),
@@ -292,14 +294,14 @@ export const financeRouter = router({
       // Create a map of previous year data
       const previousMap: Record<string, number> = {}
       previousResult.rows.forEach(row => {
-        previousMap[row.month] = parseInt(row.revenue)
+        previousMap[row.month] = parseFloat(row.revenue) || 0
       })
       
       return currentResult.rows.map(row => ({
         month: row.month,
         monthShort: row.month_short,
-        revenue: parseInt(row.revenue),
-        orderCount: parseInt(row.order_count),
+        revenue: parseFloat(row.revenue) || 0,
+        orderCount: parseInt(row.order_count) || 0,
         previousYearRevenue: previousMap[row.month] || 0
       }))
     }),
@@ -358,8 +360,8 @@ export const financeRouter = router({
       
       // Calculate tax breakdown for each province
       const byProvince = result.rows.map(row => {
-        const revenue = parseInt(row.revenue)
-        const taxCollected = parseInt(row.tax_collected)
+        const revenue = parseFloat(row.revenue) || 0
+        const taxCollected = parseFloat(row.tax_collected) || 0
         const rates = getTaxRates(row.province)
         
         // If no tax was recorded, estimate it
@@ -371,7 +373,7 @@ export const financeRouter = router({
           province: row.province,
           provinceName: getProvinceName(row.province),
           revenue,
-          orderCount: parseInt(row.order_count),
+          orderCount: parseInt(row.order_count) || 0,
           taxCollected: estimatedTax,
           gst: Math.round(revenue * rates.gst),
           pst: Math.round(revenue * rates.pst),
@@ -466,8 +468,8 @@ export const financeRouter = router({
       }
       
       const orders = result.rows.map(row => {
-        const total = parseInt(row.total)
-        const taxAmount = parseInt(row.tax_amount) || 0
+        const total = parseFloat(row.total) || 0
+        const taxAmount = parseFloat(row.tax_amount) || 0
         const rates = getTaxRates(row.province)
         
         // Calculate or estimate tax breakdown

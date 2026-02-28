@@ -118,7 +118,14 @@ const submitted = ref(false)
 const error = ref('')
 
 const handleSubmit = async () => {
-  if (!email.value) return
+  if (loading.value) return
+  if (!email.value.trim()) return
+
+  // Basic email validation before hitting the server
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim())) {
+    error.value = 'Please enter a valid email address'
+    return
+  }
   
   loading.value = true
   error.value = ''
@@ -132,7 +139,7 @@ const handleSubmit = async () => {
       submitted.value = true
     }
   } catch (err: any) {
-    error.value = err.message || 'An error occurred. Please try again.'
+    error.value = 'Unable to process your request. Please try again later.'
   } finally {
     loading.value = false
   }

@@ -70,19 +70,19 @@
       <div class="card p-8 md:p-10">
           <!-- Package Selection -->
           <div v-if="currentStep === 'selection'">
-            <!-- Loading State -->
-            <div v-if="!packagesData || !packagesData.length" class="flex flex-col items-center justify-center py-20">
+            <!-- Loading State — packagesData is null before the async fetch resolves -->
+            <div v-if="packagesData === null || packagesData === undefined" class="flex flex-col items-center justify-center py-20">
               <Icon name="mdi:loading" class="w-12 h-12 text-cyan-400 animate-spin mb-4" />
               <p class="text-slate-300">Loading packages...</p>
             </div>
             
-            <!-- Error State -->
-            <div v-else-if="packagesData && packagesData.length === 0" class="flex flex-col items-center justify-center py-20 text-center">
-              <Icon name="mdi:alert-circle" class="w-16 h-16 text-red-400 mb-4" />
-              <h3 class="text-2xl font-bold text-white mb-2">Unable to Load Packages</h3>
+            <!-- Empty State — fetch resolved but returned no packages -->
+            <div v-else-if="packagesData.length === 0" class="flex flex-col items-center justify-center py-20 text-center">
+              <Icon name="mdi:package-variant" class="w-16 h-16 text-slate-500 mb-4" />
+              <h3 class="text-2xl font-bold text-white mb-2">No Packages Available</h3>
               <p class="text-slate-300 mb-6">We're having trouble loading our service packages. Please try again.</p>
-              <UiButton @click="() => router.go(0)" variant="primary">
-                Refresh Page
+              <UiButton @click="refreshPackages" variant="primary">
+                Try Again
               </UiButton>
             </div>
             
@@ -469,6 +469,9 @@ const handleEditStep = (step: string) => {
 const submissionError = ref('')
 
 const handleFinalSubmit = async () => {
+  // Guard against double-submit
+  if (isSubmitting.value) return
+
   submissionError.value = ''
   isSubmitting.value = true
   
