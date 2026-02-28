@@ -202,11 +202,32 @@ export const adminRouter = router({
           offset = Math.max(0, input.offset)
         }
         
+        // Build a matching COUNT query to get total rows (before LIMIT/OFFSET)
+        let countSql = 'SELECT COUNT(*) as total FROM quote_requests qr WHERE 1=1'
+        const countParams: any[] = []
+        let countIdx = 1
+        if (input?.status) {
+          countSql += ` AND qr.status = $${countIdx}`
+          countParams.push(input.status)
+          countIdx++
+        }
+        if (input?.search) {
+          countSql += ` AND (qr.contact_name ILIKE $${countIdx} OR qr.contact_email ILIKE $${countIdx} OR qr.contact_phone ILIKE $${countIdx} OR qr.service_type ILIKE $${countIdx} OR qr.id::text = $${countIdx + 1})`
+          countParams.push(`%${input.search}%`)
+          countParams.push(input.search)
+          countIdx += 2
+        }
+
         sql += ` LIMIT ${limit} OFFSET ${offset}`
         
-        const result = await query(sql, params)
+        const [result, countResult] = await Promise.all([
+          query(sql, params),
+          query(countSql, countParams)
+        ])
+
+        const total = parseInt(countResult.rows[0]?.total ?? '0') || 0
         
-        return result.rows.map(row => ({
+        const orders = result.rows.map(row => ({
           id: row.id.toString(),
           name: row.name,
           email: row.email,
@@ -227,6 +248,8 @@ export const adminRouter = router({
           uploadCount: parseInt(row.upload_count) || 0,
           deliverableCount: parseInt(row.deliverable_count) || 0
         }))
+
+        return { orders, total }
       }),
 
     /**
@@ -368,6 +391,23 @@ export const adminRouter = router({
             createdAt: file.created_at.toISOString()
           }))
         }
+      }),
+
+    /**
+     * Update admin notes only (lightweight mutation for inline editor)
+     */
+    updateNotes: adminProcedure
+      .input(z.object({
+        id: z.union([z.string(), z.number()]),
+        adminNotes: z.string().max(5000).default('')
+      }))
+      .mutation(async ({ input }) => {
+        const orderId = typeof input.id === 'string' ? parseInt(input.id) : input.id
+        await query(
+          'UPDATE quote_requests SET admin_notes = $1, updated_at = NOW() WHERE id = $2',
+          [input.adminNotes, orderId]
+        )
+        return { success: true }
       }),
 
     /**

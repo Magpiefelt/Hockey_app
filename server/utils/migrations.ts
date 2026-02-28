@@ -333,6 +333,57 @@ const EMBEDDED_MIGRATIONS: EmbeddedMigration[] = [
       CREATE INDEX IF NOT EXISTS idx_packages_display_order ON packages(display_order);
       CREATE INDEX IF NOT EXISTS idx_packages_visible ON packages(is_visible);
     `
+  },
+  {
+    id: 16,
+    name: 'add_faq_and_testimonials',
+    filename: '016_add_faq_and_testimonials.sql',
+    sql: `
+      -- FAQ items table
+      CREATE TABLE IF NOT EXISTS faq_items (
+        id SERIAL PRIMARY KEY,
+        question VARCHAR(500) NOT NULL,
+        answer TEXT NOT NULL,
+        display_order INTEGER NOT NULL DEFAULT 0,
+        is_visible BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_faq_items_display_order ON faq_items(display_order);
+      CREATE INDEX IF NOT EXISTS idx_faq_items_visible ON faq_items(is_visible);
+
+      -- Testimonials table
+      CREATE TABLE IF NOT EXISTS testimonials (
+        id SERIAL PRIMARY KEY,
+        author_name VARCHAR(100) NOT NULL,
+        author_role VARCHAR(100),
+        content TEXT NOT NULL,
+        rating INTEGER DEFAULT 5 CHECK (rating >= 1 AND rating <= 5),
+        display_order INTEGER NOT NULL DEFAULT 0,
+        is_visible BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_testimonials_display_order ON testimonials(display_order);
+      CREATE INDEX IF NOT EXISTS idx_testimonials_visible ON testimonials(is_visible);
+
+      -- Seed with the existing hardcoded FAQ items
+      INSERT INTO faq_items (question, answer, display_order) VALUES
+        ('What types of events do you cover?', 'We specialize in hockey games at all levels - from minor hockey to junior leagues, college games, and adult recreational leagues. We also cover other sporting events and can customize our services for tournaments and special events.', 1),
+        ('How far in advance should I book?', 'We recommend booking at least 2-3 weeks in advance to ensure availability, especially during peak hockey season. However, we can sometimes accommodate last-minute requests depending on our schedule.', 2),
+        ('Can I customize the music and announcements?', 'Absolutely! Every package includes customization options. You can provide your team''s roster, choose walk-up songs, goal horns, and we''ll work with you to create the perfect game day atmosphere.', 3),
+        ('Do you provide your own equipment?', 'Yes, we bring professional-grade sound equipment suitable for your venue size. We do a sound check before each event to ensure optimal audio quality throughout the arena.', 4),
+        ('What areas do you serve?', 'We primarily serve the Calgary and surrounding Alberta area. For tournaments or special events outside our usual service area, please contact us to discuss travel arrangements.', 5),
+        ('What is your cancellation policy?', 'We understand that schedules can change. We offer full refunds for cancellations made more than 48 hours before the event. For cancellations within 48 hours, a 50%% fee applies. Weather-related cancellations are handled on a case-by-case basis.', 6)
+      ON CONFLICT DO NOTHING;
+
+      -- Seed with the existing hardcoded testimonials
+      INSERT INTO testimonials (author_name, author_role, content, rating, display_order) VALUES
+        ('Coach Mike Thompson', 'Midget AAA Head Coach', 'Elite Sports DJ completely transformed our game day experience. The player introductions get our boys fired up and the crowd going wild. Worth every penny!', 5, 1),
+        ('Sarah Williams', 'Hockey Mom & Team Manager', 'Our team has used Elite Sports DJ for the entire season. The kids absolutely love their personalized intro songs. It makes them feel like NHL pros!', 5, 2),
+        ('Dave Richardson', 'Arena Manager, Southland Leisure Centre', 'Professional, reliable, and incredibly talented. Elite Sports DJ brings an energy to our events that keeps fans coming back. Highly recommended!', 5, 3)
+      ON CONFLICT DO NOTHING;
+    `
   }
 ]
 

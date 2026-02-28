@@ -289,6 +289,34 @@
               <Icon name="mdi:message-text" class="w-5 h-5" />
             </div>
             <span class="font-medium">Contact</span>
+            <span
+              v-if="newContactCount > 0"
+              class="ml-auto px-2.5 py-0.5 text-xs font-bold rounded-full bg-amber-500/20 text-amber-400"
+            >
+              {{ newContactCount }}
+            </span>
+          </NuxtLink>
+
+          <!-- Site Content -->
+          <NuxtLink
+            to="/admin/content"
+            :class="[
+              'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200',
+              isActiveRoute('/admin/content')
+                ? 'bg-gradient-to-r from-cyan-500/20 to-blue-500/10 text-cyan-400 shadow-lg shadow-cyan-500/5'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+            ]"
+            @click="closeSidebarOnMobile"
+          >
+            <div :class="[
+              'w-9 h-9 rounded-lg flex items-center justify-center transition-all',
+              isActiveRoute('/admin/content') 
+                ? 'bg-cyan-500/20' 
+                : 'bg-slate-800'
+            ]">
+              <Icon name="mdi:text-box-edit" class="w-5 h-5" />
+            </div>
+            <span class="font-medium">Site Content</span>
           </NuxtLink>
 
           <!-- Finance -->
@@ -374,11 +402,14 @@ const userMenuRef = ref(null)
 // Search
 const globalSearch = ref('')
 
-// Notifications (placeholder)
-const unreadNotifications = ref(3)
+// Real notification count: new contact submissions + submitted orders
+const unreadNotifications = computed(() => pendingOrdersCount.value + newContactCount.value)
 
-// Pending orders count (will be fetched)
+// Pending orders count (will be fetched — uses 'submitted' to match dashboard)
 const pendingOrdersCount = ref(0)
+
+// New contact submissions count
+const newContactCount = ref(0)
 
 // User info
 const userName = computed(() => authStore.user?.name || authStore.user?.email?.split('@')[0] || 'Admin')
@@ -448,8 +479,18 @@ const trpc = useTrpc()
 
 const fetchPendingCount = async () => {
   try {
-    const response = await trpc.orders.list.query({ status: 'pending', limit: 1 })
+    // Use 'submitted' status to match what the dashboard considers "needs attention"
+    const response = await trpc.orders.list.query({ status: 'submitted', limit: 1 })
     pendingOrdersCount.value = response.total || 0
+  } catch (err) {
+    // Silently fail
+  }
+}
+
+const fetchNewContactCount = async () => {
+  try {
+    const response = await trpc.contact.list.query({ status: 'new', limit: 1 })
+    newContactCount.value = response.total || 0
   } catch (err) {
     // Silently fail
   }
@@ -457,6 +498,7 @@ const fetchPendingCount = async () => {
 
 onMounted(() => {
   fetchPendingCount()
+  fetchNewContactCount()
 })
 
 // Close sidebar on route change (mobile)

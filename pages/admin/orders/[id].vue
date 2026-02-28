@@ -130,7 +130,7 @@
                 <span 
                   :class="[
                     'inline-block px-3 py-1 text-xs font-semibold rounded-full',
-                    getStatusClasses(orderData.order.status)
+                    getStatusBadge(orderData.order.status)
                   ]"
                 >
                   {{ getStatusLabel(orderData.order.status) }}
@@ -399,6 +399,15 @@
                       <p class="text-slate-500 text-xs">{{ formatFileSize(file.fileSize) }}</p>
                     </div>
                   </div>
+                  <a
+                    v-if="file.url"
+                    :href="file.url"
+                    target="_blank"
+                    class="ml-2 p-1.5 text-slate-400 hover:text-cyan-400 transition-colors"
+                    title="Download"
+                  >
+                    <Icon name="mdi:download" class="w-5 h-5" />
+                  </a>
                 </div>
               </div>
             </div>
@@ -419,6 +428,15 @@
                       <p class="text-slate-500 text-xs">{{ formatFileSize(file.fileSize) }} • {{ formatDateTime(file.createdAt) }}</p>
                     </div>
                   </div>
+                  <a
+                    v-if="file.url"
+                    :href="file.url"
+                    target="_blank"
+                    class="ml-2 p-1.5 text-slate-400 hover:text-cyan-400 transition-colors"
+                    title="Download"
+                  >
+                    <Icon name="mdi:download" class="w-5 h-5" />
+                  </a>
                 </div>
               </div>
             </div>
@@ -435,6 +453,57 @@
 
         <!-- Right Column - Sidebar -->
         <div class="space-y-6">
+          <!-- Admin Notes (inline editor) -->
+          <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                <Icon name="mdi:note-edit" class="w-5 h-5 text-amber-400" />
+                Admin Notes
+              </h3>
+              <button
+                v-if="!editingAdminNotes"
+                @click="startEditingNotes"
+                class="text-sm text-cyan-400 hover:text-cyan-300 transition-colors flex items-center gap-1"
+              >
+                <Icon name="mdi:pencil" class="w-4 h-4" />
+                Edit
+              </button>
+            </div>
+            <!-- View mode -->
+            <div v-if="!editingAdminNotes">
+              <p v-if="orderData.order.adminNotes" class="text-slate-300 whitespace-pre-wrap text-sm leading-relaxed">
+                {{ orderData.order.adminNotes }}
+              </p>
+              <p v-else class="text-slate-500 text-sm italic">No admin notes yet. Click Edit to add notes.</p>
+            </div>
+            <!-- Edit mode -->
+            <div v-else class="space-y-3">
+              <textarea
+                v-model="adminNotesText"
+                rows="5"
+                class="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 resize-y text-sm"
+                placeholder="Internal notes about this order..."
+              ></textarea>
+              <div class="flex items-center gap-2">
+                <button
+                  @click="saveAdminNotes"
+                  :disabled="savingAdminNotes"
+                  class="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white text-sm font-semibold rounded-lg transition-all disabled:opacity-50 flex items-center gap-1"
+                >
+                  <Icon v-if="savingAdminNotes" name="mdi:loading" class="w-4 h-4 animate-spin" />
+                  <Icon v-else name="mdi:check" class="w-4 h-4" />
+                  Save
+                </button>
+                <button
+                  @click="cancelEditingNotes"
+                  class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm font-medium rounded-lg transition-all"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+
           <!-- Email History -->
           <AdminOrderEmailHistory :order-id="orderId" />
           
@@ -510,7 +579,8 @@ definePageMeta({
 const route = useRoute()
 const router = useRouter()
 const trpc = useTrpc()
-const { formatPrice, formatDate, formatDateTime, formatFileSize, getStatusColor, getStatusLabel } = useUtils()
+const { formatPrice, formatDate, formatDateTime, formatFileSize } = useUtils()
+const { getStatusLabel, getStatusBadge } = useOrderStatus()
 const { uploadFile } = useUpload()
 const { showError, showSuccess } = useNotification()
 
@@ -527,21 +597,6 @@ const getPackageName = (packageId: string) => {
   return pkg?.name || packageId
 }
 
-const getStatusClasses = (status: string) => {
-  const classes: Record<string, string> = {
-    submitted: 'bg-amber-500/20 text-amber-400',
-    pending: 'bg-amber-500/20 text-amber-400',
-    quoted: 'bg-blue-500/20 text-blue-400',
-    in_progress: 'bg-cyan-500/20 text-cyan-400',
-    paid: 'bg-emerald-500/20 text-emerald-400',
-    completed: 'bg-emerald-500/20 text-emerald-400',
-    ready: 'bg-purple-500/20 text-purple-400',
-    delivered: 'bg-emerald-500/20 text-emerald-400',
-    cancelled: 'bg-red-500/20 text-red-400',
-    refunded: 'bg-red-500/20 text-red-400'
-  }
-  return classes[status] || 'bg-slate-500/20 text-slate-400'
-}
 
 const formatSongInfo = (songData: any) => {
   if (!songData) return 'N/A'
@@ -588,6 +643,40 @@ const showEnhancedQuoteModal = ref(false)
 const showRevisionModal = ref(false)
 const showCustomerDrawer = ref(false)
 const showManualCompletionModal = ref(false)
+
+// Admin notes inline editor
+const editingAdminNotes = ref(false)
+const adminNotesText = ref('')
+const savingAdminNotes = ref(false)
+
+const startEditingNotes = () => {
+  adminNotesText.value = orderData.value?.order?.adminNotes || ''
+  editingAdminNotes.value = true
+}
+
+const cancelEditingNotes = () => {
+  editingAdminNotes.value = false
+}
+
+const saveAdminNotes = async () => {
+  savingAdminNotes.value = true
+  try {
+    await trpc.admin.orders.updateNotes.mutate({
+      id: orderId.value,
+      adminNotes: adminNotesText.value
+    })
+    if (orderData.value) {
+      orderData.value.order.adminNotes = adminNotesText.value
+    }
+    editingAdminNotes.value = false
+    showSuccess('Admin notes saved')
+  } catch (err: any) {
+    const { handleTrpcError } = await import('~/composables/useTrpc')
+    showError(handleTrpcError(err) || 'Failed to save notes')
+  } finally {
+    savingAdminNotes.value = false
+  }
+}
 
 // File upload
 const deliverableInputRef = ref<HTMLInputElement | null>(null)

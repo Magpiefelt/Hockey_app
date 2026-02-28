@@ -201,7 +201,7 @@
                 <span 
                   :class="[
                     'px-3 py-1 text-xs font-semibold rounded-full',
-                    getStatusClasses(order.status)
+                    getStatusBadge(order.status)
                   ]"
                 >
                   {{ getStatusLabel(order.status) }}
@@ -217,7 +217,7 @@
                 {{ formatDate(order.createdAt) }}
               </td>
               <td class="py-4 px-6" @click.stop>
-                <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div class="flex items-center gap-2 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
                   <button
                     @click="openEditModal(order)"
                     class="p-2 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 rounded-lg transition-colors"
@@ -335,8 +335,10 @@ definePageMeta({
 })
 
 const { showError, showSuccess } = useNotification()
-const { getStatusColor, getStatusLabel, formatDate } = useUtils()
+const { formatDate } = useUtils()
+const { getStatusLabel, getStatusBadge } = useOrderStatus()
 const trpc = useTrpc()
+const route = useRoute()
 
 const loading = ref(true)
 const error = ref<string | null>(null)
@@ -437,41 +439,14 @@ const packageOptions = computed(() => [
   ...packages.value.map(pkg => ({ label: pkg.name, value: pkg.id }))
 ])
 
-const getStatusClasses = (status: string) => {
-  const classes: Record<string, string> = {
-    submitted: 'bg-amber-500/20 text-amber-400',
-    pending: 'bg-amber-500/20 text-amber-400',
-    quoted: 'bg-blue-500/20 text-blue-400',
-    in_progress: 'bg-cyan-500/20 text-cyan-400',
-    paid: 'bg-emerald-500/20 text-emerald-400',
-    completed: 'bg-emerald-500/20 text-emerald-400',
-    ready: 'bg-purple-500/20 text-purple-400',
-    delivered: 'bg-emerald-500/20 text-emerald-400',
-    cancelled: 'bg-red-500/20 text-red-400',
-    refunded: 'bg-red-500/20 text-red-400'
-  }
-  return classes[status] || 'bg-slate-500/20 text-slate-400'
-}
 
-// Apply filters and sorting to orders
+// Server handles filtering and pagination — client only applies local sorting
 const filteredOrders = computed(() => {
   let result = [...orders.value]
 
-  // Apply filters
-  if (filters.value.status) {
-    result = result.filter(o => o.status === filters.value.status)
-  }
-
+  // Client-side package filter (not sent to server)
   if (filters.value.packageId) {
     result = result.filter(o => o.packageId === filters.value.packageId)
-  }
-
-  if (filters.value.search) {
-    const search = filters.value.search.toLowerCase()
-    result = result.filter(o => 
-      o.email.toLowerCase().includes(search) || 
-      o.name.toLowerCase().includes(search)
-    )
   }
 
   // Apply sorting
@@ -512,12 +487,8 @@ const filteredOrders = computed(() => {
   return result
 })
 
-// Paginate the filtered results
-const paginatedOrders = computed(() => {
-  const start = (currentPage.value - 1) * pageSize
-  const end = start + pageSize
-  return filteredOrders.value.slice(start, end)
-})
+// Server already paginates — use filteredOrders directly
+const paginatedOrders = computed(() => filteredOrders.value)
 
 // Visible page numbers for pagination
 const visiblePages = computed(() => {
@@ -543,18 +514,18 @@ const visiblePages = computed(() => {
   return pages
 })
 
-// Update total orders count based on filtered results
-watch(filteredOrders, (newFiltered) => {
-  totalOrders.value = newFiltered.length
-  // Reset to page 1 if current page is out of bounds
-  if (currentPage.value > Math.ceil(newFiltered.length / pageSize)) {
-    currentPage.value = 1
-  }
-  // Clear selection when filters change
-  selectedOrderIds.value = selectedOrderIds.value.filter(id => 
-    newFiltered.some(o => o.id === id)
-  )
-}, { immediate: true })
+// When filters change, reset to page 1 and re-fetch from server
+watch(() => [filters.value.status, filters.value.search], () => {
+  currentPage.value = 1
+  selectedOrderIds.value = []
+  fetchOrders()
+})
+
+// When page changes, re-fetch from server
+watch(currentPage, () => {
+  selectedOrderIds.value = []
+  fetchOrders()
+})
 
 const fetchPackages = async () => {
   try {
@@ -584,8 +555,14 @@ const fetchOrders = async () => {
     
     const response = await trpc.admin.orders.list.query(queryParams)
     
-    orders.value = response
-    totalOrders.value = response.length
+    // Handle both old (array) and new ({ orders, total }) response shapes
+    if (Array.isArray(response)) {
+      orders.value = response
+      totalOrders.value = response.length
+    } else {
+      orders.value = response.orders
+      totalOrders.value = response.total
+    }
   } catch (err: any) {
     const { handleTrpcError } = await import('~/composables/useTrpc')
     error.value = handleTrpcError(err)
@@ -668,6 +645,14 @@ function handleOrderSaved(data: any) {
 }
 
 onMounted(async () => {
+  // Honour URL query params from global search or dashboard links
+  if (route.query.search) {
+    filters.value.search = String(route.query.search)
+  }
+  if (route.query.status) {
+    filters.value.status = String(route.query.status)
+  }
+
   // Fetch both packages and orders in parallel
   await Promise.all([
     fetchPackages(),

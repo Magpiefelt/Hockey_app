@@ -597,61 +597,26 @@
         </RevealOnScroll>
 
         <div class="grid gap-6 md:gap-8 md:grid-cols-2 lg:grid-cols-3 max-w-7xl mx-auto">
-          <RevealOnScroll animation="fade-up" :delay="0">
+          <RevealOnScroll
+            v-for="(t, idx) in siteTestimonials"
+            :key="t.id"
+            animation="fade-up"
+            :delay="idx * 100"
+          >
             <div class="rounded-2xl border-2 border-blue-500/30 bg-gradient-to-br from-slate-900 to-slate-800 p-8 backdrop-filter backdrop-blur-10">
               <div class="mb-4 flex gap-1">
-                <Icon v-for="i in 5" :key="i" name="mdi:star" class="h-5 w-5 text-yellow-400" />
+                <Icon v-for="s in t.rating" :key="s" name="mdi:star" class="h-5 w-5 text-yellow-400" />
               </div>
               <p class="mb-6 text-slate-300 leading-relaxed italic">
-                "Elite Sports DJ transformed our home games! The energy in the arena has never been better. Players love their custom intros and fans are more engaged than ever."
+                "{{ t.content }}"
               </p>
               <div class="flex items-center gap-4">
                 <div class="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-cyan-600">
-                  <span class="text-lg font-bold text-white">MJ</span>
+                  <span class="text-lg font-bold text-white">{{ getInitials(t.authorName) }}</span>
                 </div>
                 <div>
-                  <div class="font-bold text-white">Mike Johnson</div>
-                  <div class="text-sm text-slate-400">Head Coach, Thunder Hockey</div>
-                </div>
-              </div>
-            </div>
-          </RevealOnScroll>
-
-          <RevealOnScroll animation="fade-up" :delay="100">
-            <div class="rounded-2xl border-2 border-blue-500/30 bg-gradient-to-br from-slate-900 to-slate-800 p-8 backdrop-filter backdrop-blur-10">
-              <div class="mb-4 flex gap-1">
-                <Icon v-for="i in 5" :key="i" name="mdi:star" class="h-5 w-5 text-yellow-400" />
-              </div>
-              <p class="mb-6 text-slate-300 leading-relaxed italic">
-                "Professional, reliable, and always on point. They know exactly what music works for sports crowds. Worth every penny!"
-              </p>
-              <div class="flex items-center gap-4">
-                <div class="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-cyan-600">
-                  <span class="text-lg font-bold text-white">SC</span>
-                </div>
-                <div>
-                  <div class="font-bold text-white">Sarah Chen</div>
-                  <div class="text-sm text-slate-400">Event Director, City Sports Complex</div>
-                </div>
-              </div>
-            </div>
-          </RevealOnScroll>
-
-          <RevealOnScroll animation="fade-up" :delay="200">
-            <div class="rounded-2xl border-2 border-blue-500/30 bg-gradient-to-br from-slate-900 to-slate-800 p-8 backdrop-filter backdrop-blur-10">
-              <div class="mb-4 flex gap-1">
-                <Icon v-for="i in 5" :key="i" name="mdi:star" class="h-5 w-5 text-yellow-400" />
-              </div>
-              <p class="mb-6 text-slate-300 leading-relaxed italic">
-                "Our lacrosse tournament was a huge success thanks to Elite Sports DJ. They kept the energy high all weekend long. Highly recommend!"
-              </p>
-              <div class="flex items-center gap-4">
-                <div class="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-cyan-600">
-                  <span class="text-lg font-bold text-white">TR</span>
-                </div>
-                <div>
-                  <div class="font-bold text-white">Tom Rodriguez</div>
-                  <div class="text-sm text-slate-400">Tournament Organizer</div>
+                  <div class="font-bold text-white">{{ t.authorName }}</div>
+                  <div v-if="t.authorRole" class="text-sm text-slate-400">{{ t.authorRole }}</div>
                 </div>
               </div>
             </div>
@@ -843,8 +808,21 @@ const refreshHomePackages = () => {
 }
 
 // Fetch packages on mount
-onMounted(() => {
+onMounted(async () => {
   fetchHomePackages()
+  // Fetch FAQ and testimonials from DB
+  try {
+    const dbFaq = await trpc.content.faqPublic.query()
+    faqItems.value = dbFaq.length > 0 ? dbFaq : fallbackFaq
+  } catch {
+    faqItems.value = fallbackFaq
+  }
+  try {
+    const dbTestimonials = await trpc.content.testimonialsPublic.query()
+    siteTestimonials.value = dbTestimonials.length > 0 ? dbTestimonials : fallbackTestimonials
+  } catch {
+    siteTestimonials.value = fallbackTestimonials
+  }
 })
 
 // ============================================
@@ -987,33 +965,31 @@ const handleImageError = (index: number) => {
   galleryImagesLoading.value[index] = false
 }
 
-// FAQ items
-const faqItems = ref([
-  {
-    question: 'How far in advance should I book?',
-    answer: 'We recommend booking at least 2-4 weeks in advance for regular season games. For playoffs, tournaments, or special events, booking 4-6 weeks ahead ensures availability. However, we often accommodate last-minute requests when possible.'
-  },
-  {
-    question: 'What equipment do you provide?',
-    answer: 'We bring all necessary professional-grade equipment including sound systems, microphones, mixing equipment, and backup gear. For Premium packages, we also include lighting equipment. You just need to provide power access and a designated setup area.'
-  },
-  {
-    question: 'Can you customize music for our team?',
-    answer: 'Absolutely! We work with you to create custom playlists that match your team\'s style and preferences. We can incorporate team songs, player-specific intro music, and any special requests you have.'
-  },
-  {
-    question: 'Do you travel to different venues?',
-    answer: 'Yes! We serve teams and events throughout the region. Travel fees may apply for venues outside our standard service area, which will be clearly outlined in your quote.'
-  },
-  {
-    question: 'What happens if you have technical issues during the event?',
-    answer: 'We always bring backup equipment and have contingency plans in place. In our 10+ years of service, we\'ve maintained a 100% reliability record. We arrive early to set up and test everything thoroughly before the event starts.'
-  },
-  {
-    question: 'Can we request specific songs or avoid certain music?',
-    answer: 'Yes! We\'re happy to accommodate song requests and any music you\'d prefer to avoid. We work with you during the planning phase to ensure the music selection aligns perfectly with your event and audience.'
-  }
-])
+// FAQ items — loaded from DB, with hardcoded fallback
+const faqItems = ref<{ question: string; answer: string }[]>([])
+const siteTestimonials = ref<{ id: number; authorName: string; authorRole: string | null; content: string; rating: number }[]>([])
+
+const getInitials = (name: string) => {
+  return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
+}
+
+// Hardcoded fallbacks in case DB is empty or unreachable
+const fallbackFaq = [
+  { question: 'How far in advance should I book?', answer: 'We recommend booking at least 2-4 weeks in advance for regular season games. For playoffs, tournaments, or special events, booking 4-6 weeks ahead ensures availability. However, we often accommodate last-minute requests when possible.' },
+  { question: 'What equipment do you provide?', answer: 'We bring all necessary professional-grade equipment including sound systems, microphones, mixing equipment, and backup gear. For Premium packages, we also include lighting equipment. You just need to provide power access and a designated setup area.' },
+  { question: 'Can you customize music for our team?', answer: 'Absolutely! We work with you to create custom playlists that match your team\'s style and preferences. We can incorporate team songs, player-specific intro music, and any special requests you have.' },
+  { question: 'Do you travel to different venues?', answer: 'Yes! We serve teams and events throughout the region. Travel fees may apply for venues outside our standard service area, which will be clearly outlined in your quote.' },
+  { question: 'What happens if you have technical issues during the event?', answer: 'We always bring backup equipment and have contingency plans in place. In our 10+ years of service, we\'ve maintained a 100% reliability record. We arrive early to set up and test everything thoroughly before the event starts.' },
+  { question: 'Can we request specific songs or avoid certain music?', answer: 'Yes! We\'re happy to accommodate song requests and any music you\'d prefer to avoid. We work with you during the planning phase to ensure the music selection aligns perfectly with your event and audience.' }
+]
+
+const fallbackTestimonials = [
+  { id: 1, authorName: 'Mike Johnson', authorRole: 'Head Coach, Thunder Hockey', content: 'Elite Sports DJ transformed our home games! The energy in the arena has never been better. Players love their custom intros and fans are more engaged than ever.', rating: 5 },
+  { id: 2, authorName: 'Sarah Chen', authorRole: 'Event Director, City Sports Complex', content: 'Professional, reliable, and always on point. They know exactly what music works for sports crowds. Worth every penny!', rating: 5 },
+  { id: 3, authorName: 'Tom Rodriguez', authorRole: 'Tournament Organizer', content: 'Our lacrosse tournament was a huge success thanks to Elite Sports DJ. They kept the energy high all weekend long. Highly recommend!', rating: 5 }
+]
+
+
 </script>
 
 

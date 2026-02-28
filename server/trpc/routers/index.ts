@@ -12,6 +12,7 @@ import { quotePublicRouter } from './quote-public'
 import { contactRouter } from './contact'
 import { financeRouter } from './finance'
 import { financeAutomationRouter } from './financeAutomation'
+import { contentRouter } from './content'
 
 export const appRouter = router({
   auth: authRouter,
@@ -29,7 +30,9 @@ export const appRouter = router({
   // Enhanced finance router with tax calculations
   finance: financeRouter,
   // Finance automation (invoices, reminders, reporting)
-  financeAutomation: financeAutomationRouter
+  financeAutomation: financeAutomationRouter,
+  // FAQ and testimonials content management
+  content: contentRouter
 })
 
 export type AppRouter = typeof appRouter

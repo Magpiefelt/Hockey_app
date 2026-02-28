@@ -187,18 +187,10 @@ function getStatusIcon(status: string): string {
   return icons[status] || 'mdi:circle'
 }
 
+const { getStatusColors } = useOrderStatus()
 function getStatusColor(status: string) {
-  const colors: Record<string, { badge: string }> = {
-    'submitted': { badge: 'bg-blue-500/20 text-blue-400 border border-blue-500/30' },
-    'quoted': { badge: 'bg-purple-500/20 text-purple-400 border border-purple-500/30' },
-    'invoiced': { badge: 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' },
-    'paid': { badge: 'bg-green-500/20 text-green-400 border border-green-500/30' },
-    'in_progress': { badge: 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' },
-    'completed': { badge: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' },
-    'delivered': { badge: 'bg-teal-500/20 text-teal-400 border border-teal-500/30' },
-    'cancelled': { badge: 'bg-red-500/20 text-red-400 border border-red-500/30' }
-  }
-  return colors[status] || { badge: 'bg-slate-500/20 text-slate-400 border border-slate-500/30' }
+  const c = getStatusColors(status)
+  return { badge: c.badge + ' border ' + c.border + '/30' }
 }
 
 function getPackageName(packageId?: string): string {

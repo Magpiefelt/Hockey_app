@@ -119,7 +119,7 @@
                   <span 
                     :class="[
                       'px-3 py-1 text-xs font-semibold rounded-full',
-                      getStatusClasses(order.status)
+                      getStatusBadge(order.status)
                     ]"
                   >
                     {{ getStatusLabel(order.status) }}
@@ -228,7 +228,8 @@ definePageMeta({
 
 const authStore = useAuthStore()
 const trpc = useTrpc()
-const { formatDate, getStatusLabel } = useUtils()
+const { formatDate } = useUtils()
+const { getStatusLabel, getStatusBadge } = useOrderStatus()
 
 const userName = computed(() => {
   const name = authStore.user?.name || authStore.user?.email?.split('@')[0] || 'Admin'
@@ -250,19 +251,6 @@ const financeStats = ref({
 })
 const recentOrders = ref<any[]>([])
 
-const getStatusClasses = (status: string) => {
-  const classes: Record<string, string> = {
-    submitted: 'bg-blue-500/20 text-blue-400',
-    quoted: 'bg-purple-500/20 text-purple-400',
-    invoiced: 'bg-amber-500/20 text-amber-400',
-    paid: 'bg-emerald-500/20 text-emerald-400',
-    in_progress: 'bg-cyan-500/20 text-cyan-400',
-    completed: 'bg-emerald-500/20 text-emerald-400',
-    delivered: 'bg-teal-500/20 text-teal-400',
-    cancelled: 'bg-red-500/20 text-red-400'
-  }
-  return classes[status] || 'bg-slate-500/20 text-slate-400'
-}
 
 const fetchDashboardData = async () => {
   try {
@@ -298,7 +286,8 @@ const fetchDashboardData = async () => {
     
     // Fetch recent orders (limit 5)
     const ordersData = await trpc.admin.orders.list.query({ limit: 5 })
-    recentOrders.value = ordersData
+    // Handle both old (array) and new ({ orders, total }) response shapes
+    recentOrders.value = Array.isArray(ordersData) ? ordersData : ordersData.orders
     
   } catch (error) {
     console.error('Failed to fetch dashboard data:', error)

@@ -129,12 +129,20 @@
                     </button>
                     <a
                       :href="`mailto:${submission.email}?subject=Re: ${submission.subject}`"
-                      @click.stop
+                      @click.stop="markAsReplied(submission.id)"
                       class="p-2 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors"
-                      title="Reply via Email"
+                      title="Reply via Email (marks as replied)"
                     >
                       <Icon name="mdi:reply" class="w-4 h-4" />
                     </a>
+                    <button
+                      v-if="submission.status !== 'archived'"
+                      @click.stop="archiveSubmission(submission.id)"
+                      class="p-2 rounded-lg bg-slate-500/20 text-slate-400 hover:bg-slate-500/30 transition-colors"
+                      title="Archive"
+                    >
+                      <Icon name="mdi:archive" class="w-4 h-4" />
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -196,11 +204,20 @@
             </UiButton>
             <a
               :href="`mailto:${selectedSubmission.email}?subject=Re: ${selectedSubmission.subject}`"
+              @click="markAsReplied(selectedSubmission.id)"
               class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors"
             >
               <Icon name="mdi:reply" class="w-4 h-4 mr-2" />
               Reply via Email
             </a>
+            <UiButton
+              v-if="selectedSubmission.status !== 'archived'"
+              @click="archiveSubmission(selectedSubmission.id)"
+              variant="outline"
+            >
+              <Icon name="mdi:archive" class="w-4 h-4 mr-2" />
+              Archive
+            </UiButton>
           </div>
         </div>
       </UiModal>
@@ -258,7 +275,8 @@ const stats = computed(() => {
     total: submissions.value.length,
     new: submissions.value.filter(s => s.status === 'new').length,
     read: submissions.value.filter(s => s.status === 'read').length,
-    replied: submissions.value.filter(s => s.status === 'replied').length
+    replied: submissions.value.filter(s => s.status === 'replied').length,
+    archived: submissions.value.filter(s => s.status === 'archived').length
   }
 })
 
@@ -353,6 +371,41 @@ async function markAsRead(id: number) {
   } catch (err: any) {
     console.error('Failed to mark as read:', err)
     showError('Failed to update status')
+  }
+}
+
+async function markAsReplied(id: number) {
+  try {
+    await trpc.contact.markAsReplied.mutate({ id })
+    
+    const submission = submissions.value.find(s => s.id === id)
+    if (submission) {
+      submission.status = 'replied'
+    }
+    if (selectedSubmission.value?.id === id) {
+      selectedSubmission.value.status = 'replied'
+    }
+  } catch (err: any) {
+    console.error('Failed to mark as replied:', err)
+  }
+}
+
+async function archiveSubmission(id: number) {
+  try {
+    await trpc.contact.archive.mutate({ id })
+    
+    const submission = submissions.value.find(s => s.id === id)
+    if (submission) {
+      submission.status = 'archived'
+    }
+    if (selectedSubmission.value?.id === id) {
+      selectedSubmission.value.status = 'archived'
+    }
+    
+    showSuccess('Submission archived')
+  } catch (err: any) {
+    console.error('Failed to archive:', err)
+    showError('Failed to archive submission')
   }
 }
 

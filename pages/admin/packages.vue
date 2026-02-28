@@ -121,7 +121,7 @@
               </td>
               <!-- Actions -->
               <td class="py-4 px-4">
-                <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div class="flex items-center gap-2 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
                   <button
                     @click="openEditModal(pkg)"
                     class="p-2 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 rounded-lg transition-colors"

@@ -207,5 +207,63 @@ export const contactRouter = router({
       }
       
       return { success: true }
+    }),
+
+  /**
+   * Mark submission as replied (admin only)
+   */
+  markAsReplied: publicProcedure
+    .input(z.object({
+      id: z.number()
+    }))
+    .mutation(async ({ input, ctx }) => {
+      if (!ctx.user || ctx.user.role !== 'admin') {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Admin access required'
+        })
+      }
+      
+      try {
+        await query(
+          `UPDATE contact_submissions 
+           SET status = 'replied'
+           WHERE id = $1 AND status IN ('new', 'read')`,
+          [input.id]
+        )
+      } catch (err: any) {
+        logger.warn('Failed to mark contact submission as replied', { error: err.message })
+      }
+      
+      return { success: true }
+    }),
+
+  /**
+   * Archive a submission (admin only)
+   */
+  archive: publicProcedure
+    .input(z.object({
+      id: z.number()
+    }))
+    .mutation(async ({ input, ctx }) => {
+      if (!ctx.user || ctx.user.role !== 'admin') {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Admin access required'
+        })
+      }
+      
+      try {
+        await query(
+          `UPDATE contact_submissions 
+           SET status = 'archived'
+           WHERE id = $1`,
+          [input.id]
+        )
+      } catch (err: any) {
+        logger.warn('Failed to archive contact submission', { error: err.message })
+      }
+      
+      return { success: true }
     })
 })

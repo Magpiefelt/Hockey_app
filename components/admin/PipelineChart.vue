@@ -132,49 +132,15 @@ function formatCurrency(value: number): string {
   }).format(value / 100)
 }
 
-// Status color mappings
+// Use shared status composable
+const { getStatusColors, getStatusLabel } = useOrderStatus()
+
 function getStatusColor(status: string): string {
-  const colors: Record<string, string> = {
-    submitted: 'bg-blue-500',
-    pending: 'bg-blue-500',
-    quoted: 'bg-amber-500',
-    in_progress: 'bg-cyan-500',
-    paid: 'bg-emerald-500',
-    completed: 'bg-emerald-500',
-    delivered: 'bg-emerald-500',
-    cancelled: 'bg-red-500',
-    refunded: 'bg-red-500'
-  }
-  return colors[status] || 'bg-slate-500'
+  return getStatusColors(status).solid
 }
 
 function getStatusBgColor(status: string): string {
-  const colors: Record<string, string> = {
-    submitted: 'bg-blue-500/70',
-    pending: 'bg-blue-500/70',
-    quoted: 'bg-amber-500/70',
-    in_progress: 'bg-cyan-500/70',
-    paid: 'bg-emerald-500/70',
-    completed: 'bg-emerald-500/70',
-    delivered: 'bg-emerald-500/70',
-    cancelled: 'bg-red-500/70',
-    refunded: 'bg-red-500/70'
-  }
-  return colors[status] || 'bg-slate-500/70'
-}
-
-function getStatusLabel(status: string): string {
-  const labels: Record<string, string> = {
-    submitted: 'Submitted',
-    pending: 'Pending',
-    quoted: 'Quoted',
-    in_progress: 'In Progress',
-    paid: 'Paid',
-    completed: 'Completed',
-    delivered: 'Delivered',
-    cancelled: 'Cancelled',
-    refunded: 'Refunded'
-  }
-  return labels[status] || status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, ' ')
+  // Use the solid colour with reduced opacity for bar fills
+  return getStatusColors(status).solid.replace('bg-', 'bg-') + '/70'
 }
 </script>

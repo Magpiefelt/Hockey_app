@@ -125,18 +125,7 @@ async function loadHistory() {
   }
 }
 
-function formatStatus(status: string): string {
-  const statusMap: Record<string, string> = {
-    'submitted': 'Submitted',
-    'quoted': 'Quoted',
-    'invoiced': 'Invoiced',
-    'paid': 'Paid',
-    'in_progress': 'In Progress',
-    'completed': 'Completed',
-    'cancelled': 'Cancelled'
-  }
-  return statusMap[status] || status
-}
+const { getStatusLabel: formatStatus, getStatusColors: getStatusColor } = useOrderStatus()
 
 function formatDate(dateString: string): string {
   const date = new Date(dateString)
@@ -173,51 +162,7 @@ function getStatusIcon(status: string): string {
   return iconMap[status] || 'mdi:circle'
 }
 
-function getStatusColor(status: string) {
-  const colorMap: Record<string, { bg: string; border: string; badge: string }> = {
-    'submitted': {
-      bg: 'bg-blue-500/20',
-      border: 'border-blue-500',
-      badge: 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-    },
-    'quoted': {
-      bg: 'bg-purple-500/20',
-      border: 'border-purple-500',
-      badge: 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
-    },
-    'invoiced': {
-      bg: 'bg-yellow-500/20',
-      border: 'border-yellow-500',
-      badge: 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
-    },
-    'paid': {
-      bg: 'bg-green-500/20',
-      border: 'border-green-500',
-      badge: 'bg-green-500/20 text-green-400 border border-green-500/30'
-    },
-    'in_progress': {
-      bg: 'bg-cyan-500/20',
-      border: 'border-cyan-500',
-      badge: 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
-    },
-    'completed': {
-      bg: 'bg-emerald-500/20',
-      border: 'border-emerald-500',
-      badge: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-    },
-    'cancelled': {
-      bg: 'bg-red-500/20',
-      border: 'border-red-500',
-      badge: 'bg-red-500/20 text-red-400 border border-red-500/30'
-    }
-  }
 
-  return colorMap[status] || {
-    bg: 'bg-slate-500/20',
-    border: 'border-slate-500',
-    badge: 'bg-slate-500/20 text-slate-400 border border-slate-500/30'
-  }
-}
 
 defineExpose({
   refresh: loadHistory
