@@ -122,9 +122,9 @@
         sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       ]"
     >
-      <nav class="h-full flex flex-col py-6 px-3">
+      <nav class="h-full flex flex-col py-6 px-3 overflow-hidden">
         <!-- Main Navigation -->
-        <div class="flex-1 space-y-1">
+        <div class="flex-1 space-y-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
           <!-- Dashboard -->
           <NuxtLink
             to="/admin/dashboard"
