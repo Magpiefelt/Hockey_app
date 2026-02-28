@@ -389,7 +389,6 @@ import { onClickOutside } from '@vueuse/core'
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
-const { mockLogout } = useMockAuth()
 const { showSuccess } = useNotification()
 
 // Sidebar state
@@ -433,7 +432,7 @@ const toggleSidebar = () => {
 }
 
 const closeSidebarOnMobile = () => {
-  if (window.innerWidth < 1024) {
+  if (import.meta.client && window.innerWidth < 1024) {
     sidebarOpen.value = false
   }
 }
@@ -446,19 +445,24 @@ const handleGlobalSearch = () => {
 }
 
 const handleLogout = async () => {
-  mockLogout()
+  try {
+    await authStore.logout()
+  } catch (err) {
+    // Continue with logout even if server call fails
+  }
   userMenuOpen.value = false
   showSuccess('Logged out successfully')
   router.push('/')
 }
 
-// Close menus on outside click
-onClickOutside(userMenuRef, () => {
-  userMenuOpen.value = false
-})
-
-// Keyboard shortcut for search
+// All client-side setup consolidated in a single onMounted
 onMounted(() => {
+  // Close menus on outside click
+  onClickOutside(userMenuRef, () => {
+    userMenuOpen.value = false
+  })
+
+  // Keyboard shortcut for search (Cmd+K / Ctrl+K)
   const handleKeydown = (e: KeyboardEvent) => {
     if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
       e.preventDefault()
@@ -466,45 +470,29 @@ onMounted(() => {
       searchInput?.focus()
     }
   }
-  
   window.addEventListener('keydown', handleKeydown)
-  
   onUnmounted(() => {
     window.removeEventListener('keydown', handleKeydown)
   })
-})
 
-// Fetch pending orders count
-const trpc = useTrpc()
+  // Fetch sidebar badge counts
+  const trpc = useTrpc()
+  if (trpc) {
+    // Pending orders count
+    trpc.admin.orders.list.query({ status: 'submitted', pageSize: 1, page: 1 })
+      .then((response: any) => { pendingOrdersCount.value = response.total || 0 })
+      .catch(() => { /* badge simply won't show */ })
 
-const fetchPendingCount = async () => {
-  try {
-    // admin.orders.list returns { orders, total }
-    const response = await trpc.admin.orders.list.query({ status: 'submitted', pageSize: 1, page: 1 })
-    pendingOrdersCount.value = response.total || 0
-  } catch (err) {
-    // Silently fail — badge simply won't show
+    // New contact submissions count
+    trpc.contact.list.query({ status: 'new', limit: 1 })
+      .then((response: any) => { newContactCount.value = response.total || 0 })
+      .catch(() => { /* badge simply won't show */ })
   }
-}
-
-const fetchNewContactCount = async () => {
-  try {
-    // contact.list returns { submissions, total }
-    const response = await trpc.contact.list.query({ status: 'new', limit: 1 })
-    newContactCount.value = response.total || 0
-  } catch (err) {
-    // Silently fail — badge simply won't show
-  }
-}
-
-onMounted(() => {
-  fetchPendingCount()
-  fetchNewContactCount()
 })
 
 // Close sidebar on route change (mobile)
 watch(() => route.path, () => {
-  if (window.innerWidth < 1024) {
+  if (import.meta.client && window.innerWidth < 1024) {
     sidebarOpen.value = false
   }
 })
