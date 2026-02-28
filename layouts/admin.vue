@@ -479,20 +479,21 @@ const trpc = useTrpc()
 
 const fetchPendingCount = async () => {
   try {
-    // Use 'submitted' status to match what the dashboard considers "needs attention"
-    const response = await trpc.orders.list.query({ status: 'submitted', limit: 1 })
+    // admin.orders.list returns { orders, total }
+    const response = await trpc.admin.orders.list.query({ status: 'submitted', pageSize: 1, page: 1 })
     pendingOrdersCount.value = response.total || 0
   } catch (err) {
-    // Silently fail
+    // Silently fail — badge simply won't show
   }
 }
 
 const fetchNewContactCount = async () => {
   try {
+    // contact.list returns { submissions, total }
     const response = await trpc.contact.list.query({ status: 'new', limit: 1 })
     newContactCount.value = response.total || 0
   } catch (err) {
-    // Silently fail
+    // Silently fail — badge simply won't show
   }
 }
 
