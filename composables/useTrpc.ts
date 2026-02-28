@@ -1,19 +1,15 @@
 /**
  * tRPC composable for Vue components
  * Provides easy access to tRPC client methods
+ *
+ * Note: The tRPC plugin is registered as .client (client-only).
+ * During SSR, $client may be undefined — trpc-nuxt handles this
+ * internally via useAsyncData. Do NOT throw if $client is missing.
  */
 
 export const useTrpc = () => {
   const nuxtApp = useNuxtApp()
-  const client = nuxtApp.$client
-
-  if (!client) {
-    throw new Error(
-      'tRPC client is not available. Ensure the tRPC plugin is properly configured.'
-    )
-  }
-
-  return client
+  return nuxtApp.$client as ReturnType<typeof nuxtApp.$client>
 }
 
 /**
