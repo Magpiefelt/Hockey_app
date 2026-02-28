@@ -384,7 +384,7 @@
 </template>
 
 <script setup lang="ts">
-import { onClickOutside } from '@vueuse/core'
+// No external imports — all browser APIs are inside onMounted for SSR safety
 
 const route = useRoute()
 const router = useRouter()
@@ -457,10 +457,13 @@ const handleLogout = async () => {
 
 // All client-side setup consolidated in a single onMounted
 onMounted(() => {
-  // Close menus on outside click
-  onClickOutside(userMenuRef, () => {
-    userMenuOpen.value = false
-  })
+  // Close user menu on outside click (manual implementation — no @vueuse dependency)
+  const handleOutsideClick = (e: MouseEvent) => {
+    if (userMenuRef.value && !(userMenuRef.value as HTMLElement).contains(e.target as Node)) {
+      userMenuOpen.value = false
+    }
+  }
+  document.addEventListener('click', handleOutsideClick)
 
   // Keyboard shortcut for search (Cmd+K / Ctrl+K)
   const handleKeydown = (e: KeyboardEvent) => {
@@ -471,7 +474,9 @@ onMounted(() => {
     }
   }
   window.addEventListener('keydown', handleKeydown)
+
   onUnmounted(() => {
+    document.removeEventListener('click', handleOutsideClick)
     window.removeEventListener('keydown', handleKeydown)
   })
 

@@ -1,16 +1,16 @@
 <template>
   <div>
-    <AppHeader />
-    <NuxtPage />
-    <Footer />
+    <NuxtLayout>
+      <NuxtPage />
+    </NuxtLayout>
     <UiToastContainer />
   </div>
 </template>
 
 <script setup lang="ts">
 // Root application component
-// This component wraps the entire application and provides the NuxtPage outlet
-// for rendering page components based on the current route
+// NuxtLayout switches between layouts/default.vue and layouts/admin.vue
+// based on definePageMeta({ layout: '...' }) in each page
 </script>
 
 <style>
