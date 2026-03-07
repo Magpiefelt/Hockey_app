@@ -5,11 +5,17 @@
       <RevealOnScroll animation="fade-up">
         <div class="text-center mb-8">
           <NuxtLink to="/" class="inline-block mb-6">
-            <img 
-              src="/logo.png" 
-              alt="Elite Sports DJ" 
-              class="h-24 w-auto mx-auto"
-            />
+            <!-- PERF: WebP with PNG fallback; width/height prevent CLS -->
+            <picture>
+              <source srcset="/logo.webp" type="image/webp" />
+              <img 
+                src="/logo.png" 
+                alt="Elite Sports DJ" 
+                width="96"
+                height="96"
+                class="h-24 w-auto mx-auto"
+              />
+            </picture>
           </NuxtLink>
           
           <h1 class="text-4xl font-bold text-white mb-2">

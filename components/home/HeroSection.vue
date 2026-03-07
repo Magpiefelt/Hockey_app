@@ -59,12 +59,19 @@
               
               <!-- Logo -->
               <div class="mb-12 flex justify-center lg:justify-start">
-                <img 
-                  src="/logo.png" 
-                  alt="Elite Sports DJ" 
-                  class="h-64 w-auto object-contain sm:h-80 md:h-96 lg:h-112 xl:h-128 2xl:h-144 hero-logo-animate" 
-                  loading="eager"
-                />
+                <!-- PERF: WebP with PNG fallback; fetchpriority=high for LCP; width/height prevent CLS -->
+                <picture>
+                  <source srcset="/logo.webp" type="image/webp" />
+                  <img 
+                    src="/logo.png" 
+                    alt="Elite Sports DJ - Professional Sports Entertainment" 
+                    width="512"
+                    height="512"
+                    class="h-64 w-auto object-contain sm:h-80 md:h-96 lg:h-112 xl:h-128 2xl:h-144 hero-logo-animate" 
+                    loading="eager"
+                    fetchpriority="high"
+                  />
+                </picture>
               </div>
               
               <!-- Dynamic Badge with Sports Icons -->

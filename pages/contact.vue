@@ -207,14 +207,31 @@ useHead({
     { property: 'og:url', content: 'https://elitesportsdj.ca/contact' },
     { property: 'og:title', content: 'Contact Us | Elite Sports DJ Services' },
     { property: 'og:description', content: 'Get in touch with Elite Sports DJ. Request a quote, ask about our services, or discuss your upcoming sports event.' },
-    { property: 'og:image', content: 'https://elitesportsdj.ca/logo.png' },
+    { property: 'og:image', content: 'https://elitesportsdj.ca/og-image.jpg' },
+    { property: 'og:image:width', content: '1200' },
+    { property: 'og:image:height', content: '630' },
     { property: 'og:site_name', content: 'Elite Sports DJ' },
-    { name: 'twitter:card', content: 'summary' },
+    { name: 'twitter:card', content: 'summary_large_image' },
     { name: 'twitter:title', content: 'Contact Us | Elite Sports DJ Services' },
-    { name: 'twitter:description', content: 'Get in touch with Elite Sports DJ for your sports event entertainment needs.' }
+    { name: 'twitter:description', content: 'Get in touch with Elite Sports DJ for your sports event entertainment needs.' },
+    { name: 'twitter:image', content: 'https://elitesportsdj.ca/og-image.jpg' }
   ],
   link: [
     { rel: 'canonical', href: 'https://elitesportsdj.ca/contact' }
+  ],
+  script: [
+    {
+      type: 'application/ld+json',
+      children: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'ContactPage',
+        '@id': 'https://elitesportsdj.ca/contact',
+        url: 'https://elitesportsdj.ca/contact',
+        name: 'Contact Elite Sports DJ',
+        description: 'Get in touch with Elite Sports DJ for professional sports event entertainment.',
+        isPartOf: { '@id': 'https://elitesportsdj.ca/#website' }
+      })
+    }
   ]
 })
 

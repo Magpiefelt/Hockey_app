@@ -49,7 +49,7 @@ export default defineNuxtConfig({
       stripePublishableKey: process.env.STRIPE_PUBLISHABLE_KEY || '',
       appBaseUrl: process.env.APP_URL || 'http://localhost:3000',
       appTitle: 'Elite Sports DJ Services',
-      appLogo: '/logo.png'
+      appLogo: '/logo.webp'
     }
   },
   
@@ -77,16 +77,16 @@ export default defineNuxtConfig({
         { name: 'robots', content: 'index, follow' },
         
         // Open Graph / Facebook
-        // FIX: corrected domain from elitesportsdj.com to elitesportsdj.ca (live site)
-        // FIX: og:image must be an absolute URL for social crawlers to resolve it
+        // PERF: og:image now points to the proper 1200x630 OG image (28KB vs 861KB)
         { property: 'og:type', content: 'website' },
         { property: 'og:url', content: 'https://elitesportsdj.ca/' },
         { property: 'og:title', content: 'Elite Sports DJ Services | Professional Game Day Entertainment' },
         { property: 'og:description', content: 'Professional DJ services for hockey, lacrosse, baseball, basketball and sports events. Trusted by 50+ teams with 500+ events covered.' },
-        { property: 'og:image', content: 'https://elitesportsdj.ca/logo.png' },
-        { property: 'og:image:width', content: '512' },
-        { property: 'og:image:height', content: '512' },
-        { property: 'og:image:alt', content: 'Elite Sports DJ Logo' },
+        { property: 'og:image', content: 'https://elitesportsdj.ca/og-image.jpg' },
+        { property: 'og:image:width', content: '1200' },
+        { property: 'og:image:height', content: '630' },
+        { property: 'og:image:alt', content: 'Elite Sports DJ - Professional Game Day Entertainment' },
+        { property: 'og:image:type', content: 'image/jpeg' },
         { property: 'og:site_name', content: 'Elite Sports DJ' },
         { property: 'og:locale', content: 'en_CA' },
         
@@ -95,8 +95,8 @@ export default defineNuxtConfig({
         { name: 'twitter:url', content: 'https://elitesportsdj.ca/' },
         { name: 'twitter:title', content: 'Elite Sports DJ Services | Professional Game Day Entertainment' },
         { name: 'twitter:description', content: 'Professional DJ services for hockey, lacrosse, baseball, basketball and sports events. Trusted by 50+ teams.' },
-        { name: 'twitter:image', content: 'https://elitesportsdj.ca/logo.png' },
-        { name: 'twitter:image:alt', content: 'Elite Sports DJ Logo' },
+        { name: 'twitter:image', content: 'https://elitesportsdj.ca/og-image.jpg' },
+        { name: 'twitter:image:alt', content: 'Elite Sports DJ - Professional Game Day Entertainment' },
         
         // Additional SEO
         { name: 'theme-color', content: '#0891b2' },
@@ -104,20 +104,25 @@ export default defineNuxtConfig({
         { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' }
       ],
       link: [
-        { rel: 'icon', type: 'image/png', href: '/logo.png' },
-        { rel: 'apple-touch-icon', href: '/logo.png' },
-        // FIX: corrected canonical domain from .com to .ca
+        // PERF: Use optimized 64px PNG for favicon (6KB vs 861KB)
+        { rel: 'icon', type: 'image/png', href: '/favicon-64.png' },
+        // PERF: Use 192px PNG for apple-touch-icon (31KB vs 861KB)
+        { rel: 'apple-touch-icon', sizes: '192x192', href: '/icon-192.png' },
         { rel: 'canonical', href: 'https://elitesportsdj.ca/' },
         // Web App Manifest
         { rel: 'manifest', href: '/site.webmanifest' },
+        // PERF: Preconnect to font origins to eliminate DNS + TLS round trips
         { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
-        { rel: 'preconnect', href: 'https://images.unsplash.com' },
         { rel: 'dns-prefetch', href: 'https://images.unsplash.com' },
+        // PERF: font-display=swap prevents render-blocking while font loads
+        // PERF: Only load the weights actually used (400, 600, 700, 800) — removed 500 and 900
         {
           rel: 'stylesheet',
-          href: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap'
-        }
+          href: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap'
+        },
+        // PERF: Preload the LCP hero image so the browser fetches it immediately
+        { rel: 'preload', as: 'image', href: '/logo.webp', type: 'image/webp' }
       ]
     }
   },
@@ -187,25 +192,38 @@ export default defineNuxtConfig({
   
   // Route rules for caching and optimization
   routeRules: {
-    // Cache static pages
+    // Cache public pages at the CDN/edge layer (10 min stale-while-revalidate)
     '/': { cache: { maxAge: 60 * 10 } },
+    '/contact': { cache: { maxAge: 60 * 10 } },
+    '/privacy': { cache: { maxAge: 60 * 60 * 24 } }, // 24h — rarely changes
+    '/terms': { cache: { maxAge: 60 * 60 * 24 } },   // 24h — rarely changes
     '/about': { cache: { maxAge: 60 * 10 } },
     '/gallery': { cache: { maxAge: 60 * 10 } },
-    // Don't cache dynamic pages
+    // Don't cache dynamic or authenticated pages
     '/request': { cache: false },
     '/admin/**': { cache: false },
     '/orders/**': { cache: false },
-    // API routes — FIX: removed blanket cors:true on all /api/** routes.
-    // CORS is handled per-request in server/middleware/02.cors.ts with origin allowlist.
-    // Only the health endpoint needs explicit cache; tRPC and webhooks handle their own CORS.
+    '/login': { cache: false },
+    '/register': { cache: false },
+    '/forgot-password': { cache: false },
+    '/reset-password': { cache: false },
+    '/thanks': { cache: false },
+    // API routes — CORS handled by 02.cors.ts middleware with origin allowlist
     '/api/health': { cache: { maxAge: 60 } },
     '/api/metrics': { cache: false },
-    // Static assets with long cache
+    // Static assets with long cache (immutable hashed filenames from Vite)
     '/_nuxt/**': { static: true, headers: { 'cache-control': 'public, max-age=31536000, immutable' } },
-    '/videos/**': { headers: { 'cache-control': 'public, max-age=86400' } },
-    '/logo.png': { headers: { 'cache-control': 'public, max-age=86400' } },
+    // PERF: Long cache for optimized static assets
+    '/videos/**': { headers: { 'cache-control': 'public, max-age=604800' } }, // 7 days
+    '/logo.png': { headers: { 'cache-control': 'public, max-age=604800' } },
+    '/logo.webp': { headers: { 'cache-control': 'public, max-age=604800' } },
+    '/og-image.jpg': { headers: { 'cache-control': 'public, max-age=604800' } },
+    '/favicon-64.png': { headers: { 'cache-control': 'public, max-age=604800' } },
+    '/icon-192.png': { headers: { 'cache-control': 'public, max-age=604800' } },
+    '/icon-512.png': { headers: { 'cache-control': 'public, max-age=604800' } },
     // Serve sitemap and robots with correct content-type
-    '/sitemap.xml': { headers: { 'content-type': 'application/xml; charset=utf-8' } },
-    '/robots.txt': { headers: { 'content-type': 'text/plain; charset=utf-8' } }
+    '/sitemap.xml': { headers: { 'content-type': 'application/xml; charset=utf-8', 'cache-control': 'public, max-age=3600' } },
+    '/robots.txt': { headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'public, max-age=86400' } },
+    '/site.webmanifest': { headers: { 'content-type': 'application/manifest+json; charset=utf-8', 'cache-control': 'public, max-age=86400' } }
   }
 })

@@ -74,11 +74,20 @@
                 
                 <!-- Logo -->
                 <div class="mb-12 flex justify-center lg:justify-start">
-                  <img 
-                    src="/logo.png" 
-                    alt="Elite Sports DJ" 
-                    class="h-64 w-auto object-contain sm:h-80 md:h-96 lg:h-112 xl:h-128 2xl:h-144 hero-logo-animate" 
-                  />
+                  <!-- PERF: LCP element — WebP (63KB) vs PNG (861KB), fetchpriority=high for LCP,
+                       width/height set to prevent Cumulative Layout Shift (CLS). -->
+                  <picture>
+                    <source srcset="/logo.webp" type="image/webp" />
+                    <img 
+                      src="/logo.png" 
+                      alt="Elite Sports DJ - Professional Sports Entertainment" 
+                      width="512"
+                      height="512"
+                      class="h-64 w-auto object-contain sm:h-80 md:h-96 lg:h-112 xl:h-128 2xl:h-144 hero-logo-animate"
+                      fetchpriority="high"
+                      loading="eager"
+                    />
+                  </picture>
                 </div>
                 
                 <!-- Dynamic Badge with Sports Icons -->
@@ -764,13 +773,17 @@ useHead({
     { property: 'og:url', content: 'https://elitesportsdj.ca/' },
     { property: 'og:title', content: 'Elite Sports DJ Services | Professional Game Day Entertainment' },
     { property: 'og:description', content: 'Professional DJ services for hockey, lacrosse, baseball, basketball and sports events. Trusted by 50+ teams with 500+ events covered.' },
-    { property: 'og:image', content: 'https://elitesportsdj.ca/logo.png' },
-    { property: 'og:image:alt', content: 'Elite Sports DJ Logo' },
+    { property: 'og:image', content: 'https://elitesportsdj.ca/og-image.jpg' },
+    { property: 'og:image:width', content: '1200' },
+    { property: 'og:image:height', content: '630' },
+    { property: 'og:image:alt', content: 'Elite Sports DJ - Professional Game Day Entertainment' },
+    { property: 'og:image:type', content: 'image/jpeg' },
     { property: 'og:site_name', content: 'Elite Sports DJ' },
     { name: 'twitter:card', content: 'summary_large_image' },
     { name: 'twitter:title', content: 'Elite Sports DJ Services | Professional Game Day Entertainment' },
     { name: 'twitter:description', content: 'Professional DJ services for hockey, lacrosse, baseball, basketball and sports events. Trusted by 50+ teams.' },
-    { name: 'twitter:image', content: 'https://elitesportsdj.ca/logo.png' }
+    { name: 'twitter:image', content: 'https://elitesportsdj.ca/og-image.jpg' },
+    { name: 'twitter:image:alt', content: 'Elite Sports DJ - Professional Game Day Entertainment' }
   ],
   link: [
     { rel: 'canonical', href: 'https://elitesportsdj.ca/' }
@@ -785,8 +798,8 @@ useHead({
         name: 'Elite Sports DJ',
         description: 'Professional DJ services for hockey, lacrosse, baseball, basketball and sports events. Expert player introductions, game day entertainment, and event hosting.',
         url: 'https://elitesportsdj.ca',
-        logo: 'https://elitesportsdj.ca/logo.png',
-        image: 'https://elitesportsdj.ca/logo.png',
+        logo: 'https://elitesportsdj.ca/logo.webp',
+        image: 'https://elitesportsdj.ca/og-image.jpg',
         email: 'info@elitesportsdj.ca',
         priceRange: '$$',
         areaServed: {
@@ -834,6 +847,28 @@ useHead({
   ]
 })
 
+// SEO: Dynamic FAQPage JSON-LD — runs server-side so FAQ content is indexable by crawlers.
+useHead(computed(() => ({
+  script: [
+    {
+      type: 'application/ld+json',
+      key: 'faq-schema',
+      children: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        mainEntity: faqItems.value.map((item: { question: string; answer: string }) => ({
+          '@type': 'Question',
+          name: item.question,
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: item.answer
+          }
+        }))
+      })
+    }
+  ]
+})))
+
 // ============================================
 // Dynamic Package Data (from database via tRPC)
 // ============================================
@@ -854,13 +889,56 @@ interface HomePackage {
   priceSuffix: string
 }
 
-const trpc = useTrpc()
-const packagesLoading = ref(true)
-const packagesError = ref(false)
-const homePackagesRaw = ref<HomePackage[]>([])
+// SEO/PERF: Use useAsyncData to fetch home page content server-side (SSR).
+// Data fetched in onMounted() is invisible to search engine crawlers and AI search tools
+// because they see the initial HTML — not the JavaScript-rendered content.
+// useAsyncData runs on the server during SSR, so packages/FAQ/testimonials are
+// included in the initial HTML response and fully indexable.
+const { data: homeData, refresh: refreshHomeData } = await useAsyncData(
+  'home-page-data',
+  () => $fetch('/api/home-data'),
+  {
+    // Cache for 10 minutes on the server to avoid hammering the DB on every request
+    getCachedData: (key, nuxtApp) => {
+      const cached = nuxtApp.payload.data[key] || nuxtApp.static.data[key]
+      if (!cached) return undefined
+      // Invalidate after 10 minutes
+      const expiresAt = cached._cachedAt + 10 * 60 * 1000
+      if (Date.now() > expiresAt) return undefined
+      return cached
+    }
+  }
+)
 
-// homePackagesRaw already contains only visible packages (from getVisible endpoint)
-const homePackages = computed(() => homePackagesRaw.value)
+// Fallback data used when DB is empty or unreachable
+const fallbackFaq = [
+  { question: 'How far in advance should I book?', answer: 'We recommend booking at least 2-4 weeks in advance for regular season games. For playoffs, tournaments, or special events, booking 4-6 weeks ahead ensures availability. However, we often accommodate last-minute requests when possible.' },
+  { question: 'What equipment do you provide?', answer: 'We bring all necessary professional-grade equipment including sound systems, microphones, mixing equipment, and backup gear. For Premium packages, we also include lighting equipment. You just need to provide power access and a designated setup area.' },
+  { question: 'Can you customize music for our team?', answer: 'Absolutely! We work with you to create custom playlists that match your team\'s style and preferences. We can incorporate team songs, player-specific intro music, and any special requests you have.' },
+  { question: 'Do you travel to different venues?', answer: 'Yes! We serve teams and events throughout the region. Travel fees may apply for venues outside our standard service area, which will be clearly outlined in your quote.' },
+  { question: 'What happens if you have technical issues during the event?', answer: 'We always bring backup equipment and have contingency plans in place. In our 10+ years of service, we\'ve maintained a 100% reliability record. We arrive early to set up and test everything thoroughly before the event starts.' },
+  { question: 'Can we request specific songs or avoid certain music?', answer: 'Yes! We\'re happy to accommodate song requests and any music you\'d prefer to avoid. We work with you during the planning phase to ensure the music selection aligns perfectly with your event and audience.' }
+]
+const fallbackTestimonials = [
+  { id: 1, authorName: 'Mike Johnson', authorRole: 'Head Coach, Thunder Hockey', content: 'Elite Sports DJ transformed our home games! The energy in the arena has never been better. Players love their custom intros and fans are more engaged than ever.', rating: 5 },
+  { id: 2, authorName: 'Sarah Chen', authorRole: 'Event Director, City Sports Complex', content: 'Professional, reliable, and always on point. They know exactly what music works for sports crowds. Worth every penny!', rating: 5 },
+  { id: 3, authorName: 'Tom Rodriguez', authorRole: 'Tournament Organizer', content: 'Our lacrosse tournament was a huge success thanks to Elite Sports DJ. They kept the energy high all weekend long. Highly recommend!', rating: 5 }
+]
+
+// Derive reactive state from SSR data with fallbacks
+const homePackages = computed<HomePackage[]>(() => homeData.value?.packages ?? [])
+const packagesLoading = computed(() => !homeData.value)
+const packagesError = ref(false)
+const faqItems = computed(() => {
+  const items = homeData.value?.faq ?? []
+  return items.length > 0 ? items : fallbackFaq
+})
+const siteTestimonials = computed(() => {
+  const items = homeData.value?.testimonials ?? []
+  return items.length > 0 ? items : fallbackTestimonials
+})
+
+const refreshHomePackages = () => refreshHomeData()
 
 const formatPackagePrice = (cents: number): string => {
   return new Intl.NumberFormat('en-US', {
@@ -870,42 +948,6 @@ const formatPackagePrice = (cents: number): string => {
     maximumFractionDigits: 0
   }).format(cents / 100)
 }
-
-const fetchHomePackages = async () => {
-  packagesLoading.value = true
-  packagesError.value = false
-  try {
-    const data = await trpc.packages.getVisible.query()
-    homePackagesRaw.value = data as HomePackage[]
-  } catch (err) {
-    console.error('Failed to load packages for home page:', err)
-    packagesError.value = true
-  } finally {
-    packagesLoading.value = false
-  }
-}
-
-const refreshHomePackages = () => {
-  fetchHomePackages()
-}
-
-// Fetch packages on mount
-onMounted(async () => {
-  fetchHomePackages()
-  // Fetch FAQ and testimonials from DB
-  try {
-    const dbFaq = await trpc.content.faqPublic.query()
-    faqItems.value = dbFaq.length > 0 ? dbFaq : fallbackFaq
-  } catch {
-    faqItems.value = fallbackFaq
-  }
-  try {
-    const dbTestimonials = await trpc.content.testimonialsPublic.query()
-    siteTestimonials.value = dbTestimonials.length > 0 ? dbTestimonials : fallbackTestimonials
-  } catch {
-    siteTestimonials.value = fallbackTestimonials
-  }
-})
 
 // ============================================
 // Video Modal State & Handlers
@@ -1047,29 +1089,6 @@ const handleImageError = (index: number) => {
   galleryImagesLoading.value[index] = false
 }
 
-// FAQ items — loaded from DB, with hardcoded fallback
-const faqItems = ref<{ question: string; answer: string }[]>([])
-const siteTestimonials = ref<{ id: number; authorName: string; authorRole: string | null; content: string; rating: number }[]>([])
-
-const getInitials = (name: string) => {
-  return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
-}
-
-// Hardcoded fallbacks in case DB is empty or unreachable
-const fallbackFaq = [
-  { question: 'How far in advance should I book?', answer: 'We recommend booking at least 2-4 weeks in advance for regular season games. For playoffs, tournaments, or special events, booking 4-6 weeks ahead ensures availability. However, we often accommodate last-minute requests when possible.' },
-  { question: 'What equipment do you provide?', answer: 'We bring all necessary professional-grade equipment including sound systems, microphones, mixing equipment, and backup gear. For Premium packages, we also include lighting equipment. You just need to provide power access and a designated setup area.' },
-  { question: 'Can you customize music for our team?', answer: 'Absolutely! We work with you to create custom playlists that match your team\'s style and preferences. We can incorporate team songs, player-specific intro music, and any special requests you have.' },
-  { question: 'Do you travel to different venues?', answer: 'Yes! We serve teams and events throughout the region. Travel fees may apply for venues outside our standard service area, which will be clearly outlined in your quote.' },
-  { question: 'What happens if you have technical issues during the event?', answer: 'We always bring backup equipment and have contingency plans in place. In our 10+ years of service, we\'ve maintained a 100% reliability record. We arrive early to set up and test everything thoroughly before the event starts.' },
-  { question: 'Can we request specific songs or avoid certain music?', answer: 'Yes! We\'re happy to accommodate song requests and any music you\'d prefer to avoid. We work with you during the planning phase to ensure the music selection aligns perfectly with your event and audience.' }
-]
-
-const fallbackTestimonials = [
-  { id: 1, authorName: 'Mike Johnson', authorRole: 'Head Coach, Thunder Hockey', content: 'Elite Sports DJ transformed our home games! The energy in the arena has never been better. Players love their custom intros and fans are more engaged than ever.', rating: 5 },
-  { id: 2, authorName: 'Sarah Chen', authorRole: 'Event Director, City Sports Complex', content: 'Professional, reliable, and always on point. They know exactly what music works for sports crowds. Worth every penny!', rating: 5 },
-  { id: 3, authorName: 'Tom Rodriguez', authorRole: 'Tournament Organizer', content: 'Our lacrosse tournament was a huge success thanks to Elite Sports DJ. They kept the energy high all weekend long. Highly recommend!', rating: 5 }
-]
 
 
 </script>

@@ -241,11 +241,14 @@ useHead({
     { property: 'og:url', content: 'https://elitesportsdj.ca/request' },
     { property: 'og:title', content: 'Request DJ Service | Elite Sports DJ' },
     { property: 'og:description', content: 'Book professional DJ services for your sports event. Receive a custom quote within 24 hours.' },
-    { property: 'og:image', content: 'https://elitesportsdj.ca/logo.png' },
+    { property: 'og:image', content: 'https://elitesportsdj.ca/og-image.jpg' },
+    { property: 'og:image:width', content: '1200' },
+    { property: 'og:image:height', content: '630' },
     { property: 'og:site_name', content: 'Elite Sports DJ' },
-    { name: 'twitter:card', content: 'summary' },
+    { name: 'twitter:card', content: 'summary_large_image' },
     { name: 'twitter:title', content: 'Request DJ Service | Elite Sports DJ' },
-    { name: 'twitter:description', content: 'Book professional DJ services for your sports event. Receive a custom quote within 24 hours.' }
+    { name: 'twitter:description', content: 'Book professional DJ services for your sports event. Receive a custom quote within 24 hours.' },
+    { name: 'twitter:image', content: 'https://elitesportsdj.ca/og-image.jpg' }
   ],
   link: [
     { rel: 'canonical', href: 'https://elitesportsdj.ca/request' }

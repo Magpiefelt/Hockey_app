@@ -5,11 +5,19 @@
         <!-- Logo -->
         <NuxtLink to="/" class="flex items-center gap-3 group">
           <div class="relative h-16 w-16 flex items-center justify-center">
-            <img 
-              src="/logo.png" 
-              alt="Elite Sports DJ" 
-              class="h-full w-auto object-contain transition-all duration-500 group-hover:scale-110 group-hover:rotate-6 logo-pulse"
-            />
+            <!-- PERF: <picture> serves WebP (63KB) to modern browsers, PNG (861KB) as fallback.
+                 width/height prevent CLS. fetchpriority=high tells browser this is LCP-critical. -->
+            <picture>
+              <source srcset="/logo.webp" type="image/webp" />
+              <img 
+                src="/logo.png" 
+                alt="Elite Sports DJ" 
+                width="64"
+                height="64"
+                class="h-full w-auto object-contain transition-all duration-500 group-hover:scale-110 group-hover:rotate-6 logo-pulse"
+                fetchpriority="high"
+              />
+            </picture>
           </div>
           <span class="hidden text-xl font-bold text-white sm:inline">
             Elite Sports DJ

@@ -4,11 +4,17 @@
       <!-- Logo/Header -->
       <div class="text-center mb-8">
         <div class="mb-6 flex justify-center">
-          <img 
-            src="/logo.png" 
-            alt="Elite Sports DJ" 
-            class="h-20 w-auto object-contain logo-float" 
-          />
+          <!-- PERF: WebP with PNG fallback; width/height prevent CLS -->
+          <picture>
+            <source srcset="/logo.webp" type="image/webp" />
+            <img 
+              src="/logo.png" 
+              alt="Elite Sports DJ" 
+              width="80"
+              height="80"
+              class="h-20 w-auto object-contain logo-float" 
+            />
+          </picture>
         </div>
         <h1 class="text-3xl font-bold text-white mb-2">
           Welcome Back

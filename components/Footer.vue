@@ -14,11 +14,18 @@
         <div class="space-y-4">
           <div class="flex items-center gap-3">
             <div class="relative h-12 w-12 flex items-center justify-center">
-              <img 
-                src="/logo.png" 
-                alt="Elite Sports DJ" 
-                class="h-full w-auto object-contain"
-              />
+              <!-- PERF: WebP with PNG fallback; width/height prevent layout shift -->
+              <picture>
+                <source srcset="/logo.webp" type="image/webp" />
+                <img 
+                  src="/logo.png" 
+                  alt="Elite Sports DJ" 
+                  width="48"
+                  height="48"
+                  class="h-full w-auto object-contain"
+                  loading="lazy"
+                />
+              </picture>
             </div>
           </div>
           <p class="text-sm leading-relaxed text-slate-400">
