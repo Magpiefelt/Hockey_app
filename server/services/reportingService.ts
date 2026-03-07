@@ -157,28 +157,28 @@ export async function getFinancialSummary(
     [prevStartDate.toISOString().split('T')[0], prevEndDate.toISOString().split('T')[0]]
   )
   
-  const currentRevenue = parseInt(revenueResult.rows[0].gross) || 0
-  const previousRevenue = parseInt(prevResult.rows[0].revenue) || 0
+  const currentRevenue = parseFloat(revenueResult.rows[0].gross ?? '0') || 0
+  const previousRevenue = parseFloat(prevResult.rows[0].revenue ?? '0') || 0
   const revenueChange = currentRevenue - previousRevenue
   const revenueChangePercent = previousRevenue > 0 
     ? (revenueChange / previousRevenue) * 100 
     : 0
   
-  const quoted = parseInt(conversionResult.rows[0].quoted) || 0
-  const paidCount = parseInt(conversionResult.rows[0].paid) || 0
+  const quoted = parseInt(conversionResult.rows[0].quoted ?? '0') || 0
+  const paidCount = parseInt(conversionResult.rows[0].paid ?? '0') || 0
   
   return {
     period: `${startStr} to ${endStr}`,
     revenue: {
-      gross: parseInt(revenueResult.rows[0].gross) || 0,
-      net: parseInt(revenueResult.rows[0].net) || 0,
-      tax: parseInt(revenueResult.rows[0].tax) || 0
+      gross: parseFloat(revenueResult.rows[0].gross ?? '0') || 0,
+      net: parseFloat(revenueResult.rows[0].net ?? '0') || 0,
+      tax: parseFloat(revenueResult.rows[0].tax ?? '0') || 0
     },
     orders: {
-      total: parseInt(ordersResult.rows[0].total) || 0,
-      paid: parseInt(ordersResult.rows[0].paid) || 0,
-      pending: parseInt(ordersResult.rows[0].pending) || 0,
-      cancelled: parseInt(ordersResult.rows[0].cancelled) || 0
+      total: parseInt(ordersResult.rows[0].total ?? '0') || 0,
+      paid: parseInt(ordersResult.rows[0].paid ?? '0') || 0,
+      pending: parseInt(ordersResult.rows[0].pending ?? '0') || 0,
+      cancelled: parseInt(ordersResult.rows[0].cancelled ?? '0') || 0
     },
     averages: {
       orderValue: Math.round(parseFloat(avgResult.rows[0].avg_order_value) || 0),
@@ -222,13 +222,13 @@ export async function getRevenueByCategory(
     params
   )
   
-  const totalRevenue = result.rows.reduce((sum, row) => sum + parseInt(row.revenue), 0)
+  const totalRevenue = result.rows.reduce((sum, row) => sum + (parseFloat(row.revenue ?? '0') || 0), 0)
   
   return result.rows.map(row => ({
     category: row.category,
-    revenue: parseInt(row.revenue),
-    orderCount: parseInt(row.order_count),
-    percentage: totalRevenue > 0 ? Math.round((parseInt(row.revenue) / totalRevenue) * 1000) / 10 : 0
+    revenue: parseFloat(row.revenue ?? '0') || 0,
+    orderCount: parseInt(row.order_count ?? '0') || 0,
+    percentage: totalRevenue > 0 ? Math.round(((parseFloat(row.revenue ?? '0') || 0) / totalRevenue) * 1000) / 10 : 0
   }))
 }
 

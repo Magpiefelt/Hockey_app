@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /orders/
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /thanks
+Disallow: /api/
+
+Sitemap: https://elitesportsdj.ca/sitemap.xml

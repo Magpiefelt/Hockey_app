@@ -124,9 +124,11 @@ definePageMeta({
 })
 
 useHead({
-  title: 'Thank You - Elite Sports DJ Services',
+  title: 'Thank You | Elite Sports DJ Services',
   meta: [
-    { name: 'description', content: 'Thank you for your service request. We will be in touch soon!' }
+    { name: 'description', content: 'Thank you for your service request. We will be in touch soon!' },
+    // noindex: post-submission confirmation pages should not appear in search results
+    { name: 'robots', content: 'noindex, nofollow' }
   ]
 })
 

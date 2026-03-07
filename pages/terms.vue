@@ -127,8 +127,9 @@
             If you have any questions about these Terms, please contact us:
           </p>
           <div class="mt-4 space-y-2">
-            <p><strong class="text-white">Email:</strong> info@elitesportsdj.com</p>
-            <p><strong class="text-white">Phone:</strong> (555) 123-4567</p>
+            <p><strong class="text-white">Email:</strong> info@elitesportsdj.ca</p>
+            <!-- TODO: Replace with real business phone number -->
+            <p><strong class="text-white">Website:</strong> elitesportsdj.ca</p>
           </div>
         </section>
 
@@ -151,9 +152,13 @@ definePageMeta({
 })
 
 useHead({
-  title: 'Terms of Service - Elite Sports DJ Services',
+  title: 'Terms of Service | Elite Sports DJ Services',
   meta: [
-    { name: 'description', content: 'Read the terms and conditions for using Elite Sports DJ Services.' }
+    { name: 'description', content: 'Read the terms and conditions for using Elite Sports DJ Services, including booking policies, payment terms, and service agreements.' },
+    { name: 'robots', content: 'index, follow' }
+  ],
+  link: [
+    { rel: 'canonical', href: 'https://elitesportsdj.ca/terms' }
   ]
 })
 </script>

@@ -77,19 +77,26 @@ export default defineNuxtConfig({
         { name: 'robots', content: 'index, follow' },
         
         // Open Graph / Facebook
+        // FIX: corrected domain from elitesportsdj.com to elitesportsdj.ca (live site)
+        // FIX: og:image must be an absolute URL for social crawlers to resolve it
         { property: 'og:type', content: 'website' },
-        { property: 'og:url', content: 'https://elitesportsdj.com/' },
+        { property: 'og:url', content: 'https://elitesportsdj.ca/' },
         { property: 'og:title', content: 'Elite Sports DJ Services | Professional Game Day Entertainment' },
         { property: 'og:description', content: 'Professional DJ services for hockey, lacrosse, baseball, basketball and sports events. Trusted by 50+ teams with 500+ events covered.' },
-        { property: 'og:image', content: '/logo.png' },
+        { property: 'og:image', content: 'https://elitesportsdj.ca/logo.png' },
+        { property: 'og:image:width', content: '512' },
+        { property: 'og:image:height', content: '512' },
+        { property: 'og:image:alt', content: 'Elite Sports DJ Logo' },
         { property: 'og:site_name', content: 'Elite Sports DJ' },
+        { property: 'og:locale', content: 'en_CA' },
         
-        // Twitter
+        // Twitter / X
         { name: 'twitter:card', content: 'summary_large_image' },
-        { name: 'twitter:url', content: 'https://elitesportsdj.com/' },
+        { name: 'twitter:url', content: 'https://elitesportsdj.ca/' },
         { name: 'twitter:title', content: 'Elite Sports DJ Services | Professional Game Day Entertainment' },
         { name: 'twitter:description', content: 'Professional DJ services for hockey, lacrosse, baseball, basketball and sports events. Trusted by 50+ teams.' },
-        { name: 'twitter:image', content: '/logo.png' },
+        { name: 'twitter:image', content: 'https://elitesportsdj.ca/logo.png' },
+        { name: 'twitter:image:alt', content: 'Elite Sports DJ Logo' },
         
         // Additional SEO
         { name: 'theme-color', content: '#0891b2' },
@@ -99,7 +106,10 @@ export default defineNuxtConfig({
       link: [
         { rel: 'icon', type: 'image/png', href: '/logo.png' },
         { rel: 'apple-touch-icon', href: '/logo.png' },
-        { rel: 'canonical', href: 'https://elitesportsdj.com/' },
+        // FIX: corrected canonical domain from .com to .ca
+        { rel: 'canonical', href: 'https://elitesportsdj.ca/' },
+        // Web App Manifest
+        { rel: 'manifest', href: '/site.webmanifest' },
         { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
         { rel: 'preconnect', href: 'https://images.unsplash.com' },
@@ -185,13 +195,17 @@ export default defineNuxtConfig({
     '/request': { cache: false },
     '/admin/**': { cache: false },
     '/orders/**': { cache: false },
-    // API routes
-    '/api/**': { cors: true },
+    // API routes — FIX: removed blanket cors:true on all /api/** routes.
+    // CORS is handled per-request in server/middleware/02.cors.ts with origin allowlist.
+    // Only the health endpoint needs explicit cache; tRPC and webhooks handle their own CORS.
     '/api/health': { cache: { maxAge: 60 } },
     '/api/metrics': { cache: false },
     // Static assets with long cache
     '/_nuxt/**': { static: true, headers: { 'cache-control': 'public, max-age=31536000, immutable' } },
     '/videos/**': { headers: { 'cache-control': 'public, max-age=86400' } },
-    '/logo.png': { headers: { 'cache-control': 'public, max-age=86400' } }
+    '/logo.png': { headers: { 'cache-control': 'public, max-age=86400' } },
+    // Serve sitemap and robots with correct content-type
+    '/sitemap.xml': { headers: { 'content-type': 'application/xml; charset=utf-8' } },
+    '/robots.txt': { headers: { 'content-type': 'text/plain; charset=utf-8' } }
   }
 })

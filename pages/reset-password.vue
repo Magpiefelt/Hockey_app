@@ -164,13 +164,15 @@ definePageMeta({
 })
 
 useHead({
-  title: 'Reset Password - Elite Sports DJ Services',
+  title: 'Reset Password | Elite Sports DJ',
   meta: [
-    { name: 'description', content: 'Reset your password for Elite Sports DJ Services' }
+    { name: 'description', content: 'Reset your password for Elite Sports DJ Services.' },
+    // noindex: password reset pages should not appear in search results
+    { name: 'robots', content: 'noindex, nofollow' }
   ]
 })
 
-const { $client } = useNuxtApp()
+const trpc = useTrpc()
 const route = useRoute()
 const router = useRouter()
 
@@ -229,7 +231,7 @@ const handleSubmit = async () => {
   error.value = ''
   
   try {
-    const result = await $client.auth.resetPassword.mutate({
+    const result = await trpc.auth.resetPassword.mutate({
       token: token.value,
       newPassword: password.value
     })

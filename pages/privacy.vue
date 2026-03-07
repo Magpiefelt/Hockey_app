@@ -105,8 +105,9 @@
             If you have any questions about this Privacy Policy, please contact us:
           </p>
           <div class="mt-4 space-y-2">
-            <p><strong class="text-white">Email:</strong> info@elitesportsdj.com</p>
-            <p><strong class="text-white">Phone:</strong> (555) 123-4567</p>
+            <p><strong class="text-white">Email:</strong> info@elitesportsdj.ca</p>
+            <!-- TODO: Replace with real business phone number -->
+            <p><strong class="text-white">Website:</strong> elitesportsdj.ca</p>
           </div>
         </section>
 
@@ -129,9 +130,13 @@ definePageMeta({
 })
 
 useHead({
-  title: 'Privacy Policy - Elite Sports DJ Services',
+  title: 'Privacy Policy | Elite Sports DJ Services',
   meta: [
-    { name: 'description', content: 'Learn how Elite Sports DJ Services collects, uses, and protects your personal information.' }
+    { name: 'description', content: 'Learn how Elite Sports DJ Services collects, uses, and protects your personal information in compliance with Canadian privacy law.' },
+    { name: 'robots', content: 'index, follow' }
+  ],
+  link: [
+    { rel: 'canonical', href: 'https://elitesportsdj.ca/privacy' }
   ]
 })
 </script>

@@ -183,9 +183,9 @@ const EMBEDDED_MIGRATIONS: EmbeddedMigration[] = [
 
       INSERT INTO settings (key, value, description) VALUES
         ('tax_settings', '{"defaultProvince": "AB", "autoApplyTax": true, "includeInPrice": false, "roundingMethod": "standard"}', 'Tax calculation settings'),
-        ('invoice_settings', '{"companyName": "Elite Sports DJ", "companyAddress": "Calgary, Alberta, Canada", "companyPhone": "", "companyEmail": "info@elitesportsdj.com", "paymentTermsDays": 14, "invoicePrefix": "INV-", "nextInvoiceNumber": 1001, "defaultNotes": "Thank you for your business! Payment is due within 14 days.", "autoSendOnQuoteAccept": true}', 'Invoice generation settings'),
+        ('invoice_settings', '{"companyName": "Elite Sports DJ", "companyAddress": "Calgary, Alberta, Canada", "companyPhone": "", "companyEmail": "info@elitesportsdj.ca", "paymentTermsDays": 14, "invoicePrefix": "INV-", "nextInvoiceNumber": 1001, "defaultNotes": "Thank you for your business! Payment is due within 14 days.", "autoSendOnQuoteAccept": true}', 'Invoice generation settings'),
         ('reminder_settings', '{"daysBefore": [7, 3, 1], "daysAfter": [1, 3, 7, 14], "maxReminders": 6}', 'Payment reminder schedule settings'),
-        ('business_info', '{"businessName": "Elite Sports DJ", "businessNumber": "", "gstNumber": "", "address": "Calgary, AB", "phone": "", "email": "info@elitesportsdj.com"}', 'Business information for invoices and reports')
+        ('business_info', '{"businessName": "Elite Sports DJ", "businessNumber": "", "gstNumber": "", "address": "Calgary, AB", "phone": "", "email": "info@elitesportsdj.ca"}', 'Business information for invoices and reports')
       ON CONFLICT (key) DO NOTHING;
     `
   },

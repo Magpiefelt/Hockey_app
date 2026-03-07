@@ -264,7 +264,8 @@ export const ordersRouter = router({
                   goalHorn: input.goalHorn
                 }
               })
-              throw new Error(`Database error: ${dbError.message}. Please check that all song fields are properly formatted.`)
+              // FIX: do not expose raw DB error messages to the client
+              throw new Error('Unable to save song selections. Please check that all song fields are properly formatted and try again.')
             }
           }
         }

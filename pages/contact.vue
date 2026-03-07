@@ -168,7 +168,7 @@
               <Icon name="mdi:email" class="h-6 w-6 text-white" />
             </div>
             <h3 class="text-lg font-bold text-white mb-2">Email Us</h3>
-            <p class="text-slate-300 text-sm">info@elitesportsdj.com</p>
+            <p class="text-slate-300 text-sm">info@elitesportsdj.ca</p>
           </div>
 
           <div class="card p-6 text-center">
@@ -176,7 +176,8 @@
               <Icon name="mdi:phone" class="h-6 w-6 text-white" />
             </div>
             <h3 class="text-lg font-bold text-white mb-2">Call Us</h3>
-            <p class="text-slate-300 text-sm">(555) 123-4567</p>
+            <!-- TODO: Replace with real business phone number -->
+            <p class="text-slate-300 text-sm">Contact us by email</p>
           </div>
 
           <div class="card p-6 text-center">
@@ -195,9 +196,26 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 
-definePageMeta({
-  title: 'Contact Us - Elite Sports DJ',
-  description: 'Get in touch with Elite Sports DJ for questions about our services or to discuss your event.'
+definePageMeta({ layout: 'default' })
+
+useHead({
+  title: 'Contact Us | Elite Sports DJ Services',
+  meta: [
+    { name: 'description', content: 'Get in touch with Elite Sports DJ. Request a quote, ask about our services, or discuss your upcoming sports event. We respond within 24 hours.' },
+    { name: 'robots', content: 'index, follow' },
+    { property: 'og:type', content: 'website' },
+    { property: 'og:url', content: 'https://elitesportsdj.ca/contact' },
+    { property: 'og:title', content: 'Contact Us | Elite Sports DJ Services' },
+    { property: 'og:description', content: 'Get in touch with Elite Sports DJ. Request a quote, ask about our services, or discuss your upcoming sports event.' },
+    { property: 'og:image', content: 'https://elitesportsdj.ca/logo.png' },
+    { property: 'og:site_name', content: 'Elite Sports DJ' },
+    { name: 'twitter:card', content: 'summary' },
+    { name: 'twitter:title', content: 'Contact Us | Elite Sports DJ Services' },
+    { name: 'twitter:description', content: 'Get in touch with Elite Sports DJ for your sports event entertainment needs.' }
+  ],
+  link: [
+    { rel: 'canonical', href: 'https://elitesportsdj.ca/contact' }
+  ]
 })
 
 const trpc = useTrpc()

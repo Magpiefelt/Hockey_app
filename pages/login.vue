@@ -186,9 +186,11 @@ const handleLogin = async () => {
 }
 
 useHead({
-  title: 'Login - Elite Sports DJ',
+  title: 'Login | Elite Sports DJ',
   meta: [
-    { name: 'description', content: 'Sign in to your Elite Sports DJ account' }
+    { name: 'description', content: 'Sign in to your Elite Sports DJ account' },
+    // noindex: login pages should not appear in search results
+    { name: 'robots', content: 'noindex, nofollow' }
   ]
 })
 </script>

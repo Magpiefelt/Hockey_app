@@ -188,9 +188,15 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 
-definePageMeta({
-  title: 'Register - Elite Sports DJ',
-  description: 'Create an account to manage your bookings with Elite Sports DJ.'
+definePageMeta({ layout: 'default' })
+
+useHead({
+  title: 'Create Account | Elite Sports DJ',
+  meta: [
+    { name: 'description', content: 'Create an account to manage your bookings with Elite Sports DJ.' },
+    // noindex: registration pages should not appear in search results
+    { name: 'robots', content: 'noindex, nofollow' }
+  ]
 })
 
 const router = useRouter()
@@ -284,7 +290,11 @@ const validateForm = () => {
          !errors.confirmPassword && !errors.agreeToTerms
 }
 
+const trpc = useTrpc()
+
 const handleRegister = async () => {
+  // Double-submit guard
+  if (isSubmitting.value) return
   if (!validateForm()) {
     errorMessage.value = 'Please fix the errors above before submitting.'
     return
@@ -294,10 +304,8 @@ const handleRegister = async () => {
   errorMessage.value = ''
 
   try {
-    const { $client } = useNuxtApp()
-    
-    // Call tRPC auth.register mutation
-    await $client.auth.register.mutate({
+    // Use useTrpc() composable (has built-in error handling and null checks)
+    await trpc.auth.register.mutate({
       name: formData.name,
       email: formData.email,
       password: formData.password

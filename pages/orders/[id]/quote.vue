@@ -509,7 +509,8 @@ const statusDisplay = computed(() => {
           <div class="mt-8 pt-8 border-t border-gray-200 text-center">
             <p class="text-gray-500 mb-2">Questions about this quote?</p>
             <p class="text-gray-700">
-              📞 (555) 123-4567 &nbsp;|&nbsp; 📧 info@elitesportsdj.com
+              <!-- TODO: Replace with real business phone number -->
+              📧 info@elitesportsdj.ca
             </p>
           </div>
         </div>

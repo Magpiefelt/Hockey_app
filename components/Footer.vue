@@ -144,8 +144,8 @@
           <ul class="space-y-3">
             <li class="flex items-start gap-2 text-sm text-slate-400">
               <Icon name="mdi:email" class="mt-0.5 h-5 w-5 flex-shrink-0 text-cyan-400" />
-              <a href="mailto:info@elitesportsdj.com" class="transition-colors hover:text-cyan-400">
-                info@elitesportsdj.com
+              <a href="mailto:info@elitesportsdj.ca" class="transition-colors hover:text-cyan-400">
+                info@elitesportsdj.ca
               </a>
             </li>
             <li class="flex items-start gap-2 text-sm text-slate-400">

@@ -208,19 +208,13 @@
             We're here to answer any questions you have
           </p>
           <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            <!-- TODO: Replace href with real business phone number when available -->
             <a
-              href="tel:+15551234567"
-              class="inline-flex items-center gap-2 px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-lg border border-white/20 hover:border-white/30 transition-all duration-200 backdrop-blur-sm"
-            >
-              <Icon name="mdi:phone" class="w-5 h-5" />
-              (555) 123-4567
-            </a>
-            <a
-              href="mailto:info@elitesportsdj.com"
+              href="mailto:info@elitesportsdj.ca"
               class="inline-flex items-center gap-2 px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-lg border border-white/20 hover:border-white/30 transition-all duration-200 backdrop-blur-sm"
             >
               <Icon name="mdi:email" class="w-5 h-5" />
-              info@elitesportsdj.com
+              info@elitesportsdj.ca
             </a>
           </div>
         </div>
@@ -239,9 +233,22 @@ definePageMeta({
 })
 
 useHead({
-  title: 'Request Service - Elite Sports DJ Services',
+  title: 'Request DJ Service | Elite Sports DJ',
   meta: [
-    { name: 'description', content: 'Contact us to book professional DJ services for your game day or event.' }
+    { name: 'description', content: 'Book professional DJ services for your hockey, lacrosse, baseball, or basketball event. Fill out our quick request form and receive a custom quote within 24 hours.' },
+    { name: 'robots', content: 'index, follow' },
+    { property: 'og:type', content: 'website' },
+    { property: 'og:url', content: 'https://elitesportsdj.ca/request' },
+    { property: 'og:title', content: 'Request DJ Service | Elite Sports DJ' },
+    { property: 'og:description', content: 'Book professional DJ services for your sports event. Receive a custom quote within 24 hours.' },
+    { property: 'og:image', content: 'https://elitesportsdj.ca/logo.png' },
+    { property: 'og:site_name', content: 'Elite Sports DJ' },
+    { name: 'twitter:card', content: 'summary' },
+    { name: 'twitter:title', content: 'Request DJ Service | Elite Sports DJ' },
+    { name: 'twitter:description', content: 'Book professional DJ services for your sports event. Receive a custom quote within 24 hours.' }
+  ],
+  link: [
+    { rel: 'canonical', href: 'https://elitesportsdj.ca/request' }
   ]
 })
 

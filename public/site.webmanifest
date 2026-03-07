@@ -1,0 +1,16 @@
+{
+  "name": "Elite Sports DJ Services",
+  "short_name": "Elite Sports DJ",
+  "description": "Professional DJ services for hockey, lacrosse, baseball, basketball and sports events.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#121212",
+  "theme_color": "#0891b2",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "any",
+      "type": "image/png"
+    }
+  ]
+}

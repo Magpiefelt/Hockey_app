@@ -53,7 +53,7 @@ const DEFAULT_INVOICE_SETTINGS: InvoiceSettings = {
   companyName: 'Elite Sports DJ',
   companyAddress: 'Calgary, Alberta, Canada',
   companyPhone: '',
-  companyEmail: 'info@elitesportsdj.com',
+  companyEmail: 'info@elitesportsdj.ca',
   paymentTermsDays: 14,
   invoicePrefix: 'INV-',
   nextInvoiceNumber: 1001,
@@ -518,8 +518,9 @@ export async function getInvoiceAgingSummary(): Promise<{
   
   for (const row of result.rows) {
     buckets[row.age_bucket] = {
-      count: parseInt(row.count),
-      amount: parseInt(row.amount)
+      count: parseInt(row.count ?? '0') || 0,
+      // FIX: use parseFloat for monetary amounts — integer truncation loses cents
+      amount: parseFloat(row.amount ?? '0') || 0
     }
   }
   

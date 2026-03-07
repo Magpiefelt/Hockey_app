@@ -48,7 +48,7 @@
               @click="userMenuOpen = !userMenuOpen"
               class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-white"
               aria-label="User menu"
-              aria-expanded="userMenuOpen"
+              :aria-expanded="userMenuOpen"
               aria-haspopup="true"
             >
               <Icon name="mdi:account-circle" class="h-6 w-6" />
@@ -104,7 +104,9 @@
           <button
             @click="mobileMenuOpen = !mobileMenuOpen"
             class="rounded-lg p-2 text-slate-300 transition-colors hover:bg-white/5 hover:text-white md:hidden"
-            aria-label="Toggle menu"
+            :aria-label="mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'"
+            :aria-expanded="mobileMenuOpen"
+            aria-controls="mobile-nav"
           >
             <Icon :name="mobileMenuOpen ? 'mdi:close' : 'mdi:menu'" class="h-6 w-6" />
           </button>
@@ -114,7 +116,10 @@
       <!-- Mobile Navigation -->
       <div
         v-if="mobileMenuOpen"
+        id="mobile-nav"
         class="border-t border-white/10 py-4 md:hidden"
+        role="navigation"
+        aria-label="Mobile navigation"
       >
         <nav class="flex flex-col gap-1">
           <NuxtLink

@@ -753,6 +753,88 @@ definePageMeta({
 })
 
 // ============================================
+// SEO: Per-page head tags, canonical URL, Open Graph, and JSON-LD structured data
+// ============================================
+useHead({
+  title: 'Elite Sports DJ Services | Professional Game Day Entertainment',
+  meta: [
+    { name: 'description', content: 'Professional DJ services for hockey, lacrosse, baseball, basketball and sports events. Expert player introductions, game day entertainment, and event hosting. Trusted by 50+ teams across Canada.' },
+    { name: 'robots', content: 'index, follow' },
+    { property: 'og:type', content: 'website' },
+    { property: 'og:url', content: 'https://elitesportsdj.ca/' },
+    { property: 'og:title', content: 'Elite Sports DJ Services | Professional Game Day Entertainment' },
+    { property: 'og:description', content: 'Professional DJ services for hockey, lacrosse, baseball, basketball and sports events. Trusted by 50+ teams with 500+ events covered.' },
+    { property: 'og:image', content: 'https://elitesportsdj.ca/logo.png' },
+    { property: 'og:image:alt', content: 'Elite Sports DJ Logo' },
+    { property: 'og:site_name', content: 'Elite Sports DJ' },
+    { name: 'twitter:card', content: 'summary_large_image' },
+    { name: 'twitter:title', content: 'Elite Sports DJ Services | Professional Game Day Entertainment' },
+    { name: 'twitter:description', content: 'Professional DJ services for hockey, lacrosse, baseball, basketball and sports events. Trusted by 50+ teams.' },
+    { name: 'twitter:image', content: 'https://elitesportsdj.ca/logo.png' }
+  ],
+  link: [
+    { rel: 'canonical', href: 'https://elitesportsdj.ca/' }
+  ],
+  script: [
+    {
+      type: 'application/ld+json',
+      children: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'LocalBusiness',
+        '@id': 'https://elitesportsdj.ca/#business',
+        name: 'Elite Sports DJ',
+        description: 'Professional DJ services for hockey, lacrosse, baseball, basketball and sports events. Expert player introductions, game day entertainment, and event hosting.',
+        url: 'https://elitesportsdj.ca',
+        logo: 'https://elitesportsdj.ca/logo.png',
+        image: 'https://elitesportsdj.ca/logo.png',
+        email: 'info@elitesportsdj.ca',
+        priceRange: '$$',
+        areaServed: {
+          '@type': 'Country',
+          name: 'Canada'
+        },
+        serviceType: [
+          'Sports DJ Services',
+          'Game Day Entertainment',
+          'Player Introductions',
+          'Event Hosting',
+          'Hockey DJ',
+          'Lacrosse DJ',
+          'Basketball DJ',
+          'Baseball DJ'
+        ],
+        sameAs: [
+          'https://facebook.com/elitesportsdj',
+          'https://instagram.com/elitesportsdj',
+          'https://twitter.com/elitesportsdj',
+          'https://youtube.com/@elitesportsdj',
+          'https://linkedin.com/company/elitesportsdj'
+        ]
+      })
+    },
+    {
+      type: 'application/ld+json',
+      children: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'WebSite',
+        '@id': 'https://elitesportsdj.ca/#website',
+        url: 'https://elitesportsdj.ca',
+        name: 'Elite Sports DJ Services',
+        description: 'Professional game day entertainment for sports events across Canada.',
+        potentialAction: {
+          '@type': 'SearchAction',
+          target: {
+            '@type': 'EntryPoint',
+            urlTemplate: 'https://elitesportsdj.ca/?q={search_term_string}'
+          },
+          'query-input': 'required name=search_term_string'
+        }
+      })
+    }
+  ]
+})
+
+// ============================================
 // Dynamic Package Data (from database via tRPC)
 // ============================================
 interface HomePackage {

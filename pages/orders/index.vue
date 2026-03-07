@@ -161,9 +161,11 @@ onMounted(() => {
 })
 
 useHead({
-  title: 'My Orders - Elite Sports DJ',
+  title: 'My Orders | Elite Sports DJ',
   meta: [
-    { name: 'description', content: 'View and manage your service orders' }
+    { name: 'description', content: 'View and manage your service orders.' },
+    // noindex: authenticated customer pages should not appear in search results
+    { name: 'robots', content: 'noindex, nofollow' }
   ]
 })
 </script>

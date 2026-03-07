@@ -27,12 +27,12 @@ interface EmailOptions {
 const getAppBaseUrl = () => {
   try {
     const config = useRuntimeConfig()
-    return config.public.appBaseUrl || 'https://elitesportsdj.com'
+    return config.public.appBaseUrl || 'https://elitesportsdj.ca'
   } catch {
-    return process.env.APP_URL || 'https://elitesportsdj.com'
+    return process.env.APP_URL || 'https://elitesportsdj.ca'
   }
 }
-const getAdminEmail = () => process.env.ADMIN_EMAIL || 'admin@elitesportsdj.com'
+const getAdminEmail = () => process.env.ADMIN_EMAIL || 'admin@elitesportsdj.ca'
 
 /**
  * Log email to database with metadata for resend capability
@@ -701,7 +701,7 @@ export async function sendManualCompletionEmail(data: ManualCompletionEmailData)
         </div>
         
         <div class="footer">
-          <p>Questions? Contact us at info@elitesportsdj.com</p>
+          <p>Questions? Contact us at info@elitesportsdj.ca</p>
           <p style="margin-top: 10px;">&copy; ${new Date().getFullYear()} Elite Sports DJ. All rights reserved.</p>
         </div>
       </div>

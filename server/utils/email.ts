@@ -207,8 +207,8 @@ export async function sendOrderConfirmation(data: OrderConfirmationData): Promis
           
           <p>If you have any questions, feel free to contact us:</p>
           <p>
-            Phone: (555) 123-4567<br>
-            Email: info@elitesportsdj.com
+            <!-- TODO: Replace with real business phone number -->
+            Email: info@elitesportsdj.ca
           </p>
           
           <p>Thank you for choosing Elite Sports DJ!</p>
@@ -283,8 +283,8 @@ export async function sendQuoteEmail(data: QuoteEmailData): Promise<boolean> {
           <p><strong>Next Steps:</strong></p>
           <p>To proceed with this quote, please reply to this email or contact us at:</p>
           <p>
-            Phone: (555) 123-4567<br>
-            Email: info@elitesportsdj.com
+            <!-- TODO: Replace with real business phone number -->
+            Email: info@elitesportsdj.ca
           </p>
           
           <p>This quote is valid for 30 days from the date of this email.</p>
@@ -366,8 +366,8 @@ export async function sendInvoiceEmail(data: InvoiceEmailData): Promise<boolean>
           
           <p>Questions? Contact us:</p>
           <p>
-            Phone: (555) 123-4567<br>
-            Email: info@elitesportsdj.com
+            <!-- TODO: Replace with real business phone number -->
+            Email: info@elitesportsdj.ca
           </p>
           
           <p>Thank you for your business!</p>
@@ -446,8 +446,8 @@ export async function sendPaymentReceipt(data: PaymentReceiptData): Promise<bool
           
           <p>Questions? We're here to help:</p>
           <p>
-            Phone: (555) 123-4567<br>
-            Email: info@elitesportsdj.com
+            <!-- TODO: Replace with real business phone number -->
+            Email: info@elitesportsdj.ca
           </p>
           
           <p>Thank you for choosing Elite Sports DJ!</p>
@@ -597,8 +597,8 @@ export async function sendPasswordResetEmail(data: PasswordResetData): Promise<b
           
           <p>Questions? Contact us:</p>
           <p>
-            Phone: (555) 123-4567<br>
-            Email: info@elitesportsdj.com
+            <!-- TODO: Replace with real business phone number -->
+            Email: info@elitesportsdj.ca
           </p>
           
           <p>Best regards,<br>The Elite Sports DJ Team</p>

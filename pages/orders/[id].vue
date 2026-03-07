@@ -604,9 +604,11 @@ onMounted(() => {
 })
 
 useHead({
-  title: () => `Order #${orderId.value} - Elite Sports DJ`,
+  title: () => `Order #${orderId.value} | Elite Sports DJ`,
   meta: [
-    { name: 'description', content: 'View order details' }
+    { name: 'description', content: 'View order details.' },
+    // noindex: individual order pages should not appear in search results
+    { name: 'robots', content: 'noindex, nofollow' }
   ]
 })
 </script>
