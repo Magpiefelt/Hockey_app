@@ -910,7 +910,13 @@ useHead({
 })
 
 // SEO: Dynamic FAQPage JSON-LD — runs server-side so FAQ content is indexable by crawlers.
-useHead(computed(() => ({
+// FIX: Use getter function () => ({}) instead of computed(() => ({})). In @unhead/vue v2.x,
+// passing a computed() ref triggers a race condition: onUnmounted fires r.dispose() before
+// the internal watchEffect has assigned r, causing:
+//   TypeError: Cannot read properties of undefined (reading 'dispose')
+// which crashes Vue hydration and shows the 500 error page to all visitors.
+// The getter function form is the correct reactive API for useHead in @unhead/vue v2.x.
+useHead(() => ({
   script: [
     {
       type: 'application/ld+json',
@@ -929,7 +935,7 @@ useHead(computed(() => ({
       })
     }
   ]
-})))
+}))
 
 // ============================================
 // Dynamic Package Data (from database via tRPC)
