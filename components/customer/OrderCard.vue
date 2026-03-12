@@ -159,7 +159,8 @@ const statusOrder = [
   'paid', 
   'in_progress', 
   'completed', 
-  'delivered'
+  'delivered',
+  'refunded'
 ]
 
 function isStepCompleted(stepStatus: string, currentStatus: string): boolean {
@@ -186,7 +187,8 @@ function getStatusLabel(status: string): string {
     'in_progress': 'In Progress',
     'completed': 'Completed',
     'delivered': 'Delivered',
-    'cancelled': 'Cancelled'
+    'cancelled': 'Cancelled',
+    'refunded': 'Refunded'
   }
   return labels[status] || status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, ' ')
 }
@@ -202,7 +204,8 @@ function getStatusIcon(status: string): string {
     'in_progress': 'mdi:progress-clock',
     'completed': 'mdi:check-circle',
     'delivered': 'mdi:package-variant-closed',
-    'cancelled': 'mdi:close-circle'
+    'cancelled': 'mdi:close-circle',
+    'refunded': 'mdi:cash-refund'
   }
   return icons[status] || 'mdi:circle'
 }

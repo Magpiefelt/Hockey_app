@@ -586,19 +586,18 @@ const { showError, showSuccess } = useNotification()
 
 const orderId = computed(() => parseInt(route.params.id as string))
 
-// Load packages from content
-// BUG FIX: add try/catch + default to prevent SSR 500 crashes if content is unavailable
+// Load packages from database via tRPC (consistent with other pages)
 const { data: packagesData } = await useAsyncData('packages', async () => {
   try {
-    return await queryContent('/packages').findOne()
+    return await trpc.packages.getAll.query()
   } catch {
-    return null
+    return [] as any[]
   }
-}, { default: () => null })
-const packages = computed(() => packagesData.value?.body || [])
+}, { default: () => [] as any[] })
+const packages = computed(() => packagesData.value || [])
 
 const getPackageName = (packageId: string) => {
-  const pkg = packages.value.find((p: any) => p.id === packageId)
+  const pkg = packages.value.find((p: any) => p.id === packageId || p.slug === packageId)
   return pkg?.name || packageId
 }
 

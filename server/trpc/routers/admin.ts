@@ -268,7 +268,9 @@ export const adminRouter = router({
           orderResult = await query(
             `SELECT 
               qr.id, qr.user_id, qr.contact_name as name, qr.contact_email as email,
-              qr.contact_phone as phone, qr.organization, qr.status, qr.event_date, qr.service_type,
+              qr.contact_phone as phone, qr.organization, qr.status, qr.event_date,
+              qr.event_datetime, qr.event_time,
+              qr.service_type,
               qr.sport_type, qr.notes, qr.admin_notes,
               qr.quoted_amount, qr.total_amount, qr.created_at, qr.updated_at,
               p.slug as package_id, p.name as package_name,
@@ -286,7 +288,9 @@ export const adminRouter = router({
           orderResult = await query(
             `SELECT 
               qr.id, qr.user_id, qr.contact_name as name, qr.contact_email as email,
-              qr.contact_phone as phone, NULL as organization, qr.status, qr.event_date, qr.service_type,
+              qr.contact_phone as phone, NULL as organization, qr.status, qr.event_date,
+              qr.event_datetime, qr.event_time,
+              qr.service_type,
               qr.sport_type, NULL as notes, qr.admin_notes,
               qr.quoted_amount, qr.total_amount, qr.created_at, qr.updated_at,
               p.slug as package_id, p.name as package_name,
@@ -362,6 +366,9 @@ export const adminRouter = router({
             status: order.status,
             quotedAmount: order.quoted_amount,
             totalAmount: order.total_amount,
+            eventDate: order.event_date ? new Date(order.event_date).toISOString().split('T')[0] : null,
+            eventDateTime: order.event_datetime?.toISOString() || null,
+            eventTime: order.event_time ? String(order.event_time).substring(0, 5) : null,
             notes: order.notes,
             adminNotes: order.admin_notes,
             createdAt: order.created_at.toISOString(),
@@ -450,9 +457,10 @@ export const adminRouter = router({
               'quote_viewed': ['invoiced', 'in_progress', 'cancelled'],
               'quote_accepted': ['invoiced', 'in_progress', 'cancelled'],
               'invoiced': ['paid', 'cancelled'],
-              'paid': ['completed', 'delivered'],
-              'completed': ['delivered'],
-              'delivered': [], // Terminal state
+              'paid': ['completed', 'delivered', 'refunded'],
+              'completed': ['delivered', 'refunded'],
+              'delivered': ['refunded'],
+              'refunded': [], // Terminal state
               'cancelled': [] // Terminal state
             }
             
@@ -548,6 +556,14 @@ export const adminRouter = router({
                 'delivered': {
                   subject: 'Order Delivered',
                   message: 'Your order has been delivered! You can now download your files.'
+                },
+                'refunded': {
+                  subject: 'Refund Processed',
+                  message: 'Your refund has been processed. Please allow 5-10 business days for the refund to appear on your statement.'
+                },
+                'cancelled': {
+                  subject: 'Order Cancelled',
+                  message: 'Your order has been cancelled. If you have any questions, please don\'t hesitate to contact us.'
                 }
               }
               
@@ -1164,9 +1180,10 @@ export const adminRouter = router({
         'quote_viewed': ['invoiced', 'in_progress', 'cancelled'],
         'quote_accepted': ['invoiced', 'in_progress', 'cancelled'],
         'invoiced': ['paid', 'cancelled'],
-        'paid': ['completed', 'delivered'],
-        'completed': ['delivered'],
-        'delivered': [], // Terminal state
+        'paid': ['completed', 'delivered', 'refunded'],
+        'completed': ['delivered', 'refunded'],
+        'delivered': ['refunded'],
+        'refunded': [], // Terminal state
         'cancelled': [] // Terminal state
       }
 
@@ -1182,7 +1199,8 @@ export const adminRouter = router({
         'paid': 'Paid',
         'completed': 'Completed',
         'delivered': 'Delivered',
-        'cancelled': 'Cancelled'
+        'cancelled': 'Cancelled',
+        'refunded': 'Refunded'
       }
 
       const allowedStatuses = validTransitions[input.currentStatus] || []
@@ -1214,7 +1232,8 @@ export const adminRouter = router({
         { status: 'paid', label: 'Paid', color: 'green' },
         { status: 'completed', label: 'Completed', color: 'green' },
         { status: 'delivered', label: 'Delivered', color: 'green' },
-        { status: 'cancelled', label: 'Cancelled', color: 'red' }
+        { status: 'cancelled', label: 'Cancelled', color: 'red' },
+        { status: 'refunded', label: 'Refunded', color: 'orange' }
       ]
       
       return { statuses }

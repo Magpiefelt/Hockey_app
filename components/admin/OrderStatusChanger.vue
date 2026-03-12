@@ -109,10 +109,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 
 interface Props {
-  orderId: number
+  orderId: number | string
   currentStatus: string
 }
 
@@ -136,6 +136,12 @@ const isUpdating = ref(false)
 const isLoadingTransitions = ref(true)
 const error = ref('')
 const showSuccess = ref(false)
+
+// Timer cleanup per robustness checklist
+let successTimer: ReturnType<typeof setTimeout> | null = null
+onUnmounted(() => {
+  if (successTimer) { clearTimeout(successTimer); successTimer = null }
+})
 
 // Dynamic transitions from backend
 const allowedTransitions = ref<StatusTransition[]>([])
@@ -174,9 +180,10 @@ function getFallbackTransitions(status: string): StatusTransition[] {
     'quote_viewed': ['invoiced', 'in_progress', 'cancelled'],
     'quote_accepted': ['invoiced', 'in_progress', 'cancelled'],
     'invoiced': ['paid', 'cancelled'],
-    'paid': ['completed', 'delivered'],
-    'completed': ['delivered'],
-    'delivered': [],
+    'paid': ['completed', 'delivered', 'refunded'],
+    'completed': ['delivered', 'refunded'],
+    'delivered': ['refunded'],
+    'refunded': [],
     'cancelled': []
   }
   
@@ -198,9 +205,10 @@ function formatStatus(status: string): string {
     'in_progress': 'In Progress',
     'completed': 'Completed',
     'delivered': 'Delivered',
-    'cancelled': 'Cancelled'
+    'cancelled': 'Cancelled',
+    'refunded': 'Refunded'
   }
-  return statusMap[status] || status
+  return statusMap[status] || status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, ' ')
 }
 
 function getStatusLabel(status: string): string {
@@ -255,8 +263,10 @@ async function handleStatusChange() {
     statusNotes.value = ''
     
     // Hide success message after 3 seconds
-    setTimeout(() => {
+    if (successTimer) clearTimeout(successTimer)
+    successTimer = setTimeout(() => {
       showSuccess.value = false
+      successTimer = null
     }, 3000)
   } catch (err: any) {
     error.value = err.message || 'Failed to update status. Please try again.'

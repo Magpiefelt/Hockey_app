@@ -63,6 +63,7 @@
               <option value="completed">Completed</option>
               <option value="delivered">Delivered</option>
               <option value="cancelled">Cancelled</option>
+              <option value="refunded">Refunded</option>
             </select>
           </div>
           
@@ -156,7 +157,8 @@ function getStatusLabel(status: string): string {
     'in_progress': 'In Progress',
     'completed': 'Completed',
     'delivered': 'Delivered',
-    'cancelled': 'Cancelled'
+    'cancelled': 'Cancelled',
+    'refunded': 'Refunded'
   }
   return labels[status] || status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, ' ')
 }

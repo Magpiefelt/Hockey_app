@@ -403,7 +403,7 @@ const deliverableFiles = computed(() => {
 const showPaymentSection = computed(() => {
   return orderData.value?.order?.quotedAmount && 
          !orderData.value?.payment &&
-         !['paid', 'completed', 'delivered', 'cancelled'].includes(orderData.value?.order?.status)
+         !['paid', 'completed', 'delivered', 'cancelled', 'refunded'].includes(orderData.value?.order?.status)
 })
 
 // Show cancel button only for cancellable statuses
@@ -411,6 +411,12 @@ const canCancelOrder = computed(() => {
   const status = orderData.value?.order?.status
   const cancellableStatuses = ['submitted', 'quoted', 'quote_viewed', 'quote_accepted', 'invoiced']
   return status && cancellableStatuses.includes(status)
+})
+
+// Hide payment section for terminal/refunded statuses
+const isTerminalStatus = computed(() => {
+  const status = orderData.value?.order?.status
+  return status && ['paid', 'completed', 'delivered', 'cancelled', 'refunded'].includes(status)
 })
 
 // Status-based helpers
@@ -442,7 +448,8 @@ function getStatusBannerClass(status: string): string {
     'in_progress': 'bg-amber-50 border border-amber-200',
     'completed': 'bg-emerald-50 border border-emerald-200',
     'delivered': 'bg-slate-50 border border-slate-200',
-    'cancelled': 'bg-red-50 border border-red-200'
+    'cancelled': 'bg-red-50 border border-red-200',
+    'refunded': 'bg-orange-50 border border-orange-200'
   }
   return classes[status] || 'bg-slate-50 border border-slate-200'
 }
@@ -459,7 +466,8 @@ function getStatusHeaderClass(status: string): string {
     'in_progress': 'bg-amber-500 text-white',
     'completed': 'bg-emerald-600 text-white',
     'delivered': 'bg-slate-600 text-white',
-    'cancelled': 'bg-red-500 text-white'
+    'cancelled': 'bg-red-500 text-white',
+    'refunded': 'bg-orange-500 text-white'
   }
   return classes[status] || 'bg-slate-500 text-white'
 }
@@ -476,7 +484,8 @@ function getStatusIcon(status: string): string {
     'in_progress': 'mdi:progress-wrench',
     'completed': 'mdi:check-decagram',
     'delivered': 'mdi:package-variant-closed-check',
-    'cancelled': 'mdi:close-circle-outline'
+    'cancelled': 'mdi:close-circle-outline',
+    'refunded': 'mdi:cash-refund'
   }
   return icons[status] || 'mdi:help-circle-outline'
 }
@@ -492,7 +501,8 @@ function getNextActionHint(status: string): string | null {
     'in_progress': 'We are working on your order. Check back for updates.',
     'completed': 'Your files are ready for download below.',
     'delivered': null,
-    'cancelled': null
+    'cancelled': null,
+    'refunded': null
   }
   return hints[status] || null
 }
@@ -513,7 +523,8 @@ function getStatusDescription(status: string): string {
     'in_progress': 'Your order is being prepared. We\'ll notify you when it\'s ready.',
     'completed': 'Your order is complete! Download your files below.',
     'delivered': 'This order has been completed and delivered.',
-    'cancelled': 'This order has been cancelled.'
+    'cancelled': 'This order has been cancelled.',
+    'refunded': 'This order has been refunded. The refund will appear on your statement within 5-10 business days.'
   }
   return descriptions[status] || 'Order status unknown.'
 }
@@ -549,7 +560,8 @@ const getProgressHeight = (status: string) => {
     'paid': '50%',
     'in_progress': '66%',
     'completed': '100%',
-    'delivered': '100%'
+    'delivered': '100%',
+    'refunded': '100%'
   }
   return progressMap[status] || '0%'
 }

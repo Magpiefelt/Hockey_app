@@ -435,7 +435,8 @@ const statusOptions = [
   { label: 'In Progress', value: 'in_progress' },
   { label: 'Completed', value: 'completed' },
   { label: 'Delivered', value: 'delivered' },
-  { label: 'Cancelled', value: 'cancelled' }
+  { label: 'Cancelled', value: 'cancelled' },
+  { label: 'Refunded', value: 'refunded' }
 ]
 
 const packageOptions = computed(() => [
@@ -520,6 +521,9 @@ const visiblePages = computed(() => {
 
 // Debounce timer for search input
 let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null
+onUnmounted(() => {
+  if (searchDebounceTimer) { clearTimeout(searchDebounceTimer); searchDebounceTimer = null }
+})
 
 // When status filter changes, fetch immediately; when search changes, debounce
 watch(() => filters.value.status, () => {
