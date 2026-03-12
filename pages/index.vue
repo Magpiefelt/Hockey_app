@@ -1009,6 +1009,10 @@ const siteTestimonials = computed(() => {
   return items.length > 0 ? items : fallbackTestimonials
 })
 
+const getInitials = (name: string) => {
+  return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
+}
+
 const refreshHomePackages = () => refreshHomeData()
 
 const formatPackagePrice = (cents: number): string => {
