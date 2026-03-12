@@ -128,7 +128,7 @@
               </NuxtLink>
             </li>
             <li>
-              <a href="/#testimonials" class="text-sm text-slate-400 transition-colors hover:text-cyan-400">
+              <a href="/#testimonials" class="text-sm text-slate-400 transition-colors hover:text-cyan-400" aria-label="Read testimonials from our clients">
                 Testimonials
               </a>
             </li>
@@ -138,9 +138,9 @@
               </a>
             </li>
             <li>
-              <a href="/request" class="text-sm text-slate-400 transition-colors hover:text-cyan-400">
+              <NuxtLink to="/contact" class="text-sm text-slate-400 transition-colors hover:text-cyan-400">
                 Contact
-              </a>
+              </NuxtLink>
             </li>
           </ul>
         </div>
@@ -182,12 +182,12 @@
           </p>
           
           <div class="flex flex-wrap gap-6 text-sm">
-            <a href="#" class="text-slate-500 transition-colors hover:text-cyan-400">
+            <NuxtLink to="/privacy" class="text-slate-500 transition-colors hover:text-cyan-400">
               Privacy Policy
-            </a>
-            <a href="#" class="text-slate-500 transition-colors hover:text-cyan-400">
+            </NuxtLink>
+            <NuxtLink to="/terms" class="text-slate-500 transition-colors hover:text-cyan-400">
               Terms of Service
-            </a>
+            </NuxtLink>
           </div>
         </div>
       </div>

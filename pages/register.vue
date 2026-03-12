@@ -325,7 +325,7 @@ const handleRegister = async () => {
       router.push('/login?registered=true')
     }, 2000)
   } catch (error: any) {
-    console.error('Registration error:', error)
+    // Do not log raw error to console in production — avoids leaking internal details
     const serverMsg = error.data?.message || error.message || ''
     // Don't expose raw server errors — use a user-friendly fallback
     errorMessage.value = serverMsg.includes('Unable to create account')

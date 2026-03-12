@@ -39,7 +39,7 @@
         <ul class="space-y-2 mb-6">
           <li
             v-for="(feature, idx) in pkg.features"
-            :key="idx"
+            :key="feature"
             class="flex items-start gap-2 text-sm text-slate-300"
           >
             <Icon name="mdi:check-circle" class="w-4 h-4 text-cyan-400 flex-shrink-0 mt-0.5" />
@@ -105,7 +105,7 @@
         <tbody>
           <tr
             v-for="(feature, idx) in allFeatures"
-            :key="idx"
+            :key="feature"
             :class="idx % 2 === 0 ? 'bg-slate-800/30' : ''"
           >
             <td class="p-4 text-slate-300 border-b border-slate-700/50">

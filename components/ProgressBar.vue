@@ -17,7 +17,7 @@
     <div v-if="stepLabels && stepLabels.length" class="flex justify-between mt-2">
       <span
         v-for="(label, index) in stepLabels"
-        :key="index"
+        :key="label"
         class="text-xs"
         :class="index < currentStep ? 'text-cyan-400' : 'text-slate-500'"
       >

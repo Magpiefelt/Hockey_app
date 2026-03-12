@@ -254,7 +254,7 @@
     <HomeAvailabilityCalendar />
 
     <!-- How It Works Section - NEW -->
-    <section class="section relative bg-dark-primary overflow-hidden">
+    <section id="how-it-works" class="section relative bg-dark-primary overflow-hidden">
       <div class="absolute inset-0 opacity-5">
         <div class="absolute inset-0" style="
           background-image: radial-gradient(circle, rgba(59, 130, 246, 0.3) 1px, transparent 1px);
@@ -586,7 +586,7 @@
     </section>
 
     <!-- Testimonials Section - NEW -->
-    <section class="section relative bg-dark-secondary overflow-hidden">
+    <section id="testimonials" class="section relative bg-dark-secondary overflow-hidden">
       <div class="absolute inset-0 opacity-5">
         <div class="absolute inset-0" style="
           background-image: repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(59, 130, 246, 0.3) 35px, rgba(59, 130, 246, 0.3) 70px);
@@ -635,7 +635,7 @@
     </section>
 
     <!-- Gallery Section -->
-    <section class="section relative bg-dark-primary overflow-hidden">
+    <section id="gallery" class="section relative bg-dark-primary overflow-hidden">
       <div class="absolute inset-0 opacity-5">
         <div class="absolute inset-0" style="
           background-image: radial-gradient(circle, rgba(59, 130, 246, 0.3) 1px, transparent 1px);
@@ -662,7 +662,7 @@
     </section>
 
     <!-- FAQ Section - NEW -->
-    <section class="section relative bg-dark-secondary overflow-hidden">
+    <section id="faq" class="section relative bg-dark-secondary overflow-hidden">
       <div class="absolute inset-0 opacity-5">
         <div class="absolute inset-0" style="
           background-image: repeating-linear-gradient(90deg, transparent, transparent 50px, rgba(59, 130, 246, 0.3) 50px, rgba(59, 130, 246, 0.3) 100px);
@@ -690,7 +690,7 @@
     </section>
 
     <!-- CTA Section - Enhanced -->
-    <section class="section relative bg-dark-primary overflow-hidden">
+    <section id="cta" class="section relative bg-dark-primary overflow-hidden">
       <div class="absolute inset-0 bg-gradient-to-br from-blue-950/50 via-slate-950/50 to-cyan-950/50"></div>
       
       <!-- Animated Elements -->
@@ -816,6 +816,33 @@ useHead({
           'Basketball DJ',
           'Baseball DJ'
         ],
+        aggregateRating: {
+          '@type': 'AggregateRating',
+          ratingValue: '5.0',
+          reviewCount: '50',
+          bestRating: '5',
+          worstRating: '1'
+        },
+        review: [
+          {
+            '@type': 'Review',
+            author: { '@type': 'Person', name: 'Mike Johnson' },
+            reviewRating: { '@type': 'Rating', ratingValue: '5', bestRating: '5' },
+            reviewBody: 'Elite Sports DJ transformed our home games! The energy in the arena has never been better. Players love their custom intros and fans are more engaged than ever.'
+          },
+          {
+            '@type': 'Review',
+            author: { '@type': 'Person', name: 'Sarah Chen' },
+            reviewRating: { '@type': 'Rating', ratingValue: '5', bestRating: '5' },
+            reviewBody: 'Professional, reliable, and always on point. They know exactly what music works for sports crowds. Worth every penny!'
+          },
+          {
+            '@type': 'Review',
+            author: { '@type': 'Person', name: 'Tom Rodriguez' },
+            reviewRating: { '@type': 'Rating', ratingValue: '5', bestRating: '5' },
+            reviewBody: 'Our lacrosse tournament was a huge success thanks to Elite Sports DJ. They kept the energy high all weekend long. Highly recommend!'
+          }
+        ],
         sameAs: [
           'https://facebook.com/elitesportsdj',
           'https://instagram.com/elitesportsdj',
@@ -824,6 +851,41 @@ useHead({
           'https://linkedin.com/company/elitesportsdj'
         ]
       })
+    },
+    {
+      type: 'application/ld+json',
+      children: JSON.stringify([
+        {
+          '@context': 'https://schema.org',
+          '@type': 'Service',
+          '@id': 'https://elitesportsdj.ca/#service-gameday-dj',
+          name: 'Game Day DJ Services',
+          description: 'Professional DJ services for sports events including music curation, crowd hype, and seamless audio management throughout the game.',
+          provider: { '@id': 'https://elitesportsdj.ca/#business' },
+          areaServed: { '@type': 'Country', name: 'Canada' },
+          url: 'https://elitesportsdj.ca/#services'
+        },
+        {
+          '@context': 'https://schema.org',
+          '@type': 'Service',
+          '@id': 'https://elitesportsdj.ca/#service-player-intros',
+          name: 'Player Introductions',
+          description: 'High-energy, personalized player introductions with custom music and professional announcing to electrify your arena.',
+          provider: { '@id': 'https://elitesportsdj.ca/#business' },
+          areaServed: { '@type': 'Country', name: 'Canada' },
+          url: 'https://elitesportsdj.ca/#services'
+        },
+        {
+          '@context': 'https://schema.org',
+          '@type': 'Service',
+          '@id': 'https://elitesportsdj.ca/#service-event-hosting',
+          name: 'Event Hosting & MC Services',
+          description: 'Professional event hosting and MC services for sports events, tournaments, and special occasions.',
+          provider: { '@id': 'https://elitesportsdj.ca/#business' },
+          areaServed: { '@type': 'Country', name: 'Canada' },
+          url: 'https://elitesportsdj.ca/#services'
+        }
+      ])
     },
     {
       type: 'application/ld+json',
@@ -1045,36 +1107,42 @@ const galleryImages = ref([
   {
     url: '/videos/07465b89-b98e-424d-a378-76da8baa0202.jpg',
     thumbnail: '/videos/07465b89-b98e-424d-a378-76da8baa0202.jpg',
+    webp: '/videos/07465b89-b98e-424d-a378-76da8baa0202.webp',
     alt: 'Ice Hockey Game Day',
     caption: 'Ice Hockey Game Day'
   },
   {
     url: '/videos/502b2929-babc-4672-89b4-28b76582173e.jpg',
     thumbnail: '/videos/502b2929-babc-4672-89b4-28b76582173e.jpg',
+    webp: '/videos/502b2929-babc-4672-89b4-28b76582173e.webp',
     alt: 'Dynamic Player Introductions',
     caption: 'Dynamic Player Introductions'
   },
   {
     url: '/videos/a389a0ea-f77c-4324-9cea-a12632bbfb5f.jpg',
     thumbnail: '/videos/a389a0ea-f77c-4324-9cea-a12632bbfb5f.jpg',
+    webp: '/videos/a389a0ea-f77c-4324-9cea-a12632bbfb5f.webp',
     alt: 'Arena DJ Services',
     caption: 'Arena DJ Services'
   },
   {
     url: '/videos/e889cdc0-d53e-42da-bf1f-6818e675148e.jpg',
     thumbnail: '/videos/e889cdc0-d53e-42da-bf1f-6818e675148e.jpg',
+    webp: '/videos/e889cdc0-d53e-42da-bf1f-6818e675148e.webp',
     alt: 'Professional Event Hosting',
     caption: 'Professional Event Hosting'
   },
   {
     url: '/videos/eb33f3d7-190c-4ec1-8864-beac99ac6b23.jpg',
     thumbnail: '/videos/eb33f3d7-190c-4ec1-8864-beac99ac6b23.jpg',
+    webp: '/videos/eb33f3d7-190c-4ec1-8864-beac99ac6b23.webp',
     alt: 'Complete Game Day Experience',
     caption: 'Complete Game Day Experience'
   },
   {
     url: '/videos/f9a10068-aa48-4f4d-9826-1bc443978fee.jpg',
     thumbnail: '/videos/f9a10068-aa48-4f4d-9826-1bc443978fee.jpg',
+    webp: '/videos/f9a10068-aa48-4f4d-9826-1bc443978fee.webp',
     alt: 'Multi-Sport Events',
     caption: 'Multi-Sport Events'
   }

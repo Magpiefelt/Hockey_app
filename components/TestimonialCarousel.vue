@@ -48,8 +48,8 @@
       <!-- Dots Indicator -->
       <div class="dots-container">
         <button
-          v-for="(_, index) in testimonials"
-          :key="index"
+          v-for="(t, index) in testimonials"
+          :key="t.author || index"
           @click="goToTestimonial(index)"
           :class="['dot', { active: index === currentIndex }]"
           :aria-label="`Go to testimonial ${index + 1}`"

@@ -62,7 +62,7 @@
               <ul class="space-y-3">
                 <li
                   v-for="(feature, index) in package?.features"
-                  :key="index"
+                  :key="feature"
                   class="flex items-start gap-3 text-slate-300"
                 >
                   <Icon name="mdi:check" class="w-5 h-5 text-cyan-400 flex-shrink-0 mt-0.5" />

@@ -25,7 +25,7 @@
         </NuxtLink>
 
         <!-- Desktop Navigation -->
-        <nav class="hidden items-center gap-1 md:flex">
+        <nav class="hidden items-center gap-1 md:flex" aria-label="Main navigation">
           <NuxtLink
             v-for="item in navItems"
             :key="item.to"

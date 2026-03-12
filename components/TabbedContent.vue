@@ -4,7 +4,7 @@
     <div class="tab-headers">
       <button
         v-for="(tab, index) in tabs"
-        :key="index"
+        :key="tab.title"
         @click="activeTab = index"
         :class="['tab-header', { active: activeTab === index }]"
       >

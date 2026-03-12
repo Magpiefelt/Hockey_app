@@ -210,6 +210,7 @@ export default defineNuxtConfig({
     '/thanks': { cache: false },
     // API routes — CORS handled by 02.cors.ts middleware with origin allowlist
     '/api/health': { cache: { maxAge: 60 } },
+    '/api/home-data': { cache: { maxAge: 60 * 5 } }, // 5 min — matches Cache-Control header in the handler
     '/api/metrics': { cache: false },
     // Static assets with long cache (immutable hashed filenames from Vite)
     '/_nuxt/**': { static: true, headers: { 'cache-control': 'public, max-age=31536000, immutable' } },

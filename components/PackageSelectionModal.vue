@@ -67,7 +67,7 @@
             <ul class="space-y-2 text-sm text-slate-300">
               <li
                 v-for="(feature, idx) in pkg.features.slice(0, 3)"
-                :key="idx"
+                :key="feature"
                 class="flex items-start gap-2"
               >
                 <Icon name="mdi:check" class="w-4 h-4 text-cyan-400 flex-shrink-0 mt-0.5" />

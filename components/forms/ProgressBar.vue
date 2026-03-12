@@ -23,7 +23,7 @@
     <div v-if="stepLabels && stepLabels.length > 0" class="hidden md:flex justify-between mt-3 text-xs">
       <div 
         v-for="(label, index) in stepLabels" 
-        :key="index"
+        :key="label"
         class="flex flex-col items-center"
         :class="[
           index + 1 < currentStep ? 'text-cyan-400' : '',

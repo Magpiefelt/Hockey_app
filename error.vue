@@ -3,7 +3,10 @@
     <div class="max-w-lg w-full text-center">
       <!-- Logo -->
       <div class="mb-8 flex justify-center">
-        <img src="/logo.png" alt="Elite Sports DJ" class="h-24 w-auto object-contain" />
+        <picture>
+          <source srcset="/logo.webp" type="image/webp" />
+          <img src="/logo.png" alt="Elite Sports DJ" width="96" height="96" class="h-24 w-auto object-contain" />
+        </picture>
       </div>
 
       <!-- Error Code -->

@@ -4,16 +4,26 @@
     <div class="gallery-grid">
       <div
         v-for="(image, index) in images"
-        :key="index"
+        :key="image.url"
         class="gallery-item"
         @click="openLightbox(index)"
       >
-        <img
-          :src="image.thumbnail || image.url"
-          :alt="image.alt"
-          class="gallery-image"
-          loading="lazy"
-        />
+        <!-- PERF: WebP with JPG fallback; loading=lazy for below-fold gallery images -->
+        <picture>
+          <source
+            v-if="image.webp || (image.thumbnail || image.url).replace(/\.jpg$/, '.webp') !== (image.thumbnail || image.url)"
+            :srcset="image.webp || (image.thumbnail || image.url).replace(/\.jpg$/, '.webp')"
+            type="image/webp"
+          />
+          <img
+            :src="image.thumbnail || image.url"
+            :alt="image.alt"
+            class="gallery-image"
+            loading="lazy"
+            width="400"
+            height="300"
+          />
+        </picture>
         <div class="gallery-overlay">
           <Icon name="mdi:magnify-plus" class="w-12 h-12 text-white" />
         </div>
@@ -72,6 +82,7 @@ import { ref, computed, watch } from 'vue'
 interface GalleryImage {
   url: string
   thumbnail?: string
+  webp?: string
   alt: string
   caption?: string
 }

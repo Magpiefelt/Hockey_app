@@ -67,7 +67,8 @@
 
     <!-- Manual Entry -->
     <div v-if="inputMethod === 'manual'" class="space-y-3">
-      <div v-for="(player, index) in players" :key="index" class="flex gap-2">
+      <!-- NOTE: index key is intentional here — player names can be empty/duplicate during editing -->
+      <div v-for="(player, index) in players" :key="`player-${index}`" class="flex gap-2">
         <UiInput
           v-model="players[index]"
           :placeholder="`Player ${index + 1} name`"

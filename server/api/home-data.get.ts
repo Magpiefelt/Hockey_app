@@ -11,7 +11,11 @@
 import { query } from '../db/connection'
 import { logger } from '../utils/logger'
 
-export default defineEventHandler(async () => {
+export default defineEventHandler(async (event) => {
+  // Cache for 5 minutes on CDN/edge, 10 minutes stale-while-revalidate.
+  // This prevents a DB hit on every SSR page render for the home page.
+  setHeader(event, 'Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600')
+
   const result = {
     packages: [] as any[],
     faq: [] as any[],

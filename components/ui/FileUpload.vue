@@ -83,7 +83,7 @@
     <ul v-if="selectedFiles.length > 0" class="mt-4 space-y-2">
       <li
         v-for="(file, index) in selectedFiles"
-        :key="index"
+        :key="file.name"
         class="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-lg"
       >
         <div class="flex items-center gap-3 min-w-0">

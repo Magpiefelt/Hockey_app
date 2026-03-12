@@ -103,7 +103,7 @@
     <div v-if="filesWithProgress.length > 0" class="space-y-2" role="list" aria-label="Uploaded files">
       <div
         v-for="(fileItem, index) in filesWithProgress"
-        :key="index"
+        :key="fileItem.key || fileItem.file.name"
         class="rounded-lg bg-slate-800 border border-slate-700 overflow-hidden"
         role="listitem"
       >

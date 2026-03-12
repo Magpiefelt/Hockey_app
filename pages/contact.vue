@@ -345,8 +345,7 @@ const handleSubmit = async () => {
       showSuccess.value = false
     }, 5000)
   } catch (error: any) {
-    console.error('Contact form submission error:', error)
-    
+    // Do not log raw error to console in production — avoids leaking internal details
     // Extract error message from tRPC error
     const message = error.data?.message || error.message || 'Failed to send message. Please try again or email us directly.'
     errorMessage.value = message

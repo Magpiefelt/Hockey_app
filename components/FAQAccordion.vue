@@ -2,7 +2,7 @@
   <div class="faq-accordion">
     <div
       v-for="(item, index) in displayItems"
-      :key="index"
+      :key="item.question"
       class="faq-item"
     >
       <button

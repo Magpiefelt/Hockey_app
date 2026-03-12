@@ -112,7 +112,7 @@
         <div v-if="formData.roster.method === 'manual' && formData.roster.players">
           <strong class="text-white">Players ({{ formData.roster.players.filter(p => p.trim()).length }}):</strong>
           <ul class="mt-2 space-y-1 ml-4 list-disc">
-            <li v-for="(player, idx) in formData.roster.players.filter(p => p.trim())" :key="idx">
+            <li v-for="(player, idx) in formData.roster.players.filter(p => p.trim())" :key="player">
               {{ player }}
             </li>
           </ul>
@@ -189,7 +189,7 @@
       <div class="space-y-2 text-slate-300">
         <p><strong class="text-white">Files ({{ formData.audioFiles.length }}):</strong></p>
         <ul class="mt-2 space-y-1 ml-4 list-disc">
-          <li v-for="(file, idx) in formData.audioFiles" :key="idx">
+          <li v-for="(file, idx) in formData.audioFiles" :key="file.name">
             {{ file.name }} <span class="text-slate-500">({{ formatFileSize(file.size) }})</span>
           </li>
         </ul>
@@ -237,7 +237,7 @@
       </div>
       <div class="space-y-2 text-slate-300">
         <ul class="mt-2 space-y-1 ml-4 list-disc">
-          <li v-for="(sponsor, idx) in formData.sponsors.filter(s => s.trim())" :key="idx">
+          <li v-for="(sponsor, idx) in formData.sponsors.filter(s => s.trim())" :key="sponsor">
             {{ sponsor }}
           </li>
         </ul>

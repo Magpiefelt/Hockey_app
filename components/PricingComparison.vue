@@ -12,7 +12,7 @@
       <!-- Package Columns -->
       <div
         v-for="(pkg, index) in packages"
-        :key="index"
+        :key="pkg.name"
         :class="['package-column', { featured: pkg.featured }]"
       >
         <div class="column-header">
