@@ -909,33 +909,9 @@ useHead({
   ]
 })
 
-// SEO: Dynamic FAQPage JSON-LD — runs server-side so FAQ content is indexable by crawlers.
-// FIX: Use getter function () => ({}) instead of computed(() => ({})). In @unhead/vue v2.x,
-// passing a computed() ref triggers a race condition: onUnmounted fires r.dispose() before
-// the internal watchEffect has assigned r, causing:
-//   TypeError: Cannot read properties of undefined (reading 'dispose')
-// which crashes Vue hydration and shows the 500 error page to all visitors.
-// The getter function form is the correct reactive API for useHead in @unhead/vue v2.x.
-useHead(() => ({
-  script: [
-    {
-      type: 'application/ld+json',
-      key: 'faq-schema',
-      children: JSON.stringify({
-        '@context': 'https://schema.org',
-        '@type': 'FAQPage',
-        mainEntity: faqItems.value.map((item: { question: string; answer: string }) => ({
-          '@type': 'Question',
-          name: item.question,
-          acceptedAnswer: {
-            '@type': 'Answer',
-            text: item.answer
-          }
-        }))
-      })
-    }
-  ]
-}))
+// NOTE: Dynamic FAQPage JSON-LD useHead() moved AFTER useAsyncData and computed
+// properties to avoid TDZ (Temporal Dead Zone) error: "Cannot access 'faqItems'
+// before initialization". See the useHead() call after faqItems is defined below.
 
 // ============================================
 // Dynamic Package Data (from database via tRPC)
@@ -1014,6 +990,34 @@ const siteTestimonials = computed(() => {
   const items = homeData.value?.testimonials ?? []
   return items.length > 0 ? items : fallbackTestimonials
 })
+
+// SEO: Dynamic FAQPage JSON-LD — runs server-side so FAQ content is indexable by crawlers.
+// IMPORTANT: This useHead() call MUST be placed AFTER useAsyncData and the faqItems
+// computed property are defined. Previously it was placed before them, which caused a
+// TDZ (Temporal Dead Zone) error: "Cannot access 'y' before initialization" (where 'y'
+// is the minified name of faqItems). The getter function runs during component setup,
+// and if faqItems hasn't been initialized yet, JavaScript throws a ReferenceError.
+// This crashed Vue hydration on every first page load, showing the 500 error page.
+useHead(() => ({
+  script: [
+    {
+      type: 'application/ld+json',
+      key: 'faq-schema',
+      children: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        mainEntity: faqItems.value.map((item: { question: string; answer: string }) => ({
+          '@type': 'Question',
+          name: item.question,
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: item.answer
+          }
+        }))
+      })
+    }
+  ]
+}))
 
 const getInitials = (name: string) => {
   return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
