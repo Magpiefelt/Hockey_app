@@ -505,14 +505,22 @@ const handleFinalSubmit = async () => {
     const validationErrors: string[] = []
     
     // Contact info validation
-    if (!contactName || contactName.trim().length < 1) {
+    if (!contactName || contactName.length < 1) {
       validationErrors.push('Name is required')
+    } else if (contactName.length > 200) {
+      validationErrors.push('Name must be 200 characters or fewer')
     }
-    if (!contactEmail || !contactEmail.includes('@')) {
-      validationErrors.push('Valid email is required')
+    
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!contactEmail || !emailRegex.test(contactEmail)) {
+      validationErrors.push('Valid email address is required')
     }
-    if (!contactPhone || contactPhone.replace(/\D/g, '').length < 10) {
+    
+    const phoneDigits = contactPhone.replace(/\D/g, '')
+    if (!contactPhone || phoneDigits.length < 10) {
       validationErrors.push('Valid phone number (10+ digits) is required')
+    } else if (phoneDigits.length > 15) {
+      validationErrors.push('Phone number is too long')
     }
     
     // Package-specific validation

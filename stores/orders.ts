@@ -10,6 +10,8 @@ interface Order {
   status: string
   quotedAmount: number | null
   totalAmount: number | null
+  eventDate: string | null
+  deliverableUrl: string | null
   createdAt: string
   updatedAt: string | null
 }
@@ -20,17 +22,39 @@ interface OrderDetail {
     name: string
     email: string
     phone: string
+    organization?: string | null
     packageId: string | null
     serviceType: string
     sportType: string | null
     status: string
     quotedAmount: number | null
     totalAmount: number | null
-    requirementsText: string | null
+    eventDate?: string | null
+    notes?: string | null
     adminNotes: string | null
     createdAt: string
     updatedAt: string | null
+    formData?: {
+      teamName?: string
+      rosterMethod?: string
+      rosterPlayers?: any
+      introSong?: any
+      warmupSongs?: any
+      goalHorn?: any
+      goalSong?: any
+      winSong?: any
+      sponsors?: any
+      includeSample?: boolean
+      audioFiles?: any
+    } | null
   }
+  payment?: {
+    id: number
+    amount: number
+    status: string
+    createdAt: string
+    paidAt?: string
+  } | null
   files: Array<{
     id: string
     filename: string

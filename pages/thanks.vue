@@ -94,21 +94,21 @@
       <!-- CTA -->
       <div class="flex flex-col sm:flex-row gap-4 justify-center items-center animate-fade-in-up delay-1000">
         <UiButton 
-          to="/"
+          to="/orders"
           variant="primary"
+          size="lg"
+        >
+          <Icon name="mdi:clipboard-text-clock" class="w-5 h-5" />
+          Track My Order
+        </UiButton>
+        
+        <UiButton 
+          to="/"
+          variant="outline"
           size="lg"
         >
           <Icon name="mdi:home" class="w-5 h-5" />
           Return to Homepage
-        </UiButton>
-        
-        <UiButton 
-          to="/#packages"
-          variant="outline"
-          size="lg"
-        >
-          <Icon name="mdi:package-variant" class="w-5 h-5" />
-          View Packages
         </UiButton>
       </div>
     </div>

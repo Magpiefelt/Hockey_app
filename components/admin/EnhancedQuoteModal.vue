@@ -19,6 +19,8 @@ const props = defineProps<{
   customerEmail: string
   packageName: string
   eventDate?: string | null
+  eventDateTime?: string | null
+  eventTime?: string | null
   teamName?: string | null
   sportType?: string | null
   currentQuote?: number | null
@@ -40,9 +42,22 @@ const isSubmitting = ref(false)
 const error = ref<string | null>(null)
 const showPreview = ref(false)
 
-// Event date/time state
-const confirmedEventDate = ref<Date | null>(props.eventDate ? new Date(props.eventDate) : null)
-const confirmedEventTime = ref<string>('12:00')
+// Event date/time state - initialize from eventDateTime if available, fall back to eventDate
+const confirmedEventDate = ref<Date | null>(
+  props.eventDateTime ? new Date(props.eventDateTime) 
+  : props.eventDate ? new Date(props.eventDate) 
+  : null
+)
+const confirmedEventTime = ref<string>(
+  props.eventTime 
+    ? props.eventTime.substring(0, 5) 
+    : props.eventDateTime 
+      ? (() => {
+          const d = new Date(props.eventDateTime)
+          return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+        })()
+      : '12:00'
+)
 const isCheckingAvailability = ref(false)
 const dateAvailable = ref<boolean | null>(null)
 
@@ -200,14 +215,22 @@ function setQuickAmount(amount: number) {
 }
 
 function useCustomerDate() {
-  if (props.eventDate) {
+  if (props.eventDateTime) {
+    const d = new Date(props.eventDateTime)
+    confirmedEventDate.value = d
+    confirmedEventTime.value = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  } else if (props.eventDate) {
     confirmedEventDate.value = new Date(props.eventDate)
+  }
+  if (props.eventTime) {
+    confirmedEventTime.value = props.eventTime.substring(0, 5)
   }
 }
 </script>
 
 <template>
-  <div class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+  <Teleport to="body">
+  <div class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" @click.self="emit('close')">
     <div class="bg-dark-secondary border border-white/10 rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
       <!-- Header -->
       <div class="bg-gradient-to-r from-brand-600 to-accent-600 px-6 py-4">
@@ -468,6 +491,7 @@ function useCustomerDate() {
       </div>
     </div>
   </div>
+  </Teleport>
 </template>
 
 <style scoped>

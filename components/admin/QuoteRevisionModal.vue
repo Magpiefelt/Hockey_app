@@ -118,8 +118,9 @@ function useCommonReason(r: string) {
 </script>
 
 <template>
-  <div class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-    <div class="bg-dark-secondary border border-white/10 rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
+  <Teleport to="body">
+  <div class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" @click.self="emit('close')">
+    <div class="bg-dark-secondary border border-white/10 rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden" role="dialog" aria-modal="true">
       <!-- Header -->
       <div class="bg-gradient-to-r from-warning-600 to-warning-500 px-6 py-4">
         <div class="flex items-center justify-between">
@@ -280,4 +281,5 @@ function useCommonReason(r: string) {
       </div>
     </div>
   </div>
+  </Teleport>
 </template>

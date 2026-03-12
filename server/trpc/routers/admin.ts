@@ -447,6 +447,8 @@ export const adminRouter = router({
               'submitted': ['in_progress', 'quoted', 'cancelled'],
               'in_progress': ['quoted', 'cancelled'],
               'quoted': ['invoiced', 'in_progress', 'cancelled'],
+              'quote_viewed': ['invoiced', 'in_progress', 'cancelled'],
+              'quote_accepted': ['invoiced', 'in_progress', 'cancelled'],
               'invoiced': ['paid', 'cancelled'],
               'paid': ['completed', 'delivered'],
               'completed': ['delivered'],
@@ -551,15 +553,19 @@ export const adminRouter = router({
               
               const notification = statusMessages[input.status]
               if (notification && order.email) {
+                // HTML-escape user-provided values to prevent XSS in emails
+                const escapeHtml = (str: string) => str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+                const safeName = escapeHtml(order.name || 'Customer')
+                const safeOrderId = escapeHtml(String(orderId))
                 const notificationHtml = `
                   <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                     <div style="background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
                       <h1>${notification.subject}</h1>
                     </div>
                     <div style="background: #f8fafc; padding: 30px; border-radius: 0 0 8px 8px;">
-                      <p>Hi ${order.name},</p>
+                      <p>Hi ${safeName},</p>
                       <p>${notification.message}</p>
-                      <p><strong>Order #${orderId}</strong></p>
+                      <p><strong>Order #${safeOrderId}</strong></p>
                       <p>Best regards,<br>Elite Sports DJ Team</p>
                     </div>
                   </div>

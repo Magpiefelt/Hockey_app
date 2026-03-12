@@ -492,6 +492,36 @@ export const ordersRouter = router({
         [orderId]
       )
       
+      // Get payment data if exists
+      let payment = null
+      try {
+        const paymentRow = await queryOne<{
+          id: number
+          amount: number
+          status: string
+          created_at: Date
+          paid_at: Date | null
+        }>(
+          `SELECT id, amount, status, created_at, paid_at
+           FROM invoices
+           WHERE quote_id = $1 AND status = 'paid'
+           ORDER BY created_at DESC LIMIT 1`,
+          [orderId]
+        )
+        if (paymentRow) {
+          payment = {
+            id: paymentRow.id,
+            amount: paymentRow.amount,
+            status: paymentRow.status,
+            createdAt: paymentRow.created_at.toISOString(),
+            paidAt: paymentRow.paid_at?.toISOString() || null
+          }
+        }
+      } catch {
+        // invoices table may not exist yet - graceful degradation
+        logger.debug('Could not fetch payment data', { orderId })
+      }
+      
       return {
         order: {
           id: order.id.toString(),
@@ -505,6 +535,7 @@ export const ordersRouter = router({
           status: order.status,
           quotedAmount: order.quoted_amount,
           totalAmount: order.total_amount,
+          eventDate: order.event_date ? new Date(order.event_date).toISOString().split('T')[0] : null,
           notes: order.notes,
           adminNotes: order.admin_notes,
           createdAt: order.created_at.toISOString(),
@@ -524,6 +555,7 @@ export const ordersRouter = router({
             audioFiles: order.audio_files
           } : null
         },
+        payment,
         files: files.map(file => ({
           id: file.id.toString(),
           filename: file.file_name,
@@ -631,7 +663,14 @@ export const ordersRouter = router({
         [orderId, reason ? `\n\n[Customer Cancelled: ${reason}]` : '\n\n[Cancelled by customer]']
       )
       
-      // Log the cancellation
+      // Record in status history for timeline display
+      await executeQuery(
+        `INSERT INTO order_status_history (quote_id, previous_status, new_status, changed_by, notes)
+         VALUES ($1, $2, 'cancelled', $3, $4)`,
+        [orderId, order.status, ctx.user.userId, reason || 'Cancelled by customer']
+      )
+      
+      // Log the cancellation to audit trail
       await logOrderEvent(
         AuditAction.ORDER_STATUS_CHANGED,
         orderId,

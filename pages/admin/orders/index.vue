@@ -428,8 +428,12 @@ const statusOptions = [
   { label: 'All Statuses', value: '' },
   { label: 'Submitted', value: 'submitted' },
   { label: 'Quoted', value: 'quoted' },
+  { label: 'Quote Viewed', value: 'quote_viewed' },
+  { label: 'Quote Accepted', value: 'quote_accepted' },
+  { label: 'Invoiced', value: 'invoiced' },
+  { label: 'Paid', value: 'paid' },
   { label: 'In Progress', value: 'in_progress' },
-  { label: 'Ready', value: 'ready' },
+  { label: 'Completed', value: 'completed' },
   { label: 'Delivered', value: 'delivered' },
   { label: 'Cancelled', value: 'cancelled' }
 ]
@@ -514,11 +518,23 @@ const visiblePages = computed(() => {
   return pages
 })
 
-// When filters change, reset to page 1 and re-fetch from server
-watch(() => [filters.value.status, filters.value.search], () => {
+// Debounce timer for search input
+let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null
+
+// When status filter changes, fetch immediately; when search changes, debounce
+watch(() => filters.value.status, () => {
   currentPage.value = 1
   selectedOrderIds.value = []
   fetchOrders()
+})
+
+watch(() => filters.value.search, () => {
+  if (searchDebounceTimer) clearTimeout(searchDebounceTimer)
+  searchDebounceTimer = setTimeout(() => {
+    currentPage.value = 1
+    selectedOrderIds.value = []
+    fetchOrders()
+  }, 350) // 350ms debounce for search
 })
 
 // When page changes, re-fetch from server

@@ -505,7 +505,7 @@
           </div>
 
           <!-- Email History -->
-          <AdminOrderEmailHistory :order-id="orderId" />
+          <AdminOrderEmailHistory ref="emailHistoryRef" :order-id="orderId" />
           
           <!-- Status History -->
           <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
@@ -513,7 +513,7 @@
               <Icon name="mdi:history" class="w-5 h-5 text-purple-400" />
               Status History
             </h3>
-            <OrderStatusHistory :order-id="orderData.order.id" />
+            <OrderStatusHistory ref="statusHistoryRef" :order-id="orderData.order.id" />
           </div>
         </div>
       </div>
@@ -699,7 +699,8 @@ const deliverableFiles = computed(() => {
 const canSubmitQuote = computed(() => {
   if (!orderData.value) return false
   const status = orderData.value.order.status
-  return ['submitted', 'in_progress'].includes(status)
+  // Allow initial quote for submitted/in_progress, and quote revision for quoted/quote_viewed/quote_accepted
+  return ['submitted', 'in_progress', 'quoted', 'quote_viewed', 'quote_accepted'].includes(status)
 })
 
 // Methods
@@ -716,25 +717,43 @@ const fetchOrder = async () => {
   }
 }
 
+// Ref for status history component to allow programmatic refresh
+const statusHistoryRef = ref<{ refresh: () => Promise<void> } | null>(null)
+
+// Ref for email history component to allow programmatic refresh
+const emailHistoryRef = ref<{ refresh: () => Promise<void> } | null>(null)
+
+// Helper to refresh status history and email history after any status-affecting operation
+const refreshStatusHistory = () => {
+  nextTick(() => {
+    statusHistoryRef.value?.refresh()
+    emailHistoryRef.value?.refresh()
+  })
+}
+
 const handleStatusChanged = (newStatus: string) => {
   if (orderData.value) {
     orderData.value.order.status = newStatus
   }
   fetchOrder()
+  refreshStatusHistory()
 }
 
 const handleQuoteSubmitted = (data: { orderId: number; amount: number; version: number }) => {
   showSuccess(`Quote v${data.version} submitted successfully`)
   fetchOrder()
+  refreshStatusHistory()
 }
 
 const handleQuoteRevised = (data: { orderId: number; previousAmount: number; newAmount: number; version: number }) => {
   showSuccess(`Quote updated to v${data.version}`)
   fetchOrder()
+  refreshStatusHistory()
 }
 
 const handleManualCompletion = (data: { orderId: number; amount: number; previousStatus: string }) => {
   fetchOrder()
+  refreshStatusHistory()
 }
 
 // Computed for manual completion button visibility

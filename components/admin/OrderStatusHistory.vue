@@ -151,13 +151,18 @@ function formatDate(dateString: string): string {
 
 function getStatusIcon(status: string): string {
   const iconMap: Record<string, string> = {
+    'pending': 'mdi:clock-outline',
     'submitted': 'mdi:email-send',
     'quoted': 'mdi:file-document-edit',
+    'quote_viewed': 'mdi:eye-check',
+    'quote_accepted': 'mdi:check-decagram',
     'invoiced': 'mdi:receipt',
     'paid': 'mdi:cash-check',
     'in_progress': 'mdi:progress-clock',
     'completed': 'mdi:check-circle',
-    'cancelled': 'mdi:close-circle'
+    'delivered': 'mdi:package-variant-closed',
+    'cancelled': 'mdi:close-circle',
+    'refunded': 'mdi:cash-refund'
   }
   return iconMap[status] || 'mdi:circle'
 }

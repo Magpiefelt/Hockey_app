@@ -55,10 +55,14 @@
               <option value="">All Statuses</option>
               <option value="submitted">Submitted</option>
               <option value="quoted">Quoted</option>
+              <option value="quote_viewed">Quote Viewed</option>
+              <option value="quote_accepted">Quote Accepted</option>
               <option value="invoiced">Invoiced</option>
               <option value="paid">Paid</option>
               <option value="in_progress">In Progress</option>
               <option value="completed">Completed</option>
+              <option value="delivered">Delivered</option>
+              <option value="cancelled">Cancelled</option>
             </select>
           </div>
           
@@ -145,6 +149,8 @@ function getStatusLabel(status: string): string {
   const labels: Record<string, string> = {
     'submitted': 'Submitted',
     'quoted': 'Quoted',
+    'quote_viewed': 'Quote Viewed',
+    'quote_accepted': 'Quote Accepted',
     'invoiced': 'Invoiced',
     'paid': 'Paid',
     'in_progress': 'In Progress',
@@ -152,7 +158,7 @@ function getStatusLabel(status: string): string {
     'delivered': 'Delivered',
     'cancelled': 'Cancelled'
   }
-  return labels[status] || status
+  return labels[status] || status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, ' ')
 }
 
 function handlePayment(order: any) {

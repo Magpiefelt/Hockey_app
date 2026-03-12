@@ -106,6 +106,10 @@ function formatDate(dateStr: string | null): string {
     minute: '2-digit'
   })
 }
+
+defineExpose({
+  refresh: loadEmails
+})
 </script>
 
 <template>

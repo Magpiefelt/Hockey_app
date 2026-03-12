@@ -43,12 +43,12 @@
         </div>
 
         <!-- Price Display -->
-        <div v-if="order.quotedAmount" class="text-right flex-shrink-0">
+        <div v-if="displayAmount" class="text-right flex-shrink-0">
           <p class="text-sm text-slate-500 mb-1">
-            {{ order.status === 'paid' || order.status === 'completed' ? 'Paid' : 'Quote' }}
+            {{ isPaidOrCompleted ? 'Paid' : 'Quote' }}
           </p>
           <p class="text-2xl font-bold text-cyan-400">
-            {{ formatPrice(order.quotedAmount) }}
+            {{ formatPrice(displayAmount) }}
           </p>
         </div>
       </div>
@@ -87,7 +87,7 @@
       <div class="flex items-center justify-between pt-3 border-t border-white/10">
         <div class="flex gap-2">
           <button
-            v-if="order.status === 'quoted' || order.status === 'invoiced'"
+            v-if="showPayButton"
             @click.stop="$emit('pay', order)"
             class="px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white text-sm font-semibold rounded-lg transition-all"
             aria-label="Pay now"
@@ -97,7 +97,7 @@
           </button>
           
           <button
-            v-if="order.status === 'completed' && order.deliverableUrl"
+            v-if="showDownloadButton"
             @click.stop="downloadDeliverable(order)"
             class="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white text-sm font-semibold rounded-lg transition-all"
             aria-label="Download deliverable"
@@ -151,11 +151,27 @@ const statusSteps = [
   { status: 'completed', label: 'Completed' }
 ]
 
-const statusOrder = ['submitted', 'quoted', 'invoiced', 'paid', 'in_progress', 'completed', 'delivered']
+// Full status order including intermediate statuses for accurate progress tracking
+const statusOrder = [
+  'submitted', 
+  'quoted', 'quote_viewed', 'quote_accepted', 
+  'invoiced', 
+  'paid', 
+  'in_progress', 
+  'completed', 
+  'delivered'
+]
 
 function isStepCompleted(stepStatus: string, currentStatus: string): boolean {
+  // Handle cancelled status - show progress up to where it was cancelled
+  if (currentStatus === 'cancelled') return false
+  
   const stepIndex = statusOrder.indexOf(stepStatus)
   const currentIndex = statusOrder.indexOf(currentStatus)
+  
+  // If either status is not in the order, fall back to not completed
+  if (stepIndex === -1 || currentIndex === -1) return false
+  
   return currentIndex >= stepIndex
 }
 
@@ -163,6 +179,8 @@ function getStatusLabel(status: string): string {
   const labels: Record<string, string> = {
     'submitted': 'Submitted',
     'quoted': 'Quoted',
+    'quote_viewed': 'Quote Viewed',
+    'quote_accepted': 'Quote Accepted',
     'invoiced': 'Invoiced',
     'paid': 'Paid',
     'in_progress': 'In Progress',
@@ -170,13 +188,15 @@ function getStatusLabel(status: string): string {
     'delivered': 'Delivered',
     'cancelled': 'Cancelled'
   }
-  return labels[status] || status
+  return labels[status] || status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, ' ')
 }
 
 function getStatusIcon(status: string): string {
   const icons: Record<string, string> = {
     'submitted': 'mdi:email-send',
     'quoted': 'mdi:file-document-edit',
+    'quote_viewed': 'mdi:eye-check',
+    'quote_accepted': 'mdi:check-decagram',
     'invoiced': 'mdi:receipt',
     'paid': 'mdi:cash-check',
     'in_progress': 'mdi:progress-clock',
@@ -206,11 +226,12 @@ function getPackageName(packageId?: string): string {
   return names[packageId] || packageId
 }
 
-function formatPrice(amount: number): string {
+// FIX: quotedAmount and totalAmount are stored in cents - convert to dollars for display
+function formatPrice(amountInCents: number): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD'
-  }).format(amount)
+  }).format(amountInCents / 100)
 }
 
 function formatDate(dateString: string): string {
@@ -227,4 +248,28 @@ function downloadDeliverable(order: Order) {
     window.open(order.deliverableUrl, '_blank')
   }
 }
+
+// Computed properties for cleaner template logic
+const isPaidOrCompleted = computed(() => {
+  return ['paid', 'completed', 'delivered'].includes(props.order.status)
+})
+
+const displayAmount = computed(() => {
+  // Show totalAmount if paid/completed, otherwise quotedAmount
+  if (isPaidOrCompleted.value && props.order.totalAmount) {
+    return props.order.totalAmount
+  }
+  return props.order.quotedAmount || null
+})
+
+// FIX: Show pay button for quote_viewed and quote_accepted statuses too
+const showPayButton = computed(() => {
+  const payableStatuses = ['quoted', 'quote_viewed', 'quote_accepted', 'invoiced']
+  return payableStatuses.includes(props.order.status)
+})
+
+// Show download button for completed/delivered orders with deliverables
+const showDownloadButton = computed(() => {
+  return ['completed', 'delivered'].includes(props.order.status) && props.order.deliverableUrl
+})
 </script>
