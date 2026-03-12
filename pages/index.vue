@@ -956,19 +956,28 @@ interface HomePackage {
 // because they see the initial HTML — not the JavaScript-rendered content.
 // useAsyncData runs on the server during SSR, so packages/FAQ/testimonials are
 // included in the initial HTML response and fully indexable.
+// BUG FIX: The previous version used `await useAsyncData(...)` without a `default`
+// fallback. If the /api/home-data endpoint threw any error during SSR (DB timeout,
+// cold start, etc.), the error propagated up and crashed the entire SSR render,
+// showing the 500 error page. The fix:
+//   1. Add a `default` factory so the page always renders with empty arrays on error.
+//   2. Remove the broken `getCachedData` function (referenced `_cachedAt` which was
+//      never set on the response, causing NaN comparisons).
+// The endpoint itself already has per-query try/catch, so partial DB failures
+// gracefully return empty arrays. This `default` handles the case where the
+// endpoint itself fails to respond at all.
 const { data: homeData, refresh: refreshHomeData } = await useAsyncData(
   'home-page-data',
-  () => $fetch('/api/home-data'),
-  {
-    // Cache for 10 minutes on the server to avoid hammering the DB on every request
-    getCachedData: (key, nuxtApp) => {
-      const cached = nuxtApp.payload.data[key] || nuxtApp.static.data[key]
-      if (!cached) return undefined
-      // Invalidate after 10 minutes
-      const expiresAt = cached._cachedAt + 10 * 60 * 1000
-      if (Date.now() > expiresAt) return undefined
-      return cached
+  async () => {
+    try {
+      return await $fetch<{ packages: any[]; faq: any[]; testimonials: any[] }>('/api/home-data')
+    } catch {
+      // Non-fatal: page will render with fallback data
+      return { packages: [], faq: [], testimonials: [] }
     }
+  },
+  {
+    default: () => ({ packages: [] as any[], faq: [] as any[], testimonials: [] as any[] })
   }
 )
 

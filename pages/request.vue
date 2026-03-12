@@ -344,10 +344,17 @@ onMounted(async () => {
 })
 
 // Package data - loaded from database via tRPC
+// BUG FIX: tRPC plugin is client-only (.client.ts), so `trpc` is undefined during SSR.
+// Wrapping in try/catch with a `default` factory prevents SSR crashes (500 errors)
+// when the client is unavailable or the DB is unreachable on initial page load.
 const trpc = useTrpc()
-const { data: packagesData, refresh: refreshPackages } = await useAsyncData('packages', () => 
-  trpc.packages.getAll.query()
-)
+const { data: packagesData, refresh: refreshPackages } = await useAsyncData('packages', async () => {
+  try {
+    return await trpc.packages.getAll.query()
+  } catch {
+    return [] as any[]
+  }
+}, { default: () => [] as any[] })
 
 // Computed property with safe fallback
 const packages = computed(() => packagesData.value || [])

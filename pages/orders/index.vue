@@ -106,9 +106,14 @@ const trpc = useTrpc()
 const filterStatus = ref('')
 
 // Load packages from database via tRPC
-const { data: packagesData } = await useAsyncData('packages', () => 
-  trpc.packages.getAll.query()
-)
+// BUG FIX: tRPC plugin is client-only; add try/catch + default to prevent SSR 500 crashes
+const { data: packagesData } = await useAsyncData('packages', async () => {
+  try {
+    return await trpc.packages.getAll.query()
+  } catch {
+    return [] as any[]
+  }
+}, { default: () => [] as any[] })
 const packages = computed(() => packagesData.value || [])
 
 const getPackageName = (packageId: string) => {

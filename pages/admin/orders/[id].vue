@@ -587,9 +587,14 @@ const { showError, showSuccess } = useNotification()
 const orderId = computed(() => parseInt(route.params.id as string))
 
 // Load packages from content
-const { data: packagesData } = await useAsyncData('packages', () => 
-  queryContent('/packages').findOne()
-)
+// BUG FIX: add try/catch + default to prevent SSR 500 crashes if content is unavailable
+const { data: packagesData } = await useAsyncData('packages', async () => {
+  try {
+    return await queryContent('/packages').findOne()
+  } catch {
+    return null
+  }
+}, { default: () => null })
 const packages = computed(() => packagesData.value?.body || [])
 
 const getPackageName = (packageId: string) => {
