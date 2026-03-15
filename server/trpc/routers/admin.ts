@@ -2,10 +2,19 @@ import { z } from 'zod'
 import { TRPCError } from '@trpc/server'
 import { router, adminProcedure } from '../trpc'
 import { query, transaction } from '../../db/connection'
-import { sendCustomEmail, sendOrderConfirmation, sendInvoiceEmail, sendPaymentReceipt } from '../../utils/email'
+import { sendCustomEmail, sendEmail, sendOrderConfirmation, sendInvoiceEmail, sendPaymentReceipt } from '../../utils/email'
 import { sendEnhancedQuoteEmail } from '../../utils/email-enhanced'
 import { generateQuoteViewUrl } from '../../utils/quote-tokens'
 import { logger } from '../../utils/logger'
+import {
+  analyzeManagedEmailTemplateDraft,
+  getManagedEmailTemplateDefinitions,
+  getManagedEmailGlobalVariables,
+  listManagedEmailTemplates,
+  previewManagedEmailTemplate,
+  resetManagedEmailTemplate,
+  saveManagedEmailTemplate
+} from '../../services/emailTemplateService'
 import {
   ORDER_STATUS_COLORS,
   ORDER_STATUS_LABELS,
@@ -972,6 +981,183 @@ export const adminRouter = router({
           total
         }
       }),
+
+    /**
+     * Admin-controlled email templates
+     */
+    templates: router({
+      list: adminProcedure
+        .query(async () => {
+          const templates = await listManagedEmailTemplates()
+          let templateStats: Array<{ template: string; sent: number; failed: number; total: number; lastSentAt: string | null }> = []
+
+          try {
+            const statsResult = await query(
+              `SELECT
+                 COALESCE(template, email_type) as template,
+                 COUNT(*)::int as total,
+                 COUNT(*) FILTER (WHERE status = 'sent')::int as sent,
+                 COUNT(*) FILTER (WHERE status IN ('failed', 'bounced'))::int as failed,
+                 MAX(COALESCE(sent_at, created_at)) as last_sent_at
+               FROM email_logs
+               GROUP BY COALESCE(template, email_type)`
+            )
+
+            templateStats = statsResult.rows.map((row: any) => ({
+              template: row.template,
+              sent: Number(row.sent) || 0,
+              failed: Number(row.failed) || 0,
+              total: Number(row.total) || 0,
+              lastSentAt: row.last_sent_at?.toISOString?.() || null
+            }))
+          } catch (statsError: any) {
+            logger.warn('Failed to load template stats for admin template manager', {
+              error: statsError?.message
+            })
+          }
+
+          return {
+            templates,
+            managedTemplateKeys: getManagedEmailTemplateDefinitions().map((template) => template.key),
+            globalVariables: getManagedEmailGlobalVariables(),
+            templateStats
+          }
+        }),
+
+      save: adminProcedure
+        .input(z.object({
+          templateKey: z.string().min(1),
+          enabled: z.boolean(),
+          subject: z.string().max(200),
+          body: z.string().max(20000)
+        }))
+        .mutation(async ({ input, ctx }) => {
+          try {
+            const template = await saveManagedEmailTemplate({
+              ...input,
+              updatedBy: ctx.user.userId
+            })
+            return {
+              success: true,
+              template
+            }
+          } catch (error: any) {
+            throw new TRPCError({
+              code: 'BAD_REQUEST',
+              message: error?.message || 'Failed to save email template'
+            })
+          }
+        }),
+
+      reset: adminProcedure
+        .input(z.object({
+          templateKey: z.string().min(1)
+        }))
+        .mutation(async ({ input }) => {
+          try {
+            await resetManagedEmailTemplate(input.templateKey)
+            return { success: true }
+          } catch (error: any) {
+            throw new TRPCError({
+              code: 'BAD_REQUEST',
+              message: error?.message || 'Failed to reset template'
+            })
+          }
+        }),
+
+      preview: adminProcedure
+        .input(z.object({
+          templateKey: z.string().min(1),
+          subject: z.string().max(200).optional(),
+          body: z.string().max(20000).optional(),
+          context: z.record(z.string(), z.any()).optional()
+        }))
+        .query(async ({ input }) => {
+          try {
+            return await previewManagedEmailTemplate({
+              templateKey: input.templateKey,
+              subject: input.subject,
+              body: input.body,
+              context: input.context
+            })
+          } catch (error: any) {
+            throw new TRPCError({
+              code: 'BAD_REQUEST',
+              message: error?.message || 'Failed to render template preview'
+            })
+          }
+        }),
+
+      analyze: adminProcedure
+        .input(z.object({
+          templateKey: z.string().min(1),
+          subject: z.string().max(200),
+          body: z.string().max(20000)
+        }))
+        .query(async ({ input }) => {
+          try {
+            return analyzeManagedEmailTemplateDraft(input)
+          } catch (error: any) {
+            throw new TRPCError({
+              code: 'BAD_REQUEST',
+              message: error?.message || 'Failed to analyze template'
+            })
+          }
+        }),
+
+      sendTest: adminProcedure
+        .input(z.object({
+          templateKey: z.string().min(1),
+          to: z.string().email(),
+          subject: z.string().max(200).optional(),
+          body: z.string().max(20000).optional(),
+          orderId: z.number().optional(),
+          context: z.record(z.string(), z.any()).optional()
+        }))
+        .mutation(async ({ input }) => {
+          try {
+            const rendered = await previewManagedEmailTemplate({
+              templateKey: input.templateKey,
+              subject: input.subject,
+              body: input.body,
+              context: input.context
+            })
+
+            const sent = await sendEmail(
+              {
+                to: input.to,
+                subject: rendered.subject,
+                html: rendered.html
+              },
+              input.templateKey,
+              {
+                ...(input.context || {}),
+                orderId: input.orderId
+              },
+              input.orderId,
+              { skipTemplateOverride: true }
+            )
+
+            if (!sent) {
+              throw new TRPCError({
+                code: 'INTERNAL_SERVER_ERROR',
+                message: 'Email service returned false'
+              })
+            }
+
+            return {
+              success: true,
+              preview: rendered
+            }
+          } catch (error: any) {
+            if (error instanceof TRPCError) throw error
+            throw new TRPCError({
+              code: 'BAD_REQUEST',
+              message: error?.message || 'Failed to send test email'
+            })
+          }
+        })
+    }),
 
     /**
      * Get email details

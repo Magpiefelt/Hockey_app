@@ -3,7 +3,7 @@
     <!-- Header -->
     <div class="mb-8">
       <h1 class="text-2xl lg:text-3xl font-bold text-white mb-1">Emails</h1>
-      <p class="text-slate-400">Monitor email delivery and manage communications</p>
+      <p class="text-slate-400">Monitor email delivery, resend failures, and manage template overrides</p>
     </div>
 
     <!-- Stats Summary -->
@@ -285,6 +285,281 @@
       </div>
     </div>
 
+    <!-- Template Manager -->
+    <div class="mt-8 bg-slate-900/50 border border-slate-800 rounded-2xl p-5 lg:p-6">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h2 class="text-xl font-semibold text-white">Template Manager</h2>
+          <p class="text-sm text-slate-400 mt-1">
+            Create admin-managed overrides for built-in email templates.
+          </p>
+        </div>
+        <button
+          @click="fetchTemplates"
+          :disabled="templateLoading"
+          class="px-4 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 rounded-lg text-sm transition-colors"
+        >
+          <Icon :name="templateLoading ? 'mdi:loading' : 'mdi:refresh'" :class="{ 'animate-spin': templateLoading }" class="w-4 h-4 inline mr-1" />
+          Refresh
+        </button>
+      </div>
+
+      <div v-if="templateLoading" class="flex items-center justify-center py-10">
+        <div class="w-8 h-8 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin"></div>
+      </div>
+
+      <div v-else-if="templates.length === 0" class="text-center py-10">
+        <p class="text-slate-400">No managed templates available.</p>
+      </div>
+
+      <div v-else class="grid lg:grid-cols-3 gap-6">
+        <div class="space-y-3">
+          <div class="relative">
+            <Icon name="mdi:magnify" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+            <input
+              v-model="templateSearch"
+              type="text"
+              placeholder="Search templates..."
+              class="w-full pl-9 pr-4 py-2 bg-slate-800/60 border border-slate-700 rounded-lg text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-500/50"
+            />
+          </div>
+
+          <button
+            v-for="template in filteredTemplates"
+            :key="template.key"
+            @click="selectTemplate(template.key)"
+            class="w-full text-left p-3 rounded-xl border transition-all"
+            :class="selectedTemplateKey === template.key ? 'bg-cyan-500/10 border-cyan-500/40' : 'bg-slate-800/40 border-slate-700 hover:border-slate-600'"
+          >
+            <div class="flex items-center justify-between">
+              <p class="text-sm font-semibold text-white">{{ template.label }}</p>
+              <span
+                class="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full"
+                :class="template.isUsingOverride ? 'bg-cyan-500/20 text-cyan-300' : 'bg-slate-700 text-slate-300'"
+              >
+                {{ template.isUsingOverride ? 'Override' : 'Default' }}
+              </span>
+            </div>
+            <p class="text-xs text-slate-400 mt-1">{{ template.description }}</p>
+            <div v-if="template.stats" class="mt-2 flex items-center gap-2 text-[11px] text-slate-500">
+              <span>Sent {{ template.stats.sent }}</span>
+              <span>Failed {{ template.stats.failed }}</span>
+            </div>
+          </button>
+          <p v-if="filteredTemplates.length === 0" class="text-xs text-slate-500 py-2 px-1">
+            No templates match your search.
+          </p>
+        </div>
+
+        <div class="lg:col-span-2 space-y-4" v-if="selectedTemplate">
+          <div class="flex flex-wrap items-center gap-2">
+            <h3 class="text-lg font-semibold text-white">{{ selectedTemplate.label }}</h3>
+            <span
+              class="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full"
+              :class="selectedTemplate.isUsingOverride ? 'bg-cyan-500/20 text-cyan-300' : 'bg-slate-700 text-slate-300'"
+            >
+              {{ selectedTemplate.isUsingOverride ? 'Override Active' : 'Using Default' }}
+            </span>
+            <span v-if="isTemplateDirty" class="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300">
+              Unsaved Changes
+            </span>
+            <span v-if="templateLastUpdated" class="text-xs text-slate-500 ml-auto">
+              Updated: {{ formatDate(templateLastUpdated) }}
+            </span>
+          </div>
+
+          <div v-if="selectedTemplate.stats" class="grid sm:grid-cols-4 gap-2">
+            <div class="bg-slate-800/40 border border-slate-700 rounded-lg px-3 py-2">
+              <p class="text-[10px] uppercase text-slate-500">Total Sends</p>
+              <p class="text-sm text-white font-semibold">{{ selectedTemplate.stats.total }}</p>
+            </div>
+            <div class="bg-slate-800/40 border border-slate-700 rounded-lg px-3 py-2">
+              <p class="text-[10px] uppercase text-slate-500">Sent</p>
+              <p class="text-sm text-emerald-300 font-semibold">{{ selectedTemplate.stats.sent }}</p>
+            </div>
+            <div class="bg-slate-800/40 border border-slate-700 rounded-lg px-3 py-2">
+              <p class="text-[10px] uppercase text-slate-500">Failed</p>
+              <p class="text-sm text-red-300 font-semibold">{{ selectedTemplate.stats.failed }}</p>
+            </div>
+            <div class="bg-slate-800/40 border border-slate-700 rounded-lg px-3 py-2">
+              <p class="text-[10px] uppercase text-slate-500">Last Sent</p>
+              <p class="text-sm text-slate-300 font-semibold">{{ selectedTemplate.stats.lastSentAt ? formatDate(selectedTemplate.stats.lastSentAt) : 'Never' }}</p>
+            </div>
+          </div>
+
+          <div class="grid md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-slate-400 mb-2">Template Key</label>
+              <input
+                :value="selectedTemplate.key"
+                readonly
+                class="w-full px-4 py-2.5 bg-slate-800/50 border border-slate-700 rounded-xl text-slate-300"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-400 mb-2">Test Recipient</label>
+              <input
+                v-model="testRecipient"
+                type="email"
+                placeholder="you@example.com"
+                class="w-full px-4 py-2.5 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
+              />
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <input
+              id="template-enabled"
+              v-model="templateForm.enabled"
+              type="checkbox"
+              class="rounded border-slate-600 bg-slate-800 text-cyan-500 focus:ring-cyan-500/30"
+            />
+            <label for="template-enabled" class="text-sm text-slate-300">
+              Enable override for this template
+            </label>
+          </div>
+
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <label class="block text-sm font-medium text-slate-400">Subject Template</label>
+              <span class="text-xs text-slate-500">{{ subjectCharCount }}/200</span>
+            </div>
+            <input
+              ref="subjectInputRef"
+              v-model="templateForm.subject"
+              @focus="activeTemplateField = 'subject'"
+              @input="queueTemplateAnalysis"
+              type="text"
+              class="w-full px-4 py-2.5 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
+            />
+          </div>
+
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <label class="block text-sm font-medium text-slate-400">Body Template (HTML supported)</label>
+              <span class="text-xs text-slate-500">{{ bodyCharCount }}/20000</span>
+            </div>
+            <textarea
+              ref="bodyTextareaRef"
+              v-model="templateForm.body"
+              @focus="activeTemplateField = 'body'"
+              @input="queueTemplateAnalysis"
+              rows="12"
+              class="w-full px-4 py-2.5 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all font-mono text-sm"
+            />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-slate-400 mb-2">Preview Context (JSON)</label>
+            <textarea
+              v-model="testContextJson"
+              rows="4"
+              placeholder='{"name":"Alex","orderId":245}'
+              @input="queueTemplateAnalysis"
+              class="w-full px-4 py-2.5 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all font-mono text-xs"
+            />
+          </div>
+
+          <div>
+            <p class="text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wide">Template Variables</p>
+            <div class="flex flex-wrap gap-2">
+              <span
+                v-for="variable in selectedTemplate.variables"
+                :key="variable"
+                @click="insertTemplateVariable(variable)"
+                class="px-2 py-1 rounded-md bg-slate-800 hover:bg-slate-700 cursor-pointer text-slate-300 text-xs font-mono transition-colors"
+              >
+                {{ '{{' + variable + '}}' }}
+              </span>
+            </div>
+          </div>
+
+          <div>
+            <p class="text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wide">Global Variables</p>
+            <div class="flex flex-wrap gap-2">
+              <span
+                v-for="variable in globalTemplateVariables"
+                :key="variable"
+                @click="insertTemplateVariable(variable)"
+                class="px-2 py-1 rounded-md bg-slate-900 border border-slate-700 hover:border-slate-600 cursor-pointer text-slate-400 text-xs font-mono transition-colors"
+              >
+                {{ '{{' + variable + '}}' }}
+              </span>
+            </div>
+          </div>
+
+          <div v-if="templateAnalysis" class="border border-slate-700 rounded-xl p-3 bg-slate-950/60">
+            <div class="flex items-center gap-2 mb-2">
+              <Icon :name="templateAnalysis.isValid ? 'mdi:check-circle' : 'mdi:alert-circle'" :class="templateAnalysis.isValid ? 'text-emerald-400' : 'text-amber-400'" class="w-4 h-4" />
+              <p class="text-sm text-slate-200 font-medium">Template Analysis</p>
+              <span v-if="analyzingTemplate" class="text-xs text-slate-500 ml-auto">Analyzing…</span>
+            </div>
+            <p class="text-xs text-slate-400">Detected variables: {{ templateAnalysis.placeholders.length ? templateAnalysis.placeholders.join(', ') : 'None' }}</p>
+            <p v-if="templateAnalysis.invalidVariables.length" class="text-xs text-red-300 mt-1">
+              Invalid variables: {{ templateAnalysis.invalidVariables.join(', ') }}
+            </p>
+            <p v-if="templateAnalysis.hasUnsafeHtml" class="text-xs text-red-300 mt-1">
+              Unsafe HTML was detected (script/iframe/javascript URLs are not allowed).
+            </p>
+            <p
+              v-else-if="templateAnalysis.recommendedVariablesMissing.length"
+              class="text-xs text-amber-300 mt-1"
+            >
+              Missing commonly used variables: {{ templateAnalysis.recommendedVariablesMissing.join(', ') }}
+            </p>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <button
+              @click="previewTemplate"
+              :disabled="templateBusy"
+              class="px-4 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 rounded-lg text-sm transition-colors"
+            >
+              Preview
+            </button>
+            <button
+              @click="saveTemplate"
+              :disabled="templateBusy"
+              class="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 disabled:opacity-50 text-white rounded-lg text-sm font-semibold transition-colors"
+            >
+              Save Override
+            </button>
+            <button
+              @click="resetTemplate"
+              :disabled="templateBusy"
+              class="px-4 py-2 bg-amber-500/20 hover:bg-amber-500/30 disabled:opacity-50 text-amber-300 rounded-lg text-sm transition-colors"
+            >
+              Reset to Default
+            </button>
+            <button
+              @click="revertTemplateEdits"
+              :disabled="templateBusy || !isTemplateDirty"
+              class="px-4 py-2 bg-slate-700/60 hover:bg-slate-700 disabled:opacity-50 text-slate-200 rounded-lg text-sm transition-colors"
+            >
+              Revert Unsaved
+            </button>
+            <button
+              @click="sendTestTemplate"
+              :disabled="templateBusy || !testRecipient || !!templateValidationError"
+              class="px-4 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 disabled:opacity-50 text-emerald-300 rounded-lg text-sm transition-colors"
+            >
+              Send Test
+            </button>
+          </div>
+
+          <p v-if="templateValidationError" class="text-xs text-red-300">
+            {{ templateValidationError }}
+          </p>
+
+          <div v-if="templatePreview" class="border border-slate-700 rounded-xl p-4 bg-slate-950/50">
+            <p class="text-xs uppercase tracking-wide text-slate-500 mb-2">Rendered Preview</p>
+            <p class="text-sm text-slate-300 mb-3"><span class="text-slate-400">Subject:</span> {{ templatePreview.subject }}</p>
+            <div class="bg-white text-slate-800 rounded-lg p-4 max-h-72 overflow-auto text-sm" v-html="templatePreview.html"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Email Detail Modal -->
     <EmailDetailModal
       v-if="selectedEmail"
@@ -308,7 +583,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 
 definePageMeta({
   layout: 'admin',
@@ -334,6 +609,46 @@ const emailToResend = ref<any>(null)
 
 const { showSuccess, showError } = useNotification()
 
+type TemplateOverride = {
+  enabled: boolean
+  subject: string
+  body: string
+  updatedAt: string
+  updatedBy: number | null
+}
+
+type ManagedTemplate = {
+  key: string
+  label: string
+  description: string
+  variables: string[]
+  defaultSubject: string
+  defaultBody: string
+  override: TemplateOverride | null
+  effectiveSubject: string
+  effectiveBody: string
+  isUsingOverride: boolean
+  stats?: TemplateStats | null
+}
+
+type TemplateStats = {
+  template: string
+  sent: number
+  failed: number
+  total: number
+  lastSentAt: string | null
+}
+
+type TemplateAnalysis = {
+  templateKey: string
+  placeholders: string[]
+  allowedVariables: string[]
+  invalidVariables: string[]
+  recommendedVariablesMissing: string[]
+  hasUnsafeHtml: boolean
+  isValid: boolean
+}
+
 // Filters
 const filters = ref({
   status: 'all',
@@ -341,10 +656,72 @@ const filters = ref({
   search: ''
 })
 
+// Template management
+const templateLoading = ref(false)
+const templateBusy = ref(false)
+const templates = ref<ManagedTemplate[]>([])
+const templateSearch = ref('')
+const globalTemplateVariables = ref<string[]>([])
+const selectedTemplateKey = ref('')
+const testRecipient = ref('')
+const testContextJson = ref('')
+const templatePreview = ref<{ subject: string; html: string } | null>(null)
+const templateAnalysis = ref<TemplateAnalysis | null>(null)
+const analyzingTemplate = ref(false)
+const templateForm = ref({
+  enabled: false,
+  subject: '',
+  body: ''
+})
+const subjectInputRef = ref<HTMLInputElement | null>(null)
+const bodyTextareaRef = ref<HTMLTextAreaElement | null>(null)
+const activeTemplateField = ref<'subject' | 'body'>('body')
+
 // Computed
 const totalPages = computed(() => Math.ceil(totalEmails.value / pageSize))
 const hasActiveFilters = computed(() => {
   return filters.value.status !== 'all' || filters.value.template !== '' || filters.value.search !== ''
+})
+const selectedTemplate = computed(() => {
+  return templates.value.find(template => template.key === selectedTemplateKey.value) || null
+})
+const filteredTemplates = computed(() => {
+  const search = templateSearch.value.trim().toLowerCase()
+  if (!search) return templates.value
+  return templates.value.filter((template) =>
+    template.label.toLowerCase().includes(search) ||
+    template.key.toLowerCase().includes(search) ||
+    template.description.toLowerCase().includes(search)
+  )
+})
+const subjectCharCount = computed(() => templateForm.value.subject.length)
+const bodyCharCount = computed(() => templateForm.value.body.length)
+const templateLastUpdated = computed(() => selectedTemplate.value?.override?.updatedAt || null)
+const isTemplateDirty = computed(() => {
+  if (!selectedTemplate.value) return false
+  const baselineEnabled = selectedTemplate.value.override?.enabled ?? false
+  const baselineSubject = selectedTemplate.value.override?.subject || selectedTemplate.value.defaultSubject
+  const baselineBody = selectedTemplate.value.override?.body || selectedTemplate.value.defaultBody
+  return (
+    templateForm.value.enabled !== baselineEnabled ||
+    templateForm.value.subject !== baselineSubject ||
+    templateForm.value.body !== baselineBody
+  )
+})
+const templateValidationError = computed(() => {
+  if (templateForm.value.enabled && !templateForm.value.subject.trim()) {
+    return 'Enabled overrides require a subject.'
+  }
+  if (templateForm.value.enabled && !templateForm.value.body.trim()) {
+    return 'Enabled overrides require a body.'
+  }
+  if (templateAnalysis.value?.invalidVariables?.length) {
+    return `Unknown variables: ${templateAnalysis.value.invalidVariables.join(', ')}`
+  }
+  if (templateAnalysis.value?.hasUnsafeHtml) {
+    return 'Unsafe HTML detected in body.'
+  }
+  return ''
 })
 
 // Fetch emails
@@ -379,6 +756,222 @@ async function fetchStats() {
     // Error logged: 'Failed to fetch email stats:', err)
   }
 }
+
+function parseTemplateContext() {
+  const raw = testContextJson.value.trim()
+  if (!raw) return {}
+  const parsed = JSON.parse(raw)
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('Preview context must be a JSON object')
+  }
+  return parsed as Record<string, unknown>
+}
+
+function applyTemplateToForm(template: ManagedTemplate) {
+  templateForm.value = {
+    enabled: template.override?.enabled ?? false,
+    subject: template.override?.subject || template.defaultSubject,
+    body: template.override?.body || template.defaultBody
+  }
+  templatePreview.value = null
+  templateAnalysis.value = null
+}
+
+function selectTemplate(templateKey: string) {
+  selectedTemplateKey.value = templateKey
+  const template = templates.value.find(item => item.key === templateKey)
+  if (template) {
+    applyTemplateToForm(template)
+    queueTemplateAnalysis()
+  }
+}
+
+async function fetchTemplates() {
+  templateLoading.value = true
+  try {
+    const result = await trpc.admin.emails.templates.list.query()
+    const templateStats = (result.templateStats || []) as TemplateStats[]
+    const statsByKey = Object.fromEntries(templateStats.map(item => [item.template, item]))
+    globalTemplateVariables.value = (result.globalVariables || []) as string[]
+    templates.value = (result.templates as ManagedTemplate[]).map(template => ({
+      ...template,
+      stats: statsByKey[template.key] || null
+    }))
+
+    if (!templates.value.length) {
+      selectedTemplateKey.value = ''
+      return
+    }
+
+    if (!selectedTemplateKey.value || !templates.value.find(t => t.key === selectedTemplateKey.value)) {
+      selectedTemplateKey.value = templates.value[0].key
+    }
+
+    const currentTemplate = templates.value.find(t => t.key === selectedTemplateKey.value)
+    if (currentTemplate) {
+      applyTemplateToForm(currentTemplate)
+      await refreshTemplateAnalysis()
+    }
+  } catch (err: any) {
+    showError(err.message || 'Failed to load template settings')
+  } finally {
+    templateLoading.value = false
+  }
+}
+
+async function refreshTemplateAnalysis() {
+  if (!selectedTemplate.value) {
+    templateAnalysis.value = null
+    return
+  }
+
+  analyzingTemplate.value = true
+  try {
+    templateAnalysis.value = await trpc.admin.emails.templates.analyze.query({
+      templateKey: selectedTemplate.value.key,
+      subject: templateForm.value.subject,
+      body: templateForm.value.body
+    })
+  } catch (err: any) {
+    templateAnalysis.value = null
+    showError(err.message || 'Failed to analyze template draft')
+  } finally {
+    analyzingTemplate.value = false
+  }
+}
+
+let analyzeTimeout: NodeJS.Timeout
+function queueTemplateAnalysis() {
+  clearTimeout(analyzeTimeout)
+  analyzeTimeout = setTimeout(() => {
+    refreshTemplateAnalysis()
+  }, 250)
+}
+
+function insertTemplateVariable(variable: string) {
+  const token = `{{${variable}}}`
+  const target = activeTemplateField.value === 'subject' ? subjectInputRef.value : bodyTextareaRef.value
+  if (!target) return
+
+  const selectionStart = target.selectionStart ?? 0
+  const selectionEnd = target.selectionEnd ?? selectionStart
+  const currentValue = activeTemplateField.value === 'subject' ? templateForm.value.subject : templateForm.value.body
+  const nextValue = `${currentValue.slice(0, selectionStart)}${token}${currentValue.slice(selectionEnd)}`
+
+  if (activeTemplateField.value === 'subject') {
+    templateForm.value.subject = nextValue
+  } else {
+    templateForm.value.body = nextValue
+  }
+
+  queueTemplateAnalysis()
+}
+
+function revertTemplateEdits() {
+  if (!selectedTemplate.value) return
+  applyTemplateToForm(selectedTemplate.value)
+  queueTemplateAnalysis()
+}
+
+async function previewTemplate() {
+  if (!selectedTemplate.value) return
+
+  templateBusy.value = true
+  try {
+    if (templateValidationError.value) {
+      throw new Error(templateValidationError.value)
+    }
+    const context = parseTemplateContext()
+    templatePreview.value = await trpc.admin.emails.templates.preview.query({
+      templateKey: selectedTemplate.value.key,
+      subject: templateForm.value.subject,
+      body: templateForm.value.body,
+      context
+    })
+  } catch (err: any) {
+    showError(err.message || 'Failed to render template preview')
+  } finally {
+    templateBusy.value = false
+  }
+}
+
+async function saveTemplate() {
+  if (!selectedTemplate.value) return
+
+  templateBusy.value = true
+  try {
+    if (templateValidationError.value) {
+      throw new Error(templateValidationError.value)
+    }
+    await trpc.admin.emails.templates.save.mutate({
+      templateKey: selectedTemplate.value.key,
+      enabled: templateForm.value.enabled,
+      subject: templateForm.value.subject,
+      body: templateForm.value.body
+    })
+
+    await fetchTemplates()
+    showSuccess('Template override saved')
+  } catch (err: any) {
+    showError(err.message || 'Failed to save template')
+  } finally {
+    templateBusy.value = false
+  }
+}
+
+async function resetTemplate() {
+  if (!selectedTemplate.value) return
+  if (typeof window !== 'undefined' && !window.confirm('Reset this template override and return to default behavior?')) {
+    return
+  }
+
+  templateBusy.value = true
+  try {
+    await trpc.admin.emails.templates.reset.mutate({
+      templateKey: selectedTemplate.value.key
+    })
+
+    await fetchTemplates()
+    showSuccess('Template reset to default')
+  } catch (err: any) {
+    showError(err.message || 'Failed to reset template')
+  } finally {
+    templateBusy.value = false
+  }
+}
+
+async function sendTestTemplate() {
+  if (!selectedTemplate.value || !testRecipient.value) return
+
+  templateBusy.value = true
+  try {
+    if (templateValidationError.value) {
+      throw new Error(templateValidationError.value)
+    }
+    const context = parseTemplateContext()
+    const result = await trpc.admin.emails.templates.sendTest.mutate({
+      templateKey: selectedTemplate.value.key,
+      to: testRecipient.value,
+      subject: templateForm.value.subject,
+      body: templateForm.value.body,
+      context
+    })
+
+    if (result.preview) {
+      templatePreview.value = result.preview
+    }
+
+    showSuccess(`Test email sent to ${testRecipient.value}`)
+  } catch (err: any) {
+    showError(err.message || 'Failed to send test email')
+  } finally {
+    templateBusy.value = false
+  }
+}
+
+watch(selectedTemplateKey, () => {
+  queueTemplateAnalysis()
+})
 
 // Debounced search
 let searchTimeout: NodeJS.Timeout
@@ -533,7 +1126,7 @@ function formatTemplate(template: string) {
 
 // Lifecycle
 onMounted(() => {
-  Promise.all([fetchEmails(), fetchStats()])
+  Promise.all([fetchEmails(), fetchStats(), fetchTemplates()])
 })
 
 useHead({

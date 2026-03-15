@@ -14,6 +14,7 @@
 import { sendEmailWithMailgun } from './mailgun'
 import { logger } from './logger'
 import { executeQuery } from './database'
+import { resolveManagedEmailTemplate } from '../services/emailTemplateService'
 
 interface EmailOptions {
   to: string
@@ -115,7 +116,13 @@ async function logEmail(
  * Send email with error handling and logging
  * Uses Mailgun API for delivery
  */
-export async function sendEmail(options: EmailOptions, template: string, metadata: any, quoteRequestId?: number | null): Promise<boolean> {
+export async function sendEmail(
+  options: EmailOptions,
+  template: string,
+  metadata: any,
+  quoteRequestId?: number | null,
+  config?: { skipTemplateOverride?: boolean }
+): Promise<boolean> {
   // Validate required fields
   if (!options.to) {
     logger.error('Email recipient is required', { template })
@@ -128,22 +135,46 @@ export async function sendEmail(options: EmailOptions, template: string, metadat
   }
 
   try {
+    const resolvedTemplate = config?.skipTemplateOverride
+      ? {
+          subject: options.subject,
+          html: options.html,
+          overrideApplied: false
+        }
+      : await resolveManagedEmailTemplate(template, {
+          subject: options.subject,
+          html: options.html,
+          metadata: {
+            ...(metadata || {}),
+            to: options.to,
+            subject: options.subject
+          }
+        })
+
     const sent = await sendEmailWithMailgun({
       to: options.to,
-      subject: options.subject,
-      html: options.html,
+      subject: resolvedTemplate.subject,
+      html: resolvedTemplate.html,
       text: options.text
     })
     
     if (sent) {
       logger.info('Email sent successfully', {
         to: options.to,
-        subject: options.subject,
-        template
+        subject: resolvedTemplate.subject,
+        template,
+        overrideApplied: resolvedTemplate.overrideApplied
       })
       
       // Log as sent with metadata for resend capability
-      await logEmail(quoteRequestId || null, options.to, options.subject, template, metadata, 'sent')
+      await logEmail(
+        quoteRequestId || null,
+        options.to,
+        resolvedTemplate.subject,
+        template,
+        { ...(metadata || {}), templateOverrideApplied: resolvedTemplate.overrideApplied },
+        'sent'
+      )
       return true
     } else {
       throw new Error('Email sending returned false')
@@ -157,7 +188,15 @@ export async function sendEmail(options: EmailOptions, template: string, metadat
     })
     
     // Log as failed with metadata
-    await logEmail(quoteRequestId || null, options.to, options.subject, template, metadata, 'failed', error.message)
+    await logEmail(
+      quoteRequestId || null,
+      options.to,
+      options.subject,
+      template,
+      metadata,
+      'failed',
+      error.message
+    )
     
     return false
   }
