@@ -10,7 +10,12 @@ import { router, publicProcedure, protectedProcedure } from '../trpc'
 import { query, transaction } from '../../db/connection'
 import { logger } from '../../utils/logger'
 import { sendAdminNotificationEmail } from '../../utils/email-enhanced'
-import { validateQuoteToken } from '../../utils/quote-tokens'
+import {
+  validateQuoteTokenWithStore,
+  markQuoteTokenUsed
+} from '../../utils/quote-tokens'
+
+const QUOTE_TOKEN_SCHEMA = z.string().min(20).max(4096)
 
 export const quotePublicRouter = router({
   /**
@@ -144,11 +149,13 @@ export const quotePublicRouter = router({
   getQuoteWithToken: publicProcedure
     .input(z.object({
       orderId: z.number(),
-      token: z.string()
+      token: QUOTE_TOKEN_SCHEMA
     }))
     .query(async ({ input }) => {
       // Validate token
-      const tokenValidation = validateQuoteToken(input.token)
+      const tokenValidation = await validateQuoteTokenWithStore(input.token, {
+        requireStoredToken: true
+      })
       
       if (!tokenValidation.valid) {
         throw new TRPCError({
@@ -297,13 +304,29 @@ export const quotePublicRouter = router({
   recordQuoteViewWithToken: publicProcedure
     .input(z.object({
       orderId: z.number(),
-      token: z.string()
+      token: QUOTE_TOKEN_SCHEMA
     }))
     .mutation(async ({ input, ctx }) => {
       // Validate token
-      const tokenValidation = validateQuoteToken(input.token)
+      const tokenValidation = await validateQuoteTokenWithStore(input.token, {
+        requireStoredToken: true
+      })
       
-      if (!tokenValidation.valid || tokenValidation.orderId !== input.orderId) {
+      if (!tokenValidation.valid || tokenValidation.orderId !== input.orderId || !tokenValidation.email) {
+        return { success: false }
+      }
+
+      // Ensure the token email still matches the order owner email
+      const orderResult = await query(
+        `SELECT contact_email FROM quote_requests WHERE id = $1`,
+        [input.orderId]
+      )
+
+      if (orderResult.rows.length === 0) {
+        return { success: false }
+      }
+
+      if (orderResult.rows[0].contact_email.toLowerCase() !== tokenValidation.email.toLowerCase()) {
         return { success: false }
       }
       
@@ -327,11 +350,14 @@ export const quotePublicRouter = router({
   acceptQuoteWithToken: publicProcedure
     .input(z.object({
       orderId: z.number(),
-      token: z.string()
+      token: QUOTE_TOKEN_SCHEMA
     }))
     .mutation(async ({ input, ctx }) => {
       // Validate token
-      const tokenValidation = validateQuoteToken(input.token)
+      const tokenValidation = await validateQuoteTokenWithStore(input.token, {
+        requireStoredToken: true,
+        rejectUsedToken: true
+      })
       
       if (!tokenValidation.valid) {
         throw new TRPCError({
@@ -367,7 +393,9 @@ export const quotePublicRouter = router({
         })
       }
       
-      return acceptQuoteInternal(input.orderId, orderResult.rows[0].user_id, ctx.event?.context?.ip, false)
+      const result = await acceptQuoteInternal(input.orderId, orderResult.rows[0].user_id, ctx.event?.context?.ip, false)
+      await markQuoteTokenUsed(input.orderId, input.token)
+      return result
     }),
 
   /**
@@ -388,12 +416,15 @@ export const quotePublicRouter = router({
   declineQuoteWithToken: publicProcedure
     .input(z.object({
       orderId: z.number(),
-      token: z.string(),
+      token: QUOTE_TOKEN_SCHEMA,
       reason: z.string().optional()
     }))
     .mutation(async ({ input, ctx }) => {
       // Validate token
-      const tokenValidation = validateQuoteToken(input.token)
+      const tokenValidation = await validateQuoteTokenWithStore(input.token, {
+        requireStoredToken: true,
+        rejectUsedToken: true
+      })
       
       if (!tokenValidation.valid) {
         throw new TRPCError({
@@ -429,7 +460,9 @@ export const quotePublicRouter = router({
         })
       }
       
-      return declineQuoteInternal(input.orderId, orderResult.rows[0].user_id, input.reason, ctx.event?.context?.ip, false)
+      const result = await declineQuoteInternal(input.orderId, orderResult.rows[0].user_id, input.reason, ctx.event?.context?.ip, false)
+      await markQuoteTokenUsed(input.orderId, input.token)
+      return result
     }),
 
   /**
@@ -565,7 +598,8 @@ async function acceptQuoteInternal(
         qr.id, qr.user_id, qr.status, qr.quoted_amount, qr.quote_expires_at,
         qr.contact_name, qr.contact_email
        FROM quote_requests qr
-       WHERE qr.id = $1`,
+       WHERE qr.id = $1
+       FOR UPDATE`,
       [orderId]
     )
     
@@ -600,6 +634,14 @@ async function acceptQuoteInternal(
       throw new TRPCError({
         code: 'BAD_REQUEST',
         message: 'This quote has already been accepted'
+      })
+    }
+
+    const actionableStatuses = ['quoted', 'quote_viewed']
+    if (!actionableStatuses.includes(order.status)) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: `Quote cannot be accepted while order is '${order.status}'`
       })
     }
     
@@ -646,7 +688,7 @@ async function acceptQuoteInternal(
        VALUES ($1, $2, 'quote_accepted', $3, $4)`,
       [orderId, order.status, userId, `Customer accepted quote${isAuthenticated ? '' : ' via email link'}`]
     )
-    
+
     // Notify admin
     try {
       await sendAdminNotificationEmail({
@@ -677,9 +719,10 @@ async function declineQuoteInternal(
   return transaction(async (client) => {
     // Get order details
     const orderResult = await client.query(
-      `SELECT qr.id, qr.user_id, qr.status, qr.contact_name
+      `SELECT qr.id, qr.user_id, qr.status, qr.quoted_amount, qr.contact_name
        FROM quote_requests qr
-       WHERE qr.id = $1`,
+       WHERE qr.id = $1
+       FOR UPDATE`,
       [orderId]
     )
     
@@ -691,12 +734,41 @@ async function declineQuoteInternal(
     }
     
     const order = orderResult.rows[0]
+
+    if (!order.quoted_amount) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: 'No quote exists for this order'
+      })
+    }
     
     // Check ownership if authenticated
     if (isAuthenticated && order.user_id !== userId) {
       throw new TRPCError({
         code: 'FORBIDDEN',
         message: 'Not authorized to decline this quote'
+      })
+    }
+
+    if (order.status === 'cancelled') {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: 'This quote has already been declined'
+      })
+    }
+
+    if (order.status === 'quote_accepted' || ['invoiced', 'paid', 'in_progress', 'completed', 'delivered'].includes(order.status)) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: `Quote cannot be declined while order is '${order.status}'`
+      })
+    }
+
+    const actionableStatuses = ['quoted', 'quote_viewed']
+    if (!actionableStatuses.includes(order.status)) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: `Quote cannot be declined while order is '${order.status}'`
       })
     }
     
@@ -727,7 +799,7 @@ async function declineQuoteInternal(
        VALUES ($1, $2, 'cancelled', $3, $4)`,
       [orderId, order.status, userId, `Customer declined${isAuthenticated ? '' : ' via email link'}: ${reason || 'No reason provided'}`]
     )
-    
+
     // Notify admin
     try {
       await sendAdminNotificationEmail({
