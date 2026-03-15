@@ -11,6 +11,20 @@
 import { query } from '../db/connection'
 import { logger } from '../utils/logger'
 
+const toDateOnlyString = (value: unknown): string | null => {
+  if (value instanceof Date && !isNaN(value.getTime())) {
+    return value.toISOString().split('T')[0]
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (!trimmed) return null
+    return trimmed.includes('T') ? trimmed.split('T')[0] : trimmed
+  }
+
+  return null
+}
+
 export default defineEventHandler(async (event) => {
   // Cache for 5 minutes on CDN/edge, 10 minutes stale-while-revalidate.
   // This prevents a DB hit on every SSR page render for the home page.
@@ -19,7 +33,13 @@ export default defineEventHandler(async (event) => {
   const result = {
     packages: [] as any[],
     faq: [] as any[],
-    testimonials: [] as any[]
+    testimonials: [] as any[],
+    eventHighlights: [] as any[],
+    eventSummary: {
+      upcomingCount: 0,
+      recentCount: 0,
+      thisMonthCount: 0
+    }
   }
 
   // --- Packages ---
@@ -86,6 +106,61 @@ export default defineEventHandler(async (event) => {
     }))
   } catch (err) {
     logger.warn('home-data: failed to fetch testimonials', err as Error)
+  }
+
+  // --- Event highlights (public-safe marketing data) ---
+  try {
+    const eventResult = await query(
+      `SELECT
+         event_date,
+         title,
+         category,
+         location,
+         description,
+         CASE WHEN event_date >= CURRENT_DATE THEN 'upcoming' ELSE 'recent' END AS lifecycle
+       FROM public_event_highlights
+       WHERE is_visible = TRUE
+         AND event_date IS NOT NULL
+         AND event_date >= CURRENT_DATE - INTERVAL '120 days'
+       ORDER BY
+         CASE WHEN event_date >= CURRENT_DATE THEN 0 ELSE 1 END,
+         CASE WHEN event_date >= CURRENT_DATE THEN event_date END ASC,
+         CASE WHEN event_date < CURRENT_DATE THEN event_date END DESC,
+         display_order ASC,
+         id DESC
+       LIMIT 20`
+    )
+
+    result.eventHighlights = eventResult.rows.map((row: any) => ({
+      date: toDateOnlyString(row.event_date),
+      title: row.title,
+      category: row.category,
+      location: row.location || null,
+      description: row.description || null,
+      lifecycle: row.lifecycle
+    })).filter((row: any) => typeof row.date === 'string' && row.date.length > 0)
+
+    const summaryResult = await query(
+      `SELECT
+         COUNT(*) FILTER (WHERE event_date >= CURRENT_DATE) AS upcoming_count,
+         COUNT(*) FILTER (WHERE event_date < CURRENT_DATE) AS recent_count,
+         COUNT(*) FILTER (
+           WHERE DATE_TRUNC('month', event_date) = DATE_TRUNC('month', CURRENT_DATE)
+         ) AS this_month_count
+       FROM public_event_highlights
+       WHERE is_visible = TRUE
+         AND event_date IS NOT NULL
+         AND event_date >= CURRENT_DATE - INTERVAL '120 days'`
+    )
+
+    const summary = summaryResult.rows[0]
+    result.eventSummary = {
+      upcomingCount: Number(summary?.upcoming_count || 0),
+      recentCount: Number(summary?.recent_count || 0),
+      thisMonthCount: Number(summary?.this_month_count || 0)
+    }
+  } catch (err) {
+    logger.warn('home-data: failed to fetch event highlights (or table missing)', err as Error)
   }
 
   return result

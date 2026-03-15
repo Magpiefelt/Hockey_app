@@ -251,7 +251,10 @@
     </section>
 
     <!-- Availability Calendar Section -->
-    <HomeAvailabilityCalendar />
+    <HomeAvailabilityCalendar
+      :event-highlights="eventHighlights"
+      :event-summary="eventSummary"
+    />
 
     <!-- How It Works Section - NEW -->
     <section id="how-it-works" class="section relative bg-dark-primary overflow-hidden">
@@ -933,6 +936,21 @@ interface HomePackage {
   priceSuffix: string
 }
 
+interface HomeEventHighlight {
+  date: string
+  title: string
+  category: string
+  location?: string | null
+  description?: string | null
+  lifecycle: 'upcoming' | 'recent'
+}
+
+interface HomeEventSummary {
+  upcomingCount: number
+  recentCount: number
+  thisMonthCount: number
+}
+
 // SEO/PERF: Use useAsyncData to fetch home page content server-side (SSR).
 // Data fetched in onMounted() is invisible to search engine crawlers and AI search tools
 // because they see the initial HTML — not the JavaScript-rendered content.
@@ -952,14 +970,40 @@ const { data: homeData, refresh: refreshHomeData } = await useAsyncData(
   'home-page-data',
   async () => {
     try {
-      return await $fetch<{ packages: any[]; faq: any[]; testimonials: any[] }>('/api/home-data')
+      return await $fetch<{
+        packages: any[]
+        faq: any[]
+        testimonials: any[]
+        eventHighlights: HomeEventHighlight[]
+        eventSummary: HomeEventSummary
+      }>('/api/home-data')
     } catch {
       // Non-fatal: page will render with fallback data
-      return { packages: [], faq: [], testimonials: [] }
+      return {
+        packages: [],
+        faq: [],
+        testimonials: [],
+        eventHighlights: [],
+        eventSummary: {
+          upcomingCount: 0,
+          recentCount: 0,
+          thisMonthCount: 0
+        }
+      }
     }
   },
   {
-    default: () => ({ packages: [] as any[], faq: [] as any[], testimonials: [] as any[] })
+    default: () => ({
+      packages: [] as any[],
+      faq: [] as any[],
+      testimonials: [] as any[],
+      eventHighlights: [] as HomeEventHighlight[],
+      eventSummary: {
+        upcomingCount: 0,
+        recentCount: 0,
+        thisMonthCount: 0
+      } as HomeEventSummary
+    })
   }
 )
 
@@ -989,6 +1033,14 @@ const faqItems = computed(() => {
 const siteTestimonials = computed(() => {
   const items = homeData.value?.testimonials ?? []
   return items.length > 0 ? items : fallbackTestimonials
+})
+const eventHighlights = computed<HomeEventHighlight[]>(() => homeData.value?.eventHighlights ?? [])
+const eventSummary = computed<HomeEventSummary>(() => {
+  return homeData.value?.eventSummary ?? {
+    upcomingCount: 0,
+    recentCount: 0,
+    thisMonthCount: 0
+  }
 })
 
 // SEO: Dynamic FAQPage JSON-LD — runs server-side so FAQ content is indexable by crawlers.

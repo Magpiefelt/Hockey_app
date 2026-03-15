@@ -23,6 +23,20 @@
       <RevealOnScroll animation="fade-up">
         <div class="calendar-outer-container">
           <div class="calendar-card">
+            <div class="mb-5 flex flex-col gap-3 border-b border-white/10 pb-5 sm:flex-row sm:items-center sm:justify-between">
+              <div class="flex items-center gap-2 text-sm text-cyan-300/90">
+                <Icon name="mdi:clock-check-outline" class="h-4 w-4" />
+                <span>Live availability updates every 5 minutes</span>
+              </div>
+              <button
+                @click="retryFetch"
+                class="inline-flex items-center justify-center gap-2 rounded-lg border border-cyan-400/40 bg-cyan-500/10 px-3 py-2 text-sm font-semibold text-cyan-300 transition-colors hover:bg-cyan-500/20"
+              >
+                <Icon name="mdi:refresh" class="h-4 w-4" />
+                Refresh calendar
+              </button>
+            </div>
+
             <!-- Loading State -->
             <div v-if="isLoading && !hasData" class="calendar-loading">
               <Icon name="mdi:loading" class="w-8 h-8 text-cyan-400 animate-spin" />
@@ -43,6 +57,94 @@
 
             <!-- Calendar -->
             <template v-else>
+              <div class="mb-6 grid gap-3 sm:grid-cols-3">
+                <div class="rounded-xl border border-white/10 bg-slate-900/50 p-4">
+                  <p class="text-xs uppercase tracking-wide text-slate-400">Open in {{ selectedMonthLabel }}</p>
+                  <p class="mt-1 text-2xl font-black text-emerald-300">{{ monthAvailabilityStats.availableCount }}</p>
+                </div>
+                <div class="rounded-xl border border-white/10 bg-slate-900/50 p-4">
+                  <p class="text-xs uppercase tracking-wide text-slate-400">Booked dates</p>
+                  <p class="mt-1 text-2xl font-black text-rose-300">{{ monthAvailabilityStats.bookedCount }}</p>
+                </div>
+                <div class="rounded-xl border border-white/10 bg-slate-900/50 p-4">
+                  <p class="text-xs uppercase tracking-wide text-slate-400">Blocked dates</p>
+                  <p class="mt-1 text-2xl font-black text-amber-300">{{ monthAvailabilityStats.blockedCount }}</p>
+                </div>
+              </div>
+
+              <div class="mb-6 grid gap-3 sm:grid-cols-3">
+                <div class="rounded-xl border border-white/10 bg-slate-900/50 p-4">
+                  <p class="text-xs uppercase tracking-wide text-slate-400">Upcoming events</p>
+                  <p class="mt-1 text-2xl font-black text-cyan-300">{{ marketingSummary.upcomingCount }}</p>
+                </div>
+                <div class="rounded-xl border border-white/10 bg-slate-900/50 p-4">
+                  <p class="text-xs uppercase tracking-wide text-slate-400">Recent events</p>
+                  <p class="mt-1 text-2xl font-black text-indigo-300">{{ marketingSummary.recentCount }}</p>
+                </div>
+                <div class="rounded-xl border border-white/10 bg-slate-900/50 p-4">
+                  <p class="text-xs uppercase tracking-wide text-slate-400">Events this month</p>
+                  <p class="mt-1 text-2xl font-black text-fuchsia-300">{{ marketingSummary.thisMonthCount }}</p>
+                </div>
+              </div>
+
+              <div
+                v-if="upcomingHighlights.length > 0 || recentHighlights.length > 0"
+                class="mb-6 rounded-xl border border-white/10 bg-slate-900/40 p-4"
+              >
+                <p class="mb-3 text-sm font-semibold text-slate-200">Where you can catch us</p>
+                <div class="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <p class="mb-2 text-xs uppercase tracking-wide text-cyan-300">Upcoming</p>
+                    <ul class="space-y-2">
+                      <li
+                        v-for="eventItem in upcomingHighlights"
+                        :key="`upcoming-${eventItem.isoDate}-${eventItem.title}`"
+                        class="rounded-lg border border-cyan-500/20 bg-cyan-500/5 px-3 py-2"
+                      >
+                        <p class="text-sm font-semibold text-white">{{ eventItem.title }}</p>
+                        <p class="text-xs text-slate-300">{{ formatDate(eventItem.parsedDate) }} • {{ eventItem.category }}</p>
+                        <p v-if="eventItem.location" class="text-xs text-slate-400">{{ eventItem.location }}</p>
+                      </li>
+                    </ul>
+                    <p v-if="upcomingHighlights.length === 0" class="text-xs text-slate-400">
+                      New events will appear here as soon as they are confirmed.
+                    </p>
+                  </div>
+                  <div>
+                    <p class="mb-2 text-xs uppercase tracking-wide text-indigo-300">Recently attended</p>
+                    <ul class="space-y-2">
+                      <li
+                        v-for="eventItem in recentHighlights"
+                        :key="`recent-${eventItem.isoDate}-${eventItem.title}`"
+                        class="rounded-lg border border-indigo-500/20 bg-indigo-500/5 px-3 py-2"
+                      >
+                        <p class="text-sm font-semibold text-white">{{ eventItem.title }}</p>
+                        <p class="text-xs text-slate-300">{{ formatDate(eventItem.parsedDate) }} • {{ eventItem.category }}</p>
+                        <p v-if="eventItem.location" class="text-xs text-slate-400">{{ eventItem.location }}</p>
+                      </li>
+                    </ul>
+                    <p v-if="recentHighlights.length === 0" class="text-xs text-slate-400">
+                      Recent events will appear here.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="nextAvailableDates.length" class="mb-5 rounded-xl border border-white/10 bg-slate-900/40 p-4">
+                <p class="mb-3 text-sm font-semibold text-slate-200">Quick pick next available dates</p>
+                <div class="flex flex-wrap gap-2">
+                  <button
+                    v-for="quickDate in nextAvailableDates"
+                    :key="quickDate.isoDate"
+                    type="button"
+                    @click="selectQuickDate(quickDate.isoDate)"
+                    class="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-sm font-medium text-emerald-300 transition-colors hover:bg-emerald-500/20"
+                  >
+                    {{ quickDate.label }}
+                  </button>
+                </div>
+              </div>
+
               <div class="calendar-wrapper">
                 <VueDatePicker 
                   v-model="selectedDate"
@@ -77,8 +179,12 @@
                   <span>Available</span>
                 </div>
                 <div class="legend-item">
-                  <div class="legend-dot legend-unavailable"></div>
-                  <span>Unavailable</span>
+                  <div class="legend-dot legend-booked"></div>
+                  <span>Booked</span>
+                </div>
+                <div class="legend-item">
+                  <div class="legend-dot legend-blocked"></div>
+                  <span>Blocked</span>
                 </div>
               </div>
 
@@ -93,8 +199,48 @@
                 </p>
                 <p v-else class="mt-2 text-red-400 flex items-center justify-center gap-1">
                   <Icon name="mdi:close-circle" class="w-4 h-4" />
-                  This date is unavailable
+                  This date is unavailable ({{ getUnavailableReason(selectedDate) }})
                 </p>
+                <div
+                  v-if="selectedDateHighlight"
+                  class="mx-auto mt-3 w-fit rounded-full border border-cyan-400/30 bg-cyan-500/10 px-3 py-1.5 text-xs font-semibold text-cyan-300"
+                >
+                  We’re attending {{ selectedDateHighlight.title }} on this date
+                </div>
+                <div v-if="selectedDateHighlight?.description" class="mt-2 text-xs text-slate-300">
+                  {{ selectedDateHighlight.description }}
+                </div>
+                <NuxtLink
+                  :to="requestLinkForSelectedDate"
+                  class="mt-4 inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 px-5 py-2.5 text-sm font-bold text-white transition-transform hover:scale-105"
+                >
+                  <Icon name="mdi:calendar-check" class="h-4 w-4" />
+                  Request this date
+                </NuxtLink>
+              </div>
+
+              <div
+                v-if="upcomingUnavailableDates.length > 0"
+                class="mt-4 rounded-xl border border-white/10 bg-slate-900/40 p-4"
+              >
+                <p class="mb-3 text-sm font-semibold text-slate-200">Upcoming unavailable dates</p>
+                <ul class="space-y-2">
+                  <li
+                    v-for="dateItem in upcomingUnavailableDates"
+                    :key="dateItem.isoDate"
+                    class="flex items-center justify-between rounded-lg border border-white/5 bg-slate-900/50 px-3 py-2 text-sm"
+                  >
+                    <span class="text-slate-300">{{ dateItem.label }}</span>
+                    <span
+                      class="rounded-full px-2.5 py-1 text-xs font-semibold"
+                      :class="dateItem.source === 'booked'
+                        ? 'bg-rose-500/20 text-rose-300'
+                        : 'bg-amber-500/20 text-amber-300'"
+                    >
+                      {{ dateItem.sourceLabel }}
+                    </span>
+                  </li>
+                </ul>
               </div>
 
               <!-- Error banner when data is stale -->
@@ -120,6 +266,29 @@ import '@vuepic/vue-datepicker/dist/main.css'
 import { useCalendarStore } from '~/stores/calendar'
 import { storeToRefs } from 'pinia'
 
+interface EventHighlight {
+  date: string
+  title: string
+  category: string
+  location?: string | null
+  description?: string | null
+  lifecycle: 'upcoming' | 'recent'
+}
+
+interface EventSummary {
+  upcomingCount: number
+  recentCount: number
+  thisMonthCount: number
+}
+
+const props = withDefaults(defineProps<{
+  eventHighlights?: EventHighlight[]
+  eventSummary?: EventSummary | null
+}>(), {
+  eventHighlights: () => [],
+  eventSummary: null
+})
+
 const selectedDate = ref<Date | null>(null)
 
 // Use centralized calendar store
@@ -141,6 +310,110 @@ const formatLocalDateToISO = (date: Date): string => {
   return `${year}-${month}-${day}`
 }
 
+const parseISODateToLocal = (input: string | Date): Date | null => {
+  if (input instanceof Date) {
+    if (isNaN(input.getTime())) return null
+    return new Date(input.getFullYear(), input.getMonth(), input.getDate())
+  }
+
+  const normalized = input.trim()
+  if (!normalized) return null
+
+  // Accept both "YYYY-MM-DD" and ISO datetime strings.
+  const datePart = normalized.includes('T') ? normalized.split('T')[0] : normalized
+  const match = datePart.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!match) return null
+
+  const year = Number(match[1])
+  const month = Number(match[2]) - 1
+  const day = Number(match[3])
+  const parsed = new Date(year, month, day)
+
+  if (isNaN(parsed.getTime())) return null
+  if (parsed.getFullYear() !== year || parsed.getMonth() !== month || parsed.getDate() !== day) {
+    return null
+  }
+  return parsed
+}
+
+const formatShortDate = (date: Date): string => {
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric'
+  }).format(date)
+}
+
+const today = computed(() => {
+  const now = new Date()
+  now.setHours(0, 0, 0, 0)
+  return now
+})
+
+const unavailableDateSet = computed(() => new Set(calendarStore.unavailableDateStrings))
+
+const normalizedHighlights = computed(() => {
+  return props.eventHighlights
+    .map((highlight) => {
+      const parsedDate = parseISODateToLocal(highlight.date)
+      if (!parsedDate) return null
+      return {
+        ...highlight,
+        parsedDate,
+        isoDate: formatLocalDateToISO(parsedDate)
+      }
+    })
+    .filter((value): value is EventHighlight & { parsedDate: Date; isoDate: string } => value !== null)
+    .sort((a, b) => a.parsedDate.getTime() - b.parsedDate.getTime())
+})
+
+const upcomingHighlights = computed(() => {
+  return normalizedHighlights.value
+    .filter((item) => item.lifecycle === 'upcoming')
+    .slice(0, 6)
+})
+
+const recentHighlights = computed(() => {
+  return [...normalizedHighlights.value]
+    .filter((item) => item.lifecycle === 'recent')
+    .sort((a, b) => b.parsedDate.getTime() - a.parsedDate.getTime())
+    .slice(0, 4)
+})
+
+const highlightByDate = computed(() => {
+  const map = new Map<string, (EventHighlight & { parsedDate: Date; isoDate: string })>()
+  for (const item of normalizedHighlights.value) {
+    map.set(item.isoDate, item)
+  }
+  return map
+})
+
+const selectedDateHighlight = computed(() => {
+  if (!selectedDate.value) return null
+  const isoDate = formatLocalDateToISO(selectedDate.value)
+  return highlightByDate.value.get(isoDate) ?? null
+})
+
+const marketingSummary = computed(() => {
+  if (props.eventSummary) {
+    return props.eventSummary
+  }
+
+  const thisMonthStart = new Date(today.value.getFullYear(), today.value.getMonth(), 1)
+  const thisMonthEnd = new Date(today.value.getFullYear(), today.value.getMonth() + 1, 0)
+  const thisMonthStartIso = formatLocalDateToISO(thisMonthStart)
+  const thisMonthEndIso = formatLocalDateToISO(thisMonthEnd)
+
+  const thisMonthCount = normalizedHighlights.value.filter((item) => {
+    return item.isoDate >= thisMonthStartIso && item.isoDate <= thisMonthEndIso
+  }).length
+
+  return {
+    upcomingCount: upcomingHighlights.value.length,
+    recentCount: recentHighlights.value.length,
+    thisMonthCount
+  }
+})
+
 const disabledDatesFunction = computed(() => {
   if (!calendarStore.hasData || calendarStore.unavailableDateStrings.length === 0) {
     return undefined
@@ -148,8 +421,119 @@ const disabledDatesFunction = computed(() => {
   
   return (date: Date): boolean => {
     const dateStr = formatLocalDateToISO(date)
-    return calendarStore.unavailableDateStrings.includes(dateStr)
+    return unavailableDateSet.value.has(dateStr)
   }
+})
+
+const selectedMonthContext = computed(() => selectedDate.value ?? today.value)
+
+const selectedMonthLabel = computed(() => {
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'long',
+    year: 'numeric'
+  }).format(selectedMonthContext.value)
+})
+
+const monthAvailabilityStats = computed(() => {
+  const monthContext = selectedMonthContext.value
+  const monthStart = new Date(monthContext.getFullYear(), monthContext.getMonth(), 1)
+  const monthEnd = new Date(monthContext.getFullYear(), monthContext.getMonth() + 1, 0)
+  const countStart = monthStart > today.value ? monthStart : today.value
+
+  if (countStart > monthEnd) {
+    return {
+      availableCount: 0,
+      bookedCount: 0,
+      blockedCount: 0
+    }
+  }
+
+  let totalDays = 0
+  const iterDate = new Date(countStart)
+  while (iterDate <= monthEnd) {
+    totalDays++
+    iterDate.setDate(iterDate.getDate() + 1)
+  }
+
+  const startIso = formatLocalDateToISO(countStart)
+  const endIso = formatLocalDateToISO(monthEnd)
+
+  let bookedCount = 0
+  let blockedCount = 0
+  for (const dateStr of calendarStore.unavailableDateStrings) {
+    if (dateStr < startIso || dateStr > endIso) continue
+
+    const source = calendarStore.unavailableDateMap[dateStr]
+    if (source === 'booked') {
+      bookedCount++
+    } else {
+      blockedCount++
+    }
+  }
+
+  const unavailableCount = bookedCount + blockedCount
+
+  return {
+    availableCount: Math.max(totalDays - unavailableCount, 0),
+    bookedCount,
+    blockedCount
+  }
+})
+
+const nextAvailableDates = computed(() => {
+  const upcoming: Array<{ isoDate: string; label: string }> = []
+  const cursor = new Date(today.value)
+
+  for (let i = 0; i < 180 && upcoming.length < 6; i++) {
+    const dateIso = formatLocalDateToISO(cursor)
+    if (!unavailableDateSet.value.has(dateIso)) {
+      upcoming.push({
+        isoDate: dateIso,
+        label: formatShortDate(cursor)
+      })
+    }
+    cursor.setDate(cursor.getDate() + 1)
+  }
+
+  return upcoming
+})
+
+const upcomingUnavailableDates = computed(() => {
+  const todayIso = formatLocalDateToISO(today.value)
+
+  return [...calendarStore.unavailableDateStrings]
+    .filter((dateStr) => dateStr >= todayIso)
+    .sort()
+    .slice(0, 6)
+    .map((dateStr) => {
+      const parsed = parseISODateToLocal(dateStr) ?? today.value
+      const source = calendarStore.unavailableDateMap[dateStr] === 'booked' ? 'booked' : 'blocked'
+
+      return {
+        isoDate: dateStr,
+        label: formatDate(parsed),
+        source,
+        sourceLabel: source === 'booked' ? 'Booked' : 'Blocked'
+      }
+    })
+})
+
+const selectQuickDate = (dateIso: string) => {
+  const parsed = parseISODateToLocal(dateIso)
+  if (!parsed) return
+  selectedDate.value = parsed
+}
+
+const getUnavailableReason = (date: Date): string => {
+  const source = calendarStore.getDateSource(date)
+  if (source === 'booked') return 'booked'
+  if (source === 'blocked') return 'blocked by admin'
+  return 'unavailable'
+}
+
+const requestLinkForSelectedDate = computed(() => {
+  if (!selectedDate.value) return '/request'
+  return `/request?eventDate=${formatLocalDateToISO(selectedDate.value)}`
 })
 
 // Fetch unavailable dates from API via store
@@ -290,6 +674,14 @@ const formatDate = (date: Date): string => {
 .legend-unavailable {
   background-color: rgba(30, 41, 59, 0.8);
   border: 1px solid #475569;
+}
+
+.legend-booked {
+  background-color: rgba(244, 63, 94, 0.8);
+}
+
+.legend-blocked {
+  background-color: rgba(245, 158, 11, 0.8);
 }
 
 /* Selected date info */
