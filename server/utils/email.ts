@@ -116,7 +116,13 @@ async function logEmail(
  * Send email with error handling and logging
  * Uses Mailgun API for delivery
  */
-export async function sendEmail(options: EmailOptions, template: string, metadata: any, quoteRequestId?: number | null): Promise<boolean> {
+export async function sendEmail(
+  options: EmailOptions,
+  template: string,
+  metadata: any,
+  quoteRequestId?: number | null,
+  config?: { skipTemplateOverride?: boolean }
+): Promise<boolean> {
   // Validate required fields
   if (!options.to) {
     logger.error('Email recipient is required', { template })
@@ -129,15 +135,21 @@ export async function sendEmail(options: EmailOptions, template: string, metadat
   }
 
   try {
-    const resolvedTemplate = await resolveManagedEmailTemplate(template, {
-      subject: options.subject,
-      html: options.html,
-      metadata: {
-        ...(metadata || {}),
-        to: options.to,
-        subject: options.subject
-      }
-    })
+    const resolvedTemplate = config?.skipTemplateOverride
+      ? {
+          subject: options.subject,
+          html: options.html,
+          overrideApplied: false
+        }
+      : await resolveManagedEmailTemplate(template, {
+          subject: options.subject,
+          html: options.html,
+          metadata: {
+            ...(metadata || {}),
+            to: options.to,
+            subject: options.subject
+          }
+        })
 
     const sent = await sendEmailWithMailgun({
       to: options.to,

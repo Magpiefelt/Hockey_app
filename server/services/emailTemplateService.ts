@@ -514,15 +514,25 @@ function getContextValue(context: RenderContext, key: string): unknown {
   return cursor
 }
 
-function renderTemplateString(template: string, context: RenderContext): string {
+function renderTemplateString(
+  template: string,
+  context: RenderContext,
+  options: { escapeHtmlValues?: boolean } = {}
+): string {
+  const shouldEscapeHtml = options.escapeHtmlValues !== false
+
   return template.replace(/\{\{\s*([a-zA-Z0-9_.]+)\s*\}\}/g, (_, rawKey: string) => {
     const value = getContextValue(context, rawKey)
     if (value === null || value === undefined) return ''
-    if (value instanceof Date) return escapeHtml(value.toISOString())
-    if (typeof value === 'number' || typeof value === 'boolean') return String(value)
-    if (Array.isArray(value)) return escapeHtml(value.join(', '))
-    if (typeof value === 'object') return escapeHtml(JSON.stringify(value))
-    return escapeHtml(String(value))
+    const renderedValue = (() => {
+      if (value instanceof Date) return value.toISOString()
+      if (typeof value === 'number' || typeof value === 'boolean') return String(value)
+      if (Array.isArray(value)) return value.join(', ')
+      if (typeof value === 'object') return JSON.stringify(value)
+      return String(value)
+    })()
+
+    return shouldEscapeHtml ? escapeHtml(renderedValue) : renderedValue
   })
 }
 
@@ -646,7 +656,11 @@ export async function saveManagedEmailTemplate(input: {
   validateTemplateForDefinition(definition, subject || definition.defaultSubject, body || definition.defaultBody)
 
   const store = await loadManagedTemplateStore(true)
-  store.templates[input.templateKey] = {
+  const nextStore: ManagedTemplateStore = {
+    version: store.version,
+    templates: { ...store.templates }
+  }
+  nextStore.templates[input.templateKey] = {
     enabled: input.enabled,
     subject,
     body,
@@ -654,9 +668,9 @@ export async function saveManagedEmailTemplate(input: {
     updatedBy: input.updatedBy
   }
 
-  await persistManagedTemplateStore(store)
+  await persistManagedTemplateStore(nextStore)
 
-  const override = store.templates[input.templateKey]
+  const override = nextStore.templates[input.templateKey]
   const isUsingOverride = override.enabled && !!override.subject && !!override.body
   return {
     ...definition,
@@ -702,7 +716,9 @@ export async function previewManagedEmailTemplate(input: {
     subject
   )
 
-  const renderedSubject = sanitizeTemplateSubject(renderTemplateString(subject, context))
+  const renderedSubject = sanitizeTemplateSubject(
+    renderTemplateString(subject, context, { escapeHtmlValues: false })
+  )
   const renderedHtml = sanitizeRenderedHtml(renderTemplateString(body, context))
 
   return {
@@ -742,7 +758,9 @@ export async function resolveManagedEmailTemplate(
     validateTemplateForDefinition(definition, override.subject, override.body)
 
     const context = buildRenderContext(fallback.metadata || {}, fallback.subject)
-    const subject = sanitizeTemplateSubject(renderTemplateString(override.subject, context))
+    const subject = sanitizeTemplateSubject(
+      renderTemplateString(override.subject, context, { escapeHtmlValues: false })
+    )
     const html = sanitizeRenderedHtml(renderTemplateString(override.body, context))
 
     if (!subject || !html) {

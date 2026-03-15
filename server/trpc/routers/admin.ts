@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { TRPCError } from '@trpc/server'
 import { router, adminProcedure } from '../trpc'
 import { query, transaction } from '../../db/connection'
-import { sendCustomEmail, sendOrderConfirmation, sendInvoiceEmail, sendPaymentReceipt } from '../../utils/email'
+import { sendCustomEmail, sendEmail, sendOrderConfirmation, sendInvoiceEmail, sendPaymentReceipt } from '../../utils/email'
 import { sendEnhancedQuoteEmail } from '../../utils/email-enhanced'
 import { generateQuoteViewUrl } from '../../utils/quote-tokens'
 import { logger } from '../../utils/logger'
@@ -1123,11 +1123,19 @@ export const adminRouter = router({
               context: input.context
             })
 
-            const sent = await sendCustomEmail(
-              input.to,
-              rendered.subject,
-              rendered.html,
-              input.orderId
+            const sent = await sendEmail(
+              {
+                to: input.to,
+                subject: rendered.subject,
+                html: rendered.html
+              },
+              input.templateKey,
+              {
+                ...(input.context || {}),
+                orderId: input.orderId
+              },
+              input.orderId,
+              { skipTemplateOverride: true }
             )
 
             if (!sent) {
