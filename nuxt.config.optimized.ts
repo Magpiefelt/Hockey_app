@@ -133,7 +133,6 @@ export default defineNuxtConfig({
     typedPages: false, // Disable typed pages for faster builds
     asyncEntry: true,
     inlineRouteRules: true,
-    componentPreload: true,
     // NEW: Enable view transitions for smoother navigation
     viewTransition: true
   },

@@ -147,8 +147,7 @@ export default defineNuxtConfig({
     renderJsonPayloads: true,
     typedPages: false, // Disable typed pages for faster builds
     asyncEntry: true,
-    inlineRouteRules: true,
-    componentPreload: true
+    inlineRouteRules: true
   },
   
   // Vite optimizations

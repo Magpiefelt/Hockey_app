@@ -132,7 +132,6 @@ export default defineNuxtConfig({
     typedPages: false,
     asyncEntry: true,
     inlineRouteRules: true,
-    componentPreload: true,
     viewTransition: true
   },
   
