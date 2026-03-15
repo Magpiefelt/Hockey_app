@@ -11,6 +11,20 @@
 import { query } from '../db/connection'
 import { logger } from '../utils/logger'
 
+const toDateOnlyString = (value: unknown): string | null => {
+  if (value instanceof Date && !isNaN(value.getTime())) {
+    return value.toISOString().split('T')[0]
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (!trimmed) return null
+    return trimmed.includes('T') ? trimmed.split('T')[0] : trimmed
+  }
+
+  return null
+}
+
 export default defineEventHandler(async (event) => {
   // Cache for 5 minutes on CDN/edge, 10 minutes stale-while-revalidate.
   // This prevents a DB hit on every SSR page render for the home page.
@@ -118,13 +132,13 @@ export default defineEventHandler(async (event) => {
     )
 
     result.eventHighlights = eventResult.rows.map((row: any) => ({
-      date: row.event_date,
+      date: toDateOnlyString(row.event_date),
       title: row.title,
       category: row.category,
       location: row.location || null,
       description: row.description || null,
       lifecycle: row.lifecycle
-    }))
+    })).filter((row: any) => typeof row.date === 'string' && row.date.length > 0)
 
     const summaryResult = await query(
       `SELECT

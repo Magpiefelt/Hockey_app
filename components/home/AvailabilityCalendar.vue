@@ -310,8 +310,18 @@ const formatLocalDateToISO = (date: Date): string => {
   return `${year}-${month}-${day}`
 }
 
-const parseISODateToLocal = (dateStr: string): Date | null => {
-  const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+const parseISODateToLocal = (input: string | Date): Date | null => {
+  if (input instanceof Date) {
+    if (isNaN(input.getTime())) return null
+    return new Date(input.getFullYear(), input.getMonth(), input.getDate())
+  }
+
+  const normalized = input.trim()
+  if (!normalized) return null
+
+  // Accept both "YYYY-MM-DD" and ISO datetime strings.
+  const datePart = normalized.includes('T') ? normalized.split('T')[0] : normalized
+  const match = datePart.match(/^(\d{4})-(\d{2})-(\d{2})$/)
   if (!match) return null
 
   const year = Number(match[1])
@@ -320,6 +330,9 @@ const parseISODateToLocal = (dateStr: string): Date | null => {
   const parsed = new Date(year, month, day)
 
   if (isNaN(parsed.getTime())) return null
+  if (parsed.getFullYear() !== year || parsed.getMonth() !== month || parsed.getDate() !== day) {
+    return null
+  }
   return parsed
 }
 
