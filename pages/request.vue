@@ -16,6 +16,14 @@
           <p class="text-lg md:text-xl text-slate-300 max-w-3xl mx-auto">
             {{ currentStep === 'selection' ? 'Choose your package to get started' : 'Fill out the form below and we\'ll get back to you within 24 hours' }}
           </p>
+
+          <div
+            v-if="prefilledEventDateLabel"
+            class="mx-auto mt-4 flex w-fit items-center gap-2 rounded-full border border-cyan-400/40 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-300"
+          >
+            <Icon name="mdi:calendar-check" class="h-4 w-4" />
+            Date pre-selected: {{ prefilledEventDateLabel }}
+          </div>
         </div>
       </RevealOnScroll>
 
@@ -257,6 +265,44 @@ useHead({
 
 const router = useRouter()
 const route = useRoute()
+const prefilledEventDateFromQuery = ref<string | null>(null)
+
+const parseDateQuery = (value: unknown): string | null => {
+  if (typeof value !== 'string') return null
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!match) return null
+
+  const year = Number(match[1])
+  const month = Number(match[2]) - 1
+  const day = Number(match[3])
+  const parsed = new Date(year, month, day)
+  parsed.setHours(0, 0, 0, 0)
+
+  if (isNaN(parsed.getTime())) return null
+  if (parsed.getFullYear() !== year || parsed.getMonth() !== month || parsed.getDate() !== day) {
+    return null
+  }
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  if (parsed < today) return null
+
+  return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+}
+
+const prefilledEventDateLabel = computed(() => {
+  if (!prefilledEventDateFromQuery.value) return ''
+  const [year, month, day] = prefilledEventDateFromQuery.value.split('-').map(Number)
+  const parsed = new Date(year, month - 1, day)
+  if (isNaN(parsed.getTime())) return prefilledEventDateFromQuery.value
+
+  return new Intl.DateTimeFormat('en-US', {
+    weekday: 'short',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric'
+  }).format(parsed)
+})
 
 // Form persistence
 const { hasStoredData, storedData, saveFormState, clearFormState } = useFormPersistence()
@@ -330,6 +376,12 @@ const calendarStoreInstance = useCalendarStore()
 onMounted(async () => {
   // Start fetching calendar data immediately (non-blocking)
   calendarStoreInstance.fetchUnavailableDates()
+
+  const eventDateParam = parseDateQuery(route.query.eventDate)
+  if (eventDateParam) {
+    formData.eventDate = eventDateParam
+    prefilledEventDateFromQuery.value = eventDateParam
+  }
 
   const packageParam = route.query.package as string
   if (packageParam && ['game-day-dj', 'player-intros-basic', 'player-intros-warmup', 'player-intros-ultimate', 'event-hosting'].includes(packageParam)) {
