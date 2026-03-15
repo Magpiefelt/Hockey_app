@@ -4,12 +4,13 @@
  */
 
 import { logger } from '../utils/logger'
+import { shouldApplyAdminIpFilter } from '../utils/admin-ip-filter'
 
 export default defineEventHandler((event) => {
   const path = event.path
   
-  // Only apply to admin routes
-  if (!path.startsWith('/api/trpc/admin')) {
+  // Apply to all admin tRPC namespaces.
+  if (!shouldApplyAdminIpFilter(path)) {
     return
   }
   
