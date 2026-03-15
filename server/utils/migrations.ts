@@ -7,7 +7,7 @@
  * output (.output/server/index.mjs) does not include the database/migrations/ directory.
  */
 
-import { query } from '../db/connection'
+import { getClient, query } from '../db/connection'
 import { logger } from './logger'
 
 interface EmbeddedMigration {
@@ -492,22 +492,24 @@ export async function runMigrations() {
     for (const migration of pendingMigrations) {
       logger.info(`Applying migration: ${migration.filename}`)
       
+      const client = await getClient()
       try {
-        await query('BEGIN')
-        await query(migration.sql)
-        await query(
+        await client.query('BEGIN')
+        await client.query(migration.sql)
+        await client.query(
           `INSERT INTO schema_migrations (name, filename) VALUES ($1, $2)`,
           [migration.name, migration.filename]
         )
-        await query('COMMIT')
+        await client.query('COMMIT')
         
         logger.info(`✓ Applied migration: ${migration.filename}`)
         appliedCount++
       } catch (error: any) {
-        await query('ROLLBACK')
+        await client.query('ROLLBACK')
         logger.error(`Failed to apply migration: ${migration.filename}`, error)
-        // Don't throw - continue with other migrations
-        logger.warn(`Skipping failed migration: ${migration.filename} - ${error.message}`)
+        throw error
+      } finally {
+        client.release()
       }
     }
     

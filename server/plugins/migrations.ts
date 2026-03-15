@@ -13,7 +13,9 @@ export default defineNitroPlugin(async (nitroApp) => {
     console.log(`[Migrations Plugin] Migrations complete: ${result.applied} applied, ${result.skipped} skipped`)
   } catch (error: any) {
     console.error('[Migrations Plugin] Migration failed:', error.message)
-    // Don't crash the app, just log the error
-    // The app might still work if the migration is not critical
+    // Fail fast in production to avoid running against a partially migrated schema.
+    if (process.env.NODE_ENV === 'production') {
+      throw error
+    }
   }
 })
