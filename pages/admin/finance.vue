@@ -22,6 +22,13 @@
           <Icon name="mdi:file-export" class="w-4 h-4" />
           Export Tax Report
         </button>
+        <button
+          @click="showExpenseModal = true"
+          class="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg transition-colors flex items-center gap-2"
+        >
+          <Icon name="mdi:cash-plus" class="w-4 h-4" />
+          Log Expense
+        </button>
       </div>
     </div>
 
@@ -70,6 +77,28 @@
           format="currency"
           title="Tax Collected"
           label="Estimated"
+        />
+      </div>
+
+      <!-- Expense and Net Revenue Metrics -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+        <UiMetricCard
+          icon="mdi:cash-minus"
+          color="rose"
+          :value="stats.monthlyExpenses || 0"
+          format="currency"
+          title="This Month Expenses"
+          label="Tracked Spend"
+          size="sm"
+        />
+        <UiMetricCard
+          icon="mdi:chart-line-variant"
+          color="emerald"
+          :value="stats.monthlyNetRevenue || 0"
+          format="currency"
+          title="This Month Net"
+          label="Revenue - Expenses"
+          size="sm"
         />
       </div>
 
@@ -253,6 +282,104 @@
         </UiDataCard>
       </div>
 
+      <!-- Expense Tracking & Budget Health -->
+      <div class="grid lg:grid-cols-2 gap-6">
+        <UiDataCard
+          title="Expense & Budget Health"
+          icon="mdi:wallet-outline"
+          icon-color="rose"
+        >
+          <div class="p-5 space-y-4">
+            <div class="rounded-lg bg-slate-800/60 border border-slate-700 p-4">
+              <p class="text-xs uppercase tracking-wide text-slate-400 mb-2">{{ currentMonthLabel }} Budget Progress</p>
+              <div class="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <p class="text-slate-400">Budget</p>
+                  <p class="font-semibold text-white">{{ formatCurrency(budgetSnapshot?.totals?.budgetCents || 0) }}</p>
+                </div>
+                <div>
+                  <p class="text-slate-400">Actual</p>
+                  <p class="font-semibold text-white">{{ formatCurrency(budgetSnapshot?.totals?.actualCents || 0) }}</p>
+                </div>
+              </div>
+              <div class="mt-3">
+                <div class="h-2 bg-slate-700 rounded-full overflow-hidden">
+                  <div
+                    class="h-full transition-all"
+                    :class="monthlyBudgetUtilization > 100 ? 'bg-red-500' : 'bg-emerald-500'"
+                    :style="{ width: `${Math.min(monthlyBudgetUtilization, 100)}%` }"
+                  ></div>
+                </div>
+                <p class="text-xs mt-2" :class="monthlyBudgetUtilization > 100 ? 'text-red-400' : 'text-slate-400'">
+                  {{ monthlyBudgetUtilization.toFixed(1) }}% utilized
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <p class="text-sm font-medium text-slate-300 mb-2">Top Expense Categories (YTD)</p>
+              <div class="space-y-2">
+                <div
+                  v-for="category in topExpenseCategories"
+                  :key="category.category"
+                  class="flex items-center justify-between text-sm border-b border-slate-800 pb-2"
+                >
+                  <span class="text-slate-300">{{ formatCategoryLabel(category.category) }}</span>
+                  <span class="font-semibold text-white">
+                    {{ formatCurrency(category.totalCents) }}
+                    <span class="text-xs text-slate-500 ml-1">({{ category.percentage }}%)</span>
+                  </span>
+                </div>
+                <p v-if="topExpenseCategories.length === 0" class="text-slate-500 text-sm">No expenses logged yet.</p>
+              </div>
+            </div>
+          </div>
+        </UiDataCard>
+
+        <UiDataCard
+          title="Recent Expenses"
+          icon="mdi:receipt-text-clock"
+          icon-color="amber"
+        >
+          <template #action>
+            <button
+              @click="showExpenseModal = true"
+              class="text-sm text-cyan-400 hover:text-cyan-300 font-medium flex items-center gap-1"
+            >
+              Log Expense
+              <Icon name="mdi:plus" class="w-4 h-4" />
+            </button>
+          </template>
+          <div class="overflow-x-auto">
+            <table class="w-full">
+              <thead class="bg-slate-800/50">
+                <tr>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Date</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Description</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Category</th>
+                  <th class="px-4 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">Amount</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-800">
+                <tr
+                  v-for="expense in recentExpenses"
+                  :key="expense.id"
+                  class="hover:bg-slate-800/30 transition-colors"
+                >
+                  <td class="px-4 py-3 text-sm text-slate-300">{{ formatDate(expense.incurredOn) }}</td>
+                  <td class="px-4 py-3 text-sm text-white">{{ expense.description }}</td>
+                  <td class="px-4 py-3 text-sm text-slate-300">{{ formatCategoryLabel(expense.category) }}</td>
+                  <td class="px-4 py-3 text-sm text-right font-semibold text-rose-400">{{ formatCurrency(expense.amountCents) }}</td>
+                </tr>
+                <tr v-if="recentExpenses.length === 0">
+                  <td colspan="4" class="px-4 py-8 text-center text-slate-500">No expenses logged yet</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </UiDataCard>
+      </div>
+
       <!-- Revenue by Service & Top Customers -->
       <div class="grid lg:grid-cols-2 gap-6">
         <!-- Revenue by Service -->
@@ -426,6 +553,92 @@
         </div>
       </div>
     </div>
+
+    <!-- Expense Modal -->
+    <div v-if="showExpenseModal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+      <div class="bg-slate-900 border border-slate-800 rounded-xl shadow-2xl max-w-lg w-full">
+        <div class="p-6 border-b border-slate-800">
+          <h3 class="text-lg font-bold text-white">Log Expense</h3>
+          <p class="text-sm text-slate-400 mt-1">Track real operating costs for accurate finance insights</p>
+        </div>
+        <div class="p-6 space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-slate-300 mb-2">Description</label>
+            <input
+              v-model="expenseForm.description"
+              type="text"
+              placeholder="e.g. Arena travel for away game"
+              class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white"
+            />
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-slate-300 mb-2">Amount (CAD)</label>
+              <input
+                v-model="expenseForm.amount"
+                type="number"
+                min="0"
+                step="0.01"
+                class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-300 mb-2">Date</label>
+              <input
+                v-model="expenseForm.incurredOn"
+                type="date"
+                class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white"
+              />
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-slate-300 mb-2">Category</label>
+              <select
+                v-model="expenseForm.category"
+                class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white"
+              >
+                <option v-for="category in expenseCategories" :key="category" :value="category">
+                  {{ formatCategoryLabel(category) }}
+                </option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-300 mb-2">Vendor (Optional)</label>
+              <input
+                v-model="expenseForm.vendor"
+                type="text"
+                class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white"
+              />
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-300 mb-2">Notes (Optional)</label>
+            <textarea
+              v-model="expenseForm.notes"
+              rows="3"
+              class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white"
+            ></textarea>
+          </div>
+        </div>
+        <div class="p-6 border-t border-slate-800 flex justify-end gap-3">
+          <button
+            @click="closeExpenseModal"
+            class="px-4 py-2 text-slate-400 hover:text-white transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            @click="saveExpense"
+            :disabled="savingExpense"
+            class="px-6 py-2 bg-cyan-600 hover:bg-cyan-700 text-white font-semibold rounded-lg transition-colors flex items-center gap-2"
+          >
+            <Icon :name="savingExpense ? 'mdi:loading' : 'mdi:content-save'" :class="savingExpense ? 'w-4 h-4 animate-spin' : 'w-4 h-4'" />
+            {{ savingExpense ? 'Saving...' : 'Save Expense' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -443,10 +656,28 @@ const loading = ref(true)
 const stats = ref<any>(null)
 const revenueTrend = ref<any[]>([])
 const taxSummary = ref<any>(null)
+const expenseSummary = ref<any>(null)
+const budgetSnapshot = ref<any>(null)
+const recentExpenses = ref<any[]>([])
 const showTaxExport = ref(false)
+const showExpenseModal = ref(false)
 const exporting = ref(false)
+const savingExpense = ref(false)
 const exportYear = ref(new Date().getFullYear())
 const exportQuarter = ref<number | null>(null)
+const expenseCategories = ['travel', 'equipment', 'marketing', 'software', 'contractor', 'taxes_fees', 'office', 'other']
+
+function defaultExpenseForm() {
+  return {
+    description: '',
+    amount: '',
+    category: 'other',
+    incurredOn: new Date().toISOString().split('T')[0],
+    vendor: '',
+    notes: ''
+  }
+}
+const expenseForm = ref(defaultExpenseForm())
 
 // Computed
 const monthlyTrend = computed(() => {
@@ -475,13 +706,30 @@ const availableYears = computed(() => {
   return [currentYear, currentYear - 1, currentYear - 2, currentYear - 3]
 })
 
+const currentMonthLabel = computed(() => {
+  const now = new Date()
+  return now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+})
+
+const topExpenseCategories = computed(() => {
+  const categories = expenseSummary.value?.byCategory || []
+  return categories.slice(0, 4)
+})
+
+const monthlyBudgetUtilization = computed(() => {
+  const budget = budgetSnapshot.value?.totals?.budgetCents || 0
+  const actual = budgetSnapshot.value?.totals?.actualCents || 0
+  if (budget <= 0) return actual > 0 ? 100 : 0
+  return (actual / budget) * 100
+})
+
 // Methods
 function formatCurrency(cents: number): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'CAD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
   }).format(cents / 100)
 }
 
@@ -494,19 +742,70 @@ function formatDate(dateStr: string | null): string {
   })
 }
 
+function formatCategoryLabel(category: string): string {
+  return category
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, char => char.toUpperCase())
+}
+
+function closeExpenseModal() {
+  showExpenseModal.value = false
+  expenseForm.value = defaultExpenseForm()
+}
+
 async function fetchData() {
   loading.value = true
   try {
-    // Fetch all data in parallel
-    const [statsData, trendData, taxData] = await Promise.all([
+    const now = new Date()
+    const currentYear = now.getFullYear()
+    const currentMonth = now.getMonth() + 1
+    const startOfYear = `${currentYear}-01-01`
+    const today = now.toISOString().split('T')[0]
+
+    // Fetch all data in parallel; expense widgets degrade gracefully if tracking tables are unavailable.
+    const [
+      statsResult,
+      trendResult,
+      taxResult,
+      expenseSummaryResult,
+      budgetResult,
+      recentExpensesResult
+    ] = await Promise.allSettled([
       trpc.finance.stats.query(),
       trpc.finance.revenueTrend.query({ months: 12 }),
-      trpc.finance.taxSummary.query({ year: new Date().getFullYear() })
+      trpc.finance.taxSummary.query({ year: currentYear }),
+      trpc.financeAutomation.getExpenseSummary.query({
+        startDate: startOfYear,
+        endDate: today
+      }),
+      trpc.financeAutomation.getBudgetVsActual.query({
+        year: currentYear,
+        month: currentMonth
+      }),
+      trpc.financeAutomation.listExpenses.query({
+        page: 1,
+        limit: 5
+      })
     ])
-    
-    stats.value = statsData
-    revenueTrend.value = trendData
-    taxSummary.value = taxData
+
+    if (statsResult.status !== 'fulfilled' || trendResult.status !== 'fulfilled' || taxResult.status !== 'fulfilled') {
+      const reason =
+        statsResult.status === 'rejected' ? statsResult.reason
+          : trendResult.status === 'rejected' ? trendResult.reason
+          : taxResult.status === 'rejected' ? taxResult.reason
+          : new Error('Unknown finance data error')
+      throw reason
+    }
+
+    stats.value = statsResult.value
+    revenueTrend.value = trendResult.value
+    taxSummary.value = taxResult.value
+
+    expenseSummary.value = expenseSummaryResult.status === 'fulfilled' ? expenseSummaryResult.value : null
+    budgetSnapshot.value = budgetResult.status === 'fulfilled' ? budgetResult.value : null
+    recentExpenses.value = recentExpensesResult.status === 'fulfilled'
+      ? (recentExpensesResult.value.items || [])
+      : []
   } catch (error: any) {
     console.error('Failed to fetch finance data:', error)
     showError('Failed to load finance data')
@@ -518,6 +817,41 @@ async function fetchData() {
 async function refreshData() {
   await fetchData()
   showSuccess('Data refreshed')
+}
+
+async function saveExpense() {
+  const description = expenseForm.value.description.trim()
+  const amount = Number(expenseForm.value.amount)
+
+  if (!description) {
+    showError('Expense description is required')
+    return
+  }
+  if (!Number.isFinite(amount) || amount <= 0) {
+    showError('Enter a valid expense amount')
+    return
+  }
+
+  savingExpense.value = true
+  try {
+    await trpc.financeAutomation.createExpense.mutation({
+      description,
+      category: expenseForm.value.category,
+      amountCents: Math.round(amount * 100),
+      incurredOn: expenseForm.value.incurredOn,
+      vendor: expenseForm.value.vendor || undefined,
+      notes: expenseForm.value.notes || undefined
+    })
+
+    closeExpenseModal()
+    showSuccess('Expense logged')
+    await fetchData()
+  } catch (error: any) {
+    console.error('Failed to save expense:', error)
+    showError(error?.message || 'Failed to save expense')
+  } finally {
+    savingExpense.value = false
+  }
 }
 
 async function exportTaxReport() {

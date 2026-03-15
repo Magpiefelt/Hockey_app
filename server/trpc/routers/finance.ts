@@ -125,6 +125,31 @@ export const financeRouter = router({
          AND DATE_TRUNC('month', created_at) = DATE_TRUNC('month', CURRENT_DATE)`
       )
       const monthlyRevenue = monthlyResult.rows.length > 0 ? parseFloat(monthlyResult.rows[0].revenue) || 0 : 0
+
+      // Expense tracking (if expense tables are available)
+      let yearToDateExpenses = 0
+      let monthlyExpenses = 0
+      try {
+        const ytdExpensesResult = await query(
+          `SELECT COALESCE(SUM(amount_cents), 0) as total
+           FROM finance_expenses
+           WHERE EXTRACT(YEAR FROM incurred_on) = EXTRACT(YEAR FROM CURRENT_DATE)`
+        )
+        yearToDateExpenses = ytdExpensesResult.rows.length > 0
+          ? parseFloat(ytdExpensesResult.rows[0].total) || 0
+          : 0
+
+        const monthlyExpensesResult = await query(
+          `SELECT COALESCE(SUM(amount_cents), 0) as total
+           FROM finance_expenses
+           WHERE DATE_TRUNC('month', incurred_on) = DATE_TRUNC('month', CURRENT_DATE)`
+        )
+        monthlyExpenses = monthlyExpensesResult.rows.length > 0
+          ? parseFloat(monthlyExpensesResult.rows[0].total) || 0
+          : 0
+      } catch {
+        // Expense tracking may not be migrated yet
+      }
       
       // Last month revenue (for comparison)
       const lastMonthResult = await query(
@@ -284,6 +309,10 @@ export const financeRouter = router({
         totalRevenue,
         yearToDateRevenue,
         monthlyRevenue,
+        yearToDateExpenses,
+        monthlyExpenses,
+        yearToDateNetRevenue: yearToDateRevenue - yearToDateExpenses,
+        monthlyNetRevenue: monthlyRevenue - monthlyExpenses,
         lastMonthRevenue,
         pendingPayments,
         paidOrderCount,
