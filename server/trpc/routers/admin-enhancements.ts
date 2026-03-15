@@ -14,7 +14,7 @@ import {
   sendQuoteReminderEmail,
   sendCustomEmailEnhanced
 } from '../../utils/email-enhanced'
-import { generateQuoteViewUrl, generateQuoteAcceptUrl } from '../../utils/quote-tokens'
+import { generateQuoteViewUrl } from '../../utils/quote-tokens'
 import { ORDER_STATUS_LABELS, ORDER_STATUS_VALUES, getAllowedOrderTransitions, isValidOrderStatusTransition, type OrderStatus } from '../../utils/order-status'
 
 export const adminEnhancementsRouter = router({
@@ -279,7 +279,9 @@ export const adminEnhancementsRouter = router({
         // Generate payment URL if requested
         let paymentUrl: string | null = null
         if (input.includePaymentLink) {
-          paymentUrl = generateQuoteAcceptUrl(input.orderId, order.contact_email, appUrl)
+          const acceptUrl = new URL(quoteViewUrl)
+          acceptUrl.searchParams.set('action', 'accept')
+          paymentUrl = acceptUrl.toString()
         }
         
         // Send enhanced quote email

@@ -23,12 +23,7 @@ const MAX_STORE_ENTRIES = 10000
 
 // Clean up old entries every 5 minutes
 const cleanupInterval = setInterval(() => {
-  const now = Date.now()
-  for (const key in store) {
-    if (store[key].resetAt < now) {
-      delete store[key]
-    }
-  }
+  pruneExpiredEntries(Date.now())
 }, 5 * 60 * 1000)
 
 // Prevent timers from keeping the process alive in tests/short-lived workers.

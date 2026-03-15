@@ -95,6 +95,27 @@ function clearStoredToken() {
   }
 }
 
+function shouldClearTokenOnLoadError(err: unknown): boolean {
+  const trpcError = err as {
+    data?: { code?: string }
+    shape?: { data?: { code?: string } }
+    message?: string
+  }
+  const code = String(trpcError.data?.code || trpcError.shape?.data?.code || '').toUpperCase()
+  if (code === 'UNAUTHORIZED' || code === 'FORBIDDEN') {
+    return true
+  }
+
+  const message = String(trpcError.message || '').toLowerCase()
+  return (
+    message.includes('token has expired') ||
+    message.includes('invalid token') ||
+    message.includes('access token is invalid') ||
+    message.includes('token does not match') ||
+    message.includes('already been used')
+  )
+}
+
 // Load quote data
 async function loadQuote() {
   if (!hasValidOrderId.value) {
@@ -170,7 +191,7 @@ async function loadQuote() {
       error.value = 'You have made too many attempts in a short period. Please wait a moment and try again.'
     }
 
-    if (tokenAccessMode.value) {
+    if (tokenAccessMode.value && shouldClearTokenOnLoadError(err)) {
       clearStoredToken()
       activeToken.value = null
     }
