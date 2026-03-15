@@ -18,6 +18,7 @@ const emit = defineEmits<{
 
 const trpc = useTrpc()
 const { showError } = useNotification()
+const REVISION_REASON_MAX_LENGTH = 500
 
 // Form state
 const newAmount = ref<string>((props.currentAmount / 100).toFixed(2))
@@ -68,7 +69,8 @@ const percentChange = computed(() => {
 const isValid = computed(() => {
   return newAmountInCents.value > 0 && 
          newAmountInCents.value !== props.currentAmount && 
-         reason.value.trim().length > 0
+         reason.value.trim().length > 0 &&
+         reason.value.length <= REVISION_REASON_MAX_LENGTH
 })
 
 // Methods
@@ -192,10 +194,19 @@ function useCommonReason(r: string) {
           <textarea
             v-model="reason"
             rows="3"
+            :maxlength="REVISION_REASON_MAX_LENGTH"
             placeholder="Explain why the quote is being revised..."
             class="w-full px-4 py-3 bg-dark-tertiary border border-white/10 rounded-lg text-white placeholder:text-slate-500 focus:ring-2 focus:ring-warning-500 focus:border-transparent resize-none"
             :class="{ 'border-error-500/50': !reason.trim() && newAmountInCents !== currentAmount }"
           ></textarea>
+          <div class="mt-2 flex items-center justify-between">
+            <p class="text-xs text-slate-400">
+              {{ reason.length }}/{{ REVISION_REASON_MAX_LENGTH }}
+            </p>
+            <p v-if="reason.length > REVISION_REASON_MAX_LENGTH" class="text-xs text-red-400">
+              Reason is too long
+            </p>
+          </div>
           
           <!-- Common Reasons -->
           <div class="mt-3">

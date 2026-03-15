@@ -55,7 +55,7 @@
           <div class="flex flex-wrap items-center gap-3">
             <button
               v-if="canSubmitQuote"
-              @click="showEnhancedQuoteModal = true"
+              @click="openQuoteActionModal"
               class="px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-semibold rounded-xl transition-all shadow-lg shadow-cyan-500/20 flex items-center gap-2"
             >
               <Icon name="mdi:currency-usd" class="w-5 h-5" />
@@ -771,6 +771,15 @@ const handleQuoteRevised = (data: { orderId: number; previousAmount: number; new
   showSuccess(`Quote updated to v${data.version}`)
   fetchOrder()
   refreshStatusHistory()
+}
+
+const openQuoteActionModal = () => {
+  if (!orderData.value) return
+  if (orderData.value.order.quotedAmount) {
+    showRevisionModal.value = true
+  } else {
+    showEnhancedQuoteModal.value = true
+  }
 }
 
 const handleManualCompletion = (data: { orderId: number; amount: number; previousStatus: string }) => {

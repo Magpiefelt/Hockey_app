@@ -73,15 +73,15 @@ export const adminEnhancementsRouter = router({
   submitQuoteEnhanced: adminProcedure
     .input(z.object({
       orderId: z.number(),
-      quoteAmount: z.number().positive(),
-      adminNotes: z.string().optional(),
+      quoteAmount: z.number().int().positive().max(5_000_000),
+      adminNotes: z.string().max(2000).optional(),
       includePaymentLink: z.boolean().default(false),
       // New: Event datetime for calendar booking
       eventDateTime: z.string().optional(), // ISO string
       confirmDateTime: z.boolean().default(false),
       // Tax fields (optional for now)
       taxProvince: z.string().length(2).optional(),
-      taxAmount: z.number().optional()
+      taxAmount: z.number().min(0).optional()
     }))
     .mutation(async ({ input, ctx }) => {
       return transaction(async (client) => {
@@ -90,7 +90,7 @@ export const adminEnhancementsRouter = router({
         try {
           orderResult = await client.query(
             `SELECT 
-              qr.id, qr.contact_name, qr.contact_email, qr.status, qr.event_date,
+              qr.id, qr.contact_name, qr.contact_email, qr.status, qr.event_date, qr.quoted_amount,
               qr.sport_type,
               p.name as package_name,
               fs.team_name
@@ -103,7 +103,7 @@ export const adminEnhancementsRouter = router({
         } catch {
           orderResult = await client.query(
             `SELECT 
-              qr.id, qr.contact_name, qr.contact_email, qr.status, qr.event_date,
+              qr.id, qr.contact_name, qr.contact_email, qr.status, qr.event_date, qr.quoted_amount,
               qr.sport_type,
               p.name as package_name,
               NULL as team_name
@@ -123,6 +123,23 @@ export const adminEnhancementsRouter = router({
         
         const order = orderResult.rows[0]
         const packageName = order.package_name || 'Service Request'
+        const normalizedAdminNotes = input.adminNotes?.trim() || undefined
+
+        const blockedStatuses = new Set(['paid', 'completed', 'delivered', 'cancelled', 'refunded'])
+        if (blockedStatuses.has(order.status)) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: `Cannot submit or revise quotes while order is '${order.status}'`
+          })
+        }
+
+        const quoteEditableStatuses = new Set(['submitted', 'in_progress', 'quoted', 'quote_viewed', 'quote_accepted', 'invoiced'])
+        if (!quoteEditableStatuses.has(order.status)) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: `Cannot submit quote from status '${order.status}'`
+          })
+        }
         
         // Parse event datetime if provided
         let eventDateTime: Date | null = null
@@ -131,6 +148,12 @@ export const adminEnhancementsRouter = router({
         
         if (input.eventDateTime) {
           eventDateTime = new Date(input.eventDateTime)
+          if (Number.isNaN(eventDateTime.getTime())) {
+            throw new TRPCError({
+              code: 'BAD_REQUEST',
+              message: 'Invalid event date/time'
+            })
+          }
           eventDateStr = eventDateTime.toISOString().split('T')[0]
           // Format time as HH:MM:SS
           const hours = String(eventDateTime.getHours()).padStart(2, '0')
@@ -156,7 +179,7 @@ export const adminEnhancementsRouter = router({
              WHERE id = $9`,
             [
               input.quoteAmount, 
-              input.adminNotes, 
+              normalizedAdminNotes, 
               eventDateTime?.toISOString() || null,
               eventDateStr,
               eventTimeStr,
@@ -180,7 +203,7 @@ export const adminEnhancementsRouter = router({
              WHERE id = $5`,
             [
               input.quoteAmount, 
-              input.adminNotes, 
+              normalizedAdminNotes, 
               eventDateStr,
               eventTimeStr,
               input.orderId
@@ -201,18 +224,22 @@ export const adminEnhancementsRouter = router({
           await client.query(
             `INSERT INTO quote_revisions (quote_id, version, amount_cents, notes, created_by)
              VALUES ($1, $2, $3, $4, $5)`,
-            [input.orderId, nextVersion, input.quoteAmount, input.adminNotes || 'Initial quote', ctx.user.userId]
+            [input.orderId, nextVersion, input.quoteAmount, normalizedAdminNotes || 'Initial quote', ctx.user.userId]
           )
         } catch {
           // quote_revisions table may not exist yet
           logger.warn('Could not create quote revision record - table may not exist')
         }
         
+        const statusHistoryNote = order.quoted_amount
+          ? 'Quote revised and resent to customer'
+          : 'Quote submitted to customer'
+
         // Log status change
         await client.query(
           `INSERT INTO order_status_history (quote_id, previous_status, new_status, changed_by, notes)
-           VALUES ($1, $2, 'quoted', $3, 'Quote submitted to customer')`,
-          [input.orderId, order.status, ctx.user.userId]
+           VALUES ($1, $2, 'quoted', $3, $4)`,
+          [input.orderId, order.status, ctx.user.userId, statusHistoryNote]
         )
         
         // Format event date for email (use confirmed datetime if available)
@@ -268,7 +295,7 @@ export const adminEnhancementsRouter = router({
             eventDate: eventDateFormatted,
             teamName: order.team_name,
             sportType: order.sport_type,
-            adminNotes: input.adminNotes
+            adminNotes: normalizedAdminNotes
           })
           logger.info('Enhanced quote email sent', { orderId: input.orderId, email: order.contact_email })
         } catch (emailError: any) {
@@ -294,7 +321,7 @@ export const adminEnhancementsRouter = router({
     .input(z.object({
       orderId: z.number(),
       newAmount: z.number().positive(),
-      reason: z.string().min(1, 'Please provide a reason for the revision'),
+      reason: z.string().trim().min(1, 'Please provide a reason for the revision').max(500, 'Revision reason must be 500 characters or less'),
       notifyCustomer: z.boolean().default(true)
     }))
     .mutation(async ({ input, ctx }) => {
