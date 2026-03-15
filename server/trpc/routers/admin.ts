@@ -1269,13 +1269,6 @@ export const adminRouter = router({
         sendEmail
       })
       
-      // Store order details for email (sent outside transaction)
-      let orderDetailsForEmail: {
-        contactEmail: string
-        contactName: string
-        serviceType: string
-      } | null = null
-      
       let result: {
         success: boolean
         orderId: number
@@ -1284,6 +1277,11 @@ export const adminRouter = router({
         amount: number
         invoiceId: string
         paymentId: string
+        orderDetailsForEmail: {
+          contactEmail: string
+          contactName: string
+          serviceType: string
+        } | null
       }
       
       try {
@@ -1308,8 +1306,7 @@ export const adminRouter = router({
           const order = orderResult.rows[0]
           const previousStatus = order.status
           
-          // Store for email (outside transaction)
-          orderDetailsForEmail = {
+          const orderDetailsForEmail = {
             contactEmail: order.contact_email,
             contactName: order.contact_name,
             serviceType: order.service_type || 'DJ Services'
@@ -1441,7 +1438,8 @@ export const adminRouter = router({
             newStatus: 'completed',
             amount: completionAmount,
             invoiceId: manualInvoiceId,
-            paymentId: manualPaymentId
+            paymentId: manualPaymentId,
+            orderDetailsForEmail
           }
         })
       } catch (error: any) {
@@ -1462,6 +1460,7 @@ export const adminRouter = router({
       
       // Send email AFTER transaction commits successfully (outside transaction)
       let emailSent = false
+      const orderDetailsForEmail = result.orderDetailsForEmail
       if (sendEmail && orderDetailsForEmail?.contactEmail) {
         try {
           const { sendManualCompletionEmail } = await import('../../utils/email-enhanced')

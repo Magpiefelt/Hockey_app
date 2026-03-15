@@ -121,9 +121,6 @@ export default defineNuxtConfig({
       crawlLinks: false,
       routes: []
     },
-    devServer: {
-      host: '0.0.0.0'
-    },
     compressPublicAssets: true,
     minify: true
   },
@@ -134,7 +131,6 @@ export default defineNuxtConfig({
     renderJsonPayloads: true,
     typedPages: false,
     asyncEntry: true,
-    noScripts: false,
     inlineRouteRules: true,
     componentPreload: true,
     viewTransition: true
@@ -216,16 +212,6 @@ export default defineNuxtConfig({
         'cache-control': 'public, max-age=86400',
         'content-type': 'image/png'
       } 
-    }
-  },
-  
-  // Performance optimizations
-  optimization: {
-    treeShake: {
-      composables: {
-        client: true,
-        server: true
-      }
     }
   }
 })

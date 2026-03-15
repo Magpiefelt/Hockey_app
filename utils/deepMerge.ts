@@ -12,7 +12,7 @@ export function deepMerge<T extends Record<string, any>>(target: T, source: Part
 
   // If source is not an object, return target
   if (!isObject(source)) {
-    return output
+    return output as T
   }
 
   // Iterate through source properties
