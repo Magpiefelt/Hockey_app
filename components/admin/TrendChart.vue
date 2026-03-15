@@ -48,7 +48,7 @@ function formatTooltipValue(value: number): string {
     case 'currency':
       return new Intl.NumberFormat('en-US', {
         style: 'currency',
-        currency: 'USD',
+        currency: 'CAD',
         minimumFractionDigits: 0
       }).format(value / 100)
     case 'percent':

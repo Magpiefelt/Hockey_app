@@ -39,7 +39,7 @@
             <li>A deposit may be required to secure your booking</li>
             <li>Full payment is typically due before or on the day of the event</li>
             <li>Payment methods accepted include credit card, bank transfer, and other methods as agreed</li>
-            <li>All prices are in USD unless otherwise specified</li>
+            <li>All prices are in CAD unless otherwise specified</li>
           </ul>
         </section>
 

@@ -122,7 +122,7 @@ let warningTimer: ReturnType<typeof setTimeout> | null = null
 const formattedAmount = computed(() => {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'USD'
+    currency: 'CAD'
   }).format(props.amount / 100)
 })
 

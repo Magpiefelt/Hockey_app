@@ -103,7 +103,7 @@ async function seedPackages() {
       const name = data.name
       const description = data.description || ''
       const priceCents = data.price_cents || data.price * 100 || 0
-      const currency = data.currency || 'usd'
+      const currency = data.currency || 'cad'
       const isPopular = data.popular || data.featured || false
       const features = data.features || []
       const icon = data.icon || '📦'

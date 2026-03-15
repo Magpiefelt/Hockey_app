@@ -1322,7 +1322,7 @@ export const adminRouter = router({
               manualInvoiceId,
               `manual_customer_${orderId}`,
               completionAmount,
-              'usd',
+              'cad',
               'paid',
               JSON.stringify({ 
                 name: order.contact_name, 
@@ -1346,7 +1346,7 @@ export const adminRouter = router({
               invoiceId,
               manualPaymentId,
               completionAmount,
-              'usd',
+              'cad',
               'succeeded'
             ]
           )

@@ -108,7 +108,7 @@ export async function createCheckoutSession(options: {
       line_items: [
         {
           price_data: {
-            currency: 'usd',
+            currency: 'cad',
             product_data: {
               name: `Elite Sports DJ - Order #${options.orderId}`,
               description: options.description
@@ -162,7 +162,7 @@ export async function createPaymentIntent(options: {
   try {
     const paymentIntent = await stripe.paymentIntents.create({
       amount: options.amount,
-      currency: options.currency || 'usd',
+      currency: options.currency || 'cad',
       customer: options.customerId,
       metadata: options.metadata || {},
       automatic_payment_methods: {
