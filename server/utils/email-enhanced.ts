@@ -1,145 +1,15 @@
 /**
  * Enhanced Email Templates
- * Additional email functions for quote enhancements
- * 
- * Migrated from Nodemailer/SMTP to Mailgun
- * 
- * IMPROVED:
- * - Stores metadata_json in email_logs for reliable email resend
- * - Uses token-based URLs in ALL customer-facing emails (no login required)
- * - Better error handling and input validation
- * - Consistent URL generation via generateQuoteViewUrl
+ * Rich email functions for quote enhancements, revisions, reminders,
+ * admin notifications, manual completions, and contact form notifications.
+ *
+ * Core send/log infrastructure lives in `email-core.ts`.
  */
 
-import { sendEmailWithMailgun } from './mailgun'
+import { sendEmailCore } from './email-core'
 import { logger } from './logger'
-import { executeQuery } from './database'
 import { generateQuoteViewUrl } from './quote-tokens'
-import { resolveManagedEmailTemplate } from '../services/emailTemplateService'
-
-interface EmailOptions {
-  to: string
-  subject: string
-  html: string
-  text?: string
-}
-
-// Get app base URL from runtime config (consistent with nuxt.config.ts)
-const getAppBaseUrl = () => {
-  try {
-    const config = useRuntimeConfig()
-    return config.public.appBaseUrl || 'https://elitesportsdj.ca'
-  } catch {
-    return process.env.APP_URL || 'https://elitesportsdj.ca'
-  }
-}
-const getAdminEmail = () => process.env.ADMIN_EMAIL || 'admin@elitesportsdj.ca'
-
-/**
- * Log email to database with metadata for resend capability
- * 
- * IMPROVED: Now stores metadata_json so emails can be properly reconstructed on resend
- */
-async function logEmail(
-  quoteRequestId: number | null,
-  toEmail: string,
-  subject: string,
-  template: string,
-  metadata: any,
-  status: 'sent' | 'failed' | 'bounced',
-  errorMessage?: string
-) {
-  try {
-    // Try to store with metadata_json column
-    await executeQuery(
-      `INSERT INTO email_logs (quote_id, to_email, subject, template, status, error_message, metadata_json, sent_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
-      [quoteRequestId, toEmail, subject, template, status, errorMessage || null, JSON.stringify(metadata || {})]
-    )
-  } catch (error: any) {
-    // Fallback: if metadata_json column doesn't exist, insert without it
-    if (error.code === '42703') {
-      try {
-        await executeQuery(
-          `INSERT INTO email_logs (quote_id, to_email, subject, template, status, error_message, sent_at)
-           VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
-          [quoteRequestId, toEmail, subject, template, status, errorMessage || null]
-        )
-      } catch (fallbackError) {
-        logger.error('Failed to log email (fallback)', { error: fallbackError, toEmail, subject })
-      }
-    } else {
-      logger.error('Failed to log email', { error, toEmail, subject })
-    }
-  }
-}
-
-/**
- * Send email with error handling and logging
- * Uses Mailgun API for delivery
- */
-async function sendEmail(options: EmailOptions, template: string, metadata: any, quoteRequestId?: number): Promise<boolean> {
-  // Validate required fields
-  if (!options.to) {
-    logger.error('Email recipient is required', { template })
-    return false
-  }
-
-  if (!options.subject) {
-    logger.error('Email subject is required', { template, to: options.to })
-    return false
-  }
-
-  try {
-    const resolvedTemplate = await resolveManagedEmailTemplate(template, {
-      subject: options.subject,
-      html: options.html,
-      metadata: {
-        ...(metadata || {}),
-        to: options.to,
-        subject: options.subject
-      }
-    })
-
-    const sent = await sendEmailWithMailgun({
-      to: options.to,
-      subject: resolvedTemplate.subject,
-      html: resolvedTemplate.html,
-      text: options.text
-    })
-    
-    if (sent) {
-      logger.info('Email sent successfully', {
-        to: options.to,
-        subject: resolvedTemplate.subject,
-        template,
-        overrideApplied: resolvedTemplate.overrideApplied
-      })
-      
-      await logEmail(
-        quoteRequestId || null,
-        options.to,
-        resolvedTemplate.subject,
-        template,
-        { ...(metadata || {}), templateOverrideApplied: resolvedTemplate.overrideApplied },
-        'sent'
-      )
-      return true
-    } else {
-      throw new Error('Email sending returned false')
-    }
-  } catch (error: any) {
-    logger.error('Failed to send email', {
-      error: error.message,
-      to: options.to,
-      subject: options.subject,
-      template
-    })
-    
-    await logEmail(quoteRequestId || null, options.to, options.subject, template, metadata, 'failed', error.message)
-    return false
-  }
-}
+import { getAppBaseUrl, getAdminEmail } from './config'
 
 /**
  * Generate a token-based quote URL for a customer
@@ -288,7 +158,7 @@ export async function sendEnhancedQuoteEmail(data: EnhancedQuoteEmailData): Prom
     </html>
   `
 
-  return sendEmail(
+  return sendEmailCore(
     {
       to: data.to,
       subject: `Your Quote is Ready - Elite Sports DJ #${data.orderId}`,
@@ -388,7 +258,7 @@ export async function sendQuoteRevisionEmail(data: QuoteRevisionEmailData): Prom
     </html>
   `
 
-  return sendEmail(
+  return sendEmailCore(
     {
       to: data.to,
       subject: `Quote Updated - Order #${data.orderId}`,
@@ -478,7 +348,7 @@ export async function sendQuoteReminderEmail(data: QuoteReminderEmailData): Prom
     </html>
   `
 
-  return sendEmail(
+  return sendEmailCore(
     {
       to: data.to,
       subject: `Reminder: Your Quote is Waiting - Order #${data.orderId}`,
@@ -540,7 +410,7 @@ export async function sendAdminNotificationEmail(data: AdminNotificationEmailDat
     </html>
   `
 
-  return sendEmail(
+  return sendEmailCore(
     {
       to: adminEmail,
       subject: data.subject,
@@ -602,7 +472,7 @@ export async function sendCustomEmailEnhanced(data: CustomEmailEnhancedData): Pr
     </html>
   `
 
-  return sendEmail(
+  return sendEmailCore(
     {
       to: data.to,
       subject: data.subject,
@@ -728,7 +598,7 @@ export async function sendManualCompletionEmail(data: ManualCompletionEmailData)
     </html>
   `
 
-  return sendEmail(
+  return sendEmailCore(
     {
       to: data.to,
       subject: `Order Complete - Elite Sports DJ #${data.orderId}`,
@@ -815,7 +685,7 @@ export async function sendContactNotificationEmail(data: ContactNotificationEmai
     </html>
   `
   
-  return sendEmail(
+  return sendEmailCore(
     {
       to: adminEmail,
       subject: `[Contact Form] ${data.subject}`,

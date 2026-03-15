@@ -1,6 +1,7 @@
 import { query } from '../db/connection'
 import { logger } from '../utils/logger'
 import { escapeHtml } from '../utils/sanitize'
+import { getAppBaseUrl, getBusinessName, getSupportEmail } from '../utils/config'
 
 const SETTINGS_KEY = 'email_template_overrides'
 const SETTINGS_DESCRIPTION = 'Admin managed email template overrides'
@@ -306,22 +307,6 @@ const GLOBAL_VARIABLES = new Set(MANAGED_TEMPLATE_GLOBAL_VARIABLES)
 let templateStoreCache: ManagedTemplateStore | null = null
 let templateStoreCacheAt = 0
 
-function getAppBaseUrl() {
-  try {
-    const runtimeConfig = useRuntimeConfig()
-    return runtimeConfig.public.appBaseUrl || process.env.APP_URL || 'https://elitesportsdj.ca'
-  } catch {
-    return process.env.APP_URL || 'https://elitesportsdj.ca'
-  }
-}
-
-function getBusinessName() {
-  return process.env.BUSINESS_NAME || 'Elite Sports DJ'
-}
-
-function getSupportEmail() {
-  return process.env.SUPPORT_EMAIL || 'info@elitesportsdj.ca'
-}
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)

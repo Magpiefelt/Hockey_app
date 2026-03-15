@@ -1,7 +1,7 @@
 import { router } from '../trpc'
 import { authRouter } from './auth'
 import { ordersRouter } from './orders'
-import { adminRouter } from './admin'
+import { adminRouter } from './admin/index'
 import { filesRouter } from './files'
 import { paymentsRouter } from './payments'
 import { emailsRouter } from './emails'
