@@ -19,16 +19,15 @@ interface RateLimitStore {
 // In-memory store for rate limiting
 // In production, consider using Redis for distributed rate limiting
 const store: RateLimitStore = {}
+const MAX_STORE_ENTRIES = 10000
 
 // Clean up old entries every 5 minutes
-setInterval(() => {
-  const now = Date.now()
-  for (const key in store) {
-    if (store[key].resetAt < now) {
-      delete store[key]
-    }
-  }
+const cleanupInterval = setInterval(() => {
+  pruneExpiredEntries(Date.now())
 }, 5 * 60 * 1000)
+
+// Prevent timers from keeping the process alive in tests/short-lived workers.
+cleanupInterval.unref?.()
 
 export interface RateLimitOptions {
   /**
@@ -51,6 +50,26 @@ export interface RateLimitOptions {
    * Optional message to show when rate limit is exceeded
    */
   message?: string
+
+  /**
+   * Optional prefix to isolate keys per endpoint family
+   */
+  keyPrefix?: string
+}
+
+function normalizeClientIdentifier(value: string): string {
+  const trimmed = (value || '').trim()
+  if (!trimmed) return 'anonymous'
+  // Keep keys compact and avoid accidental key explosions.
+  return trimmed.replace(/\s+/g, '_').slice(0, 256)
+}
+
+function pruneExpiredEntries(now: number): void {
+  for (const key in store) {
+    if (store[key].resetAt < now) {
+      delete store[key]
+    }
+  }
 }
 
 /**
@@ -64,13 +83,28 @@ export function rateLimit(options: RateLimitOptions) {
     maxRequests,
     windowMs,
     identifier,
-    message = 'Too many requests. Please try again later.'
+    message = 'Too many requests. Please try again later.',
+    keyPrefix = 'global'
   } = options
+
+  if (!Number.isFinite(maxRequests) || maxRequests <= 0) {
+    throw new Error('rateLimit requires maxRequests > 0')
+  }
+
+  if (!Number.isFinite(windowMs) || windowMs <= 0) {
+    throw new Error('rateLimit requires windowMs > 0')
+  }
   
   return async ({ ctx, next }: any) => {
-    const clientId = identifier(ctx)
+    const rawIdentifier = identifier(ctx)
+    const clientId = `${keyPrefix}:${normalizeClientIdentifier(rawIdentifier)}`
     const now = Date.now()
     const resetAt = now + windowMs
+
+    // Opportunistic pruning to avoid unbounded in-memory growth.
+    if (Object.keys(store).length > MAX_STORE_ENTRIES) {
+      pruneExpiredEntries(now)
+    }
     
     if (!store[clientId]) {
       // First request from this client

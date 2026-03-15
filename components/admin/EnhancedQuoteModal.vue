@@ -33,6 +33,9 @@ const emit = defineEmits<{
 
 const trpc = useTrpc()
 const { showError, showSuccess } = useNotification()
+const MIN_QUOTE_DOLLARS = 1
+const MAX_QUOTE_DOLLARS = 50000
+const ADMIN_NOTES_MAX_LENGTH = 2000
 
 // Form state
 const quoteAmount = ref<string>(props.currentQuote ? (props.currentQuote / 100).toFixed(2) : '')
@@ -60,6 +63,9 @@ const confirmedEventTime = ref<string>(
 )
 const isCheckingAvailability = ref(false)
 const dateAvailable = ref<boolean | null>(null)
+const availabilityError = ref<string | null>(null)
+const allowDateOverride = ref(false)
+let availabilityTimer: ReturnType<typeof setTimeout> | null = null
 
 // Time options for the dropdown
 const timeOptions = [
@@ -96,6 +102,27 @@ const amountInCents = computed(() => {
   return isNaN(parsed) ? 0 : Math.round(parsed * 100)
 })
 
+const amountValidationMessage = computed(() => {
+  if (!quoteAmount.value.trim()) return 'Enter a quote amount'
+  const parsed = parseFloat(quoteAmount.value)
+  if (isNaN(parsed)) return 'Enter a valid numeric amount'
+  if (parsed < MIN_QUOTE_DOLLARS) return `Minimum quote is $${MIN_QUOTE_DOLLARS.toFixed(2)}`
+  if (parsed > MAX_QUOTE_DOLLARS) return `Maximum quote is $${MAX_QUOTE_DOLLARS.toLocaleString()}`
+  return null
+})
+
+const notesValidationMessage = computed(() => {
+  if (adminNotes.value.length > ADMIN_NOTES_MAX_LENGTH) {
+    return `Notes must be ${ADMIN_NOTES_MAX_LENGTH} characters or less`
+  }
+  return null
+})
+
+const isDateSelectionValid = computed(() => {
+  if (!confirmedEventDate.value) return false
+  return dateAvailable.value === true || allowDateOverride.value
+})
+
 const formattedAmount = computed(() => {
   return amountInCents.value > 0 
     ? `$${(amountInCents.value / 100).toFixed(2)}` 
@@ -129,17 +156,18 @@ const customerRequestedDate = computed(() => {
 })
 
 const isValid = computed(() => {
-  return amountInCents.value > 0 && confirmedEventDate.value !== null && dateAvailable.value === true
+  return !amountValidationMessage.value && !notesValidationMessage.value && isDateSelectionValid.value
 })
 
-// Check availability when date changes
-watch(confirmedEventDate, async (newDate) => {
+async function checkDateAvailability(newDate: Date | null) {
   if (!newDate) {
     dateAvailable.value = null
+    availabilityError.value = null
     return
   }
   
   isCheckingAvailability.value = true
+  availabilityError.value = null
   try {
     const year = newDate.getFullYear()
     const month = String(newDate.getMonth() + 1).padStart(2, '0')
@@ -148,17 +176,47 @@ watch(confirmedEventDate, async (newDate) => {
     
     const result = await trpc.calendar.isDateAvailable.query({ date: dateString })
     dateAvailable.value = result.available
+    if (!result.available) {
+      availabilityError.value = result.reason === 'blocked'
+        ? 'This date is currently blocked by the administrator.'
+        : 'This date is already booked.'
+    }
   } catch (err) {
-    console.error('Failed to check availability:', err)
-    dateAvailable.value = true // Assume available on error
+    dateAvailable.value = null
+    availabilityError.value = 'Could not verify calendar availability right now. You can retry by changing the date, or manually override if needed.'
   } finally {
     isCheckingAvailability.value = false
+  }
+}
+
+// Check availability when date/time changes (debounced, immediate for initial form state)
+watch([confirmedEventDate, confirmedEventTime], ([newDate], [oldDate]) => {
+  if (newDate?.toISOString() !== oldDate?.toISOString()) {
+    // Reset manual override when the selected date changes.
+    allowDateOverride.value = false
+  }
+
+  if (availabilityTimer) {
+    clearTimeout(availabilityTimer)
+  }
+  availabilityTimer = setTimeout(() => {
+    checkDateAvailability(newDate)
+  }, 250)
+}, { immediate: true })
+
+onBeforeUnmount(() => {
+  if (availabilityTimer) {
+    clearTimeout(availabilityTimer)
   }
 })
 
 // Methods
 async function submitQuote() {
-  if (!isValid.value || isSubmitting.value) return
+  if (isSubmitting.value) return
+  if (!isValid.value) {
+    error.value = amountValidationMessage.value || notesValidationMessage.value || 'Please resolve the form issues before submitting'
+    return
+  }
   
   isSubmitting.value = true
   error.value = null
@@ -174,13 +232,13 @@ async function submitQuote() {
     const result = await trpc.adminEnhancements.submitQuoteEnhanced.mutate({
       orderId: props.orderId,
       quoteAmount: amountInCents.value,
-      adminNotes: adminNotes.value || undefined,
+      adminNotes: adminNotes.value.trim() || undefined,
       includePaymentLink: includePaymentLink.value,
       eventDateTime: eventDateTime?.toISOString(),
       confirmDateTime: true
     })
     
-    showSuccess('Quote submitted successfully!')
+    showSuccess('Quote sent successfully. Customer notification has been queued.')
     
     // Refresh calendar store so availability is updated immediately
     // (the confirmed event date should now show as booked)
@@ -200,7 +258,10 @@ async function submitQuote() {
     emit('close')
   } catch (err: any) {
     const { handleTrpcError } = await import('~/composables/useTrpc')
-    error.value = handleTrpcError(err)
+    const raw = handleTrpcError(err)
+    error.value = raw.includes('Cannot submit quote from status') || raw.includes('Cannot submit or revise quotes')
+      ? 'This order status changed while you were editing. Refresh the page and try again.'
+      : raw
     showError(error.value)
   } finally {
     isSubmitting.value = false
@@ -348,7 +409,26 @@ function useCustomerDate() {
             </div>
             <div v-else-if="confirmedEventDate && dateAvailable === false" class="flex items-center gap-2 text-red-400 text-sm">
               <Icon name="mdi:alert-circle" class="w-4 h-4" />
-              <span>This date is already booked or blocked. Please select another date.</span>
+              <span>{{ availabilityError || 'This date is already booked or blocked. Please select another date.' }}</span>
+            </div>
+            <div v-else-if="availabilityError" class="flex items-center gap-2 text-amber-400 text-sm">
+              <Icon name="mdi:alert-outline" class="w-4 h-4" />
+              <span>{{ availabilityError }}</span>
+            </div>
+            <div
+              v-if="confirmedEventDate && (dateAvailable === false || availabilityError) && !isCheckingAvailability"
+              class="mt-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg"
+            >
+              <label class="flex items-start gap-2 cursor-pointer">
+                <input
+                  v-model="allowDateOverride"
+                  type="checkbox"
+                  class="mt-0.5 w-4 h-4 text-amber-500 bg-dark-tertiary border-white/20 rounded focus:ring-amber-500 focus:ring-offset-0"
+                />
+                <span class="text-xs text-amber-300">
+                  Override availability check and send quote anyway.
+                </span>
+              </label>
             </div>
           </div>
         </div>
@@ -364,11 +444,18 @@ function useCustomerDate() {
               v-model="quoteAmount"
               type="number"
               step="0.01"
-              min="0"
+              :min="MIN_QUOTE_DOLLARS"
+              :max="MAX_QUOTE_DOLLARS"
               placeholder="0.00"
               class="w-full pl-10 pr-4 py-3 text-2xl font-bold bg-dark-tertiary border border-white/10 rounded-lg text-white placeholder:text-slate-500 focus:ring-2 focus:ring-brand-500 focus:border-transparent"
             />
           </div>
+          <p class="mt-2 text-xs text-slate-400">
+            Quote range: ${{ MIN_QUOTE_DOLLARS.toFixed(2) }} - ${{ MAX_QUOTE_DOLLARS.toLocaleString() }}
+          </p>
+          <p v-if="amountValidationMessage" class="mt-1 text-sm text-red-400">
+            {{ amountValidationMessage }}
+          </p>
           
           <!-- Quick Amount Buttons -->
           <div class="flex flex-wrap gap-2 mt-3">
@@ -391,9 +478,18 @@ function useCustomerDate() {
           <textarea
             v-model="adminNotes"
             rows="3"
+            :maxlength="ADMIN_NOTES_MAX_LENGTH"
             placeholder="Add any notes or special instructions for the customer..."
             class="w-full px-4 py-3 bg-dark-tertiary border border-white/10 rounded-lg text-white placeholder:text-slate-500 focus:ring-2 focus:ring-brand-500 focus:border-transparent resize-none"
           ></textarea>
+          <div class="mt-2 flex items-center justify-between">
+            <p v-if="notesValidationMessage" class="text-sm text-red-400">
+              {{ notesValidationMessage }}
+            </p>
+            <p class="text-xs text-slate-400 ml-auto">
+              {{ adminNotes.length }}/{{ ADMIN_NOTES_MAX_LENGTH }}
+            </p>
+          </div>
         </div>
         
         <!-- Options -->
@@ -465,11 +561,17 @@ function useCustomerDate() {
           <span v-if="currentQuote" class="text-warning-400">
             Updating existing quote (was ${{ (currentQuote / 100).toFixed(2) }})
           </span>
+          <span v-else-if="amountValidationMessage" class="text-red-400">
+            {{ amountValidationMessage }}
+          </span>
+          <span v-else-if="notesValidationMessage" class="text-red-400">
+            {{ notesValidationMessage }}
+          </span>
           <span v-else-if="!confirmedEventDate" class="text-amber-400">
             Please select an event date
           </span>
-          <span v-else-if="dateAvailable === false" class="text-red-400">
-            Selected date is not available
+          <span v-else-if="(dateAvailable === false || availabilityError) && !allowDateOverride" class="text-red-400">
+            Resolve calendar availability or enable override
           </span>
         </div>
         <div class="flex gap-3">

@@ -13,11 +13,19 @@ const route = useRoute()
 const router = useRouter()
 const trpc = useTrpc()
 
-const orderId = computed(() => parseInt(route.params.id as string))
+const DECLINE_REASON_MAX_LENGTH = 500
 
-// Get token from URL query params (for email link access)
-const accessToken = computed(() => route.query.token as string | undefined)
-const autoAction = computed(() => route.query.action as string | undefined)
+const orderId = computed(() => Number.parseInt(route.params.id as string, 10))
+const hasValidOrderId = computed(() => Number.isInteger(orderId.value) && orderId.value > 0)
+
+// Token handling:
+// - Capture from URL
+// - Persist in sessionStorage so page refresh still works
+// - Remove token from URL for cleaner/safer sharing
+const tokenFromQuery = computed(() => typeof route.query.token === 'string' ? route.query.token : '')
+const autoActionFromQuery = computed(() => typeof route.query.action === 'string' ? route.query.action : '')
+const activeToken = ref<string | null>(null)
+const pendingAutoAction = ref<string | null>(null)
 
 // State
 const loading = ref(true)
@@ -27,6 +35,7 @@ const isDeclining = ref(false)
 const showDeclineModal = ref(false)
 const declineReason = ref('')
 const tokenAccessMode = ref(false)
+const isRefreshing = ref(false)
 
 const quote = ref<{
   id: string
@@ -54,26 +63,88 @@ const revisions = ref<Array<{
   createdAt: string
 }>>([])
 
+const declineReasonLength = computed(() => declineReason.value.length)
+const isDeclineReasonTooLong = computed(() => declineReasonLength.value > DECLINE_REASON_MAX_LENGTH)
+
+const tokenStorageKey = computed(() => `quote-token-${orderId.value}`)
+
+function readStoredToken(): string | null {
+  if (import.meta.server) return null
+  try {
+    return sessionStorage.getItem(tokenStorageKey.value)
+  } catch {
+    return null
+  }
+}
+
+function writeStoredToken(token: string) {
+  if (import.meta.server) return
+  try {
+    sessionStorage.setItem(tokenStorageKey.value, token)
+  } catch {
+    // Ignore storage failures (private mode, quota, etc.)
+  }
+}
+
+function clearStoredToken() {
+  if (import.meta.server) return
+  try {
+    sessionStorage.removeItem(tokenStorageKey.value)
+  } catch {
+    // Ignore storage failures
+  }
+}
+
+function shouldClearTokenOnLoadError(err: unknown): boolean {
+  const trpcError = err as {
+    data?: { code?: string }
+    shape?: { data?: { code?: string } }
+    message?: string
+  }
+  const code = String(trpcError.data?.code || trpcError.shape?.data?.code || '').toUpperCase()
+  if (code === 'UNAUTHORIZED' || code === 'FORBIDDEN') {
+    return true
+  }
+
+  const message = String(trpcError.message || '').toLowerCase()
+  return (
+    message.includes('token has expired') ||
+    message.includes('invalid token') ||
+    message.includes('access token is invalid') ||
+    message.includes('token does not match') ||
+    message.includes('already been used')
+  )
+}
+
 // Load quote data
 async function loadQuote() {
+  if (!hasValidOrderId.value) {
+    error.value = 'Invalid quote link. Please verify the URL and try again.'
+    loading.value = false
+    return
+  }
+
   loading.value = true
   error.value = null
+  tokenAccessMode.value = Boolean(activeToken.value)
   
   try {
     // Determine if we're using token-based access
-    if (accessToken.value) {
+    if (activeToken.value) {
       tokenAccessMode.value = true
       
       // Use token-based access
       quote.value = await trpc.quote.getQuoteWithToken.query({
         orderId: orderId.value,
-        token: accessToken.value
+        token: activeToken.value
       })
       
-      // Record view event with token
-      await trpc.quote.recordQuoteViewWithToken.mutate({
+      // Record view event in background (do not block quote display)
+      trpc.quote.recordQuoteViewWithToken.mutate({
         orderId: orderId.value,
-        token: accessToken.value
+        token: activeToken.value
+      }).catch(() => {
+        // Non-critical analytics call; do not surface to customer
       })
     } else {
       // Use authenticated access
@@ -81,25 +152,32 @@ async function loadQuote() {
         orderId: orderId.value
       })
       
-      // Record view event
-      await trpc.quote.recordQuoteView.mutate({
+      // Record view event in background (do not block quote display)
+      trpc.quote.recordQuoteView.mutate({
         orderId: orderId.value
+      }).catch(() => {
+        // Non-critical analytics call; do not surface to customer
       })
     }
     
     // Load revision history if authenticated
-    try {
-      revisions.value = await trpc.quote.getRevisionHistory.query({
-        orderId: orderId.value
-      })
-    } catch {
-      // Not authenticated or no access - ignore
+    if (!tokenAccessMode.value) {
+      try {
+        revisions.value = await trpc.quote.getRevisionHistory.query({
+          orderId: orderId.value
+        })
+      } catch {
+        // Not authenticated or no access - ignore
+      }
+    } else {
+      revisions.value = []
     }
     
     // Handle auto-action from email link
-    if (autoAction.value === 'accept' && canAct.value) {
+    if (pendingAutoAction.value === 'accept' && canAct.value) {
       // Show a confirmation before auto-accepting
       showAcceptConfirmation.value = true
+      pendingAutoAction.value = null
     }
   } catch (err: any) {
     error.value = err.message || 'Failed to load quote'
@@ -109,13 +187,57 @@ async function loadQuote() {
       error.value = 'This quote link has expired. Please contact us for an updated quote.'
     } else if (err.message?.includes('Invalid token')) {
       error.value = 'This quote link is invalid. Please check your email for the correct link or log in to view your orders.'
+    } else if (err.message?.includes('Too many')) {
+      error.value = 'You have made too many attempts in a short period. Please wait a moment and try again.'
+    }
+
+    if (tokenAccessMode.value && shouldClearTokenOnLoadError(err)) {
+      clearStoredToken()
+      activeToken.value = null
     }
   } finally {
     loading.value = false
+    isRefreshing.value = false
   }
 }
 
-onMounted(loadQuote)
+function refreshQuote() {
+  isRefreshing.value = true
+  loadQuote()
+}
+
+onMounted(() => {
+  // Initialize token from URL or session storage.
+  const queryToken = tokenFromQuery.value
+  const queryAction = autoActionFromQuery.value
+  const storedToken = readStoredToken()
+  const resolvedToken = queryToken || storedToken
+
+  if (resolvedToken) {
+    tokenAccessMode.value = true
+    activeToken.value = resolvedToken
+    writeStoredToken(resolvedToken)
+  }
+
+  if (queryAction) {
+    pendingAutoAction.value = queryAction
+  }
+
+  // Strip sensitive/action query params from URL after capture.
+  if (queryToken || queryAction) {
+    const sanitizedQuery = { ...route.query }
+    delete sanitizedQuery.token
+    delete sanitizedQuery.action
+    router.replace({
+      path: route.path,
+      query: sanitizedQuery
+    }).catch(() => {
+      // Ignore route replacement failures.
+    })
+  }
+
+  loadQuote()
+})
 
 // Accept confirmation modal (for auto-accept from email)
 const showAcceptConfirmation = ref(false)
@@ -128,11 +250,11 @@ async function acceptQuote() {
   showAcceptConfirmation.value = false
   
   try {
-    if (tokenAccessMode.value && accessToken.value) {
+    if (tokenAccessMode.value && activeToken.value) {
       // Use token-based acceptance
       await trpc.quote.acceptQuoteWithToken.mutate({
         orderId: orderId.value,
-        token: accessToken.value
+        token: activeToken.value
       })
     } else {
       // Use authenticated acceptance
@@ -148,14 +270,22 @@ async function acceptQuote() {
     
     // Show success and redirect to payment
     const { showSuccess } = useNotification()
-    showSuccess('Quote accepted! Redirecting to payment...')
-    
-    // Redirect to order page (which has payment button)
-    setTimeout(() => {
-      router.push(`/orders/${orderId.value}`)
-    }, 1500)
+    if (tokenAccessMode.value) {
+      showSuccess('Quote accepted successfully! We will follow up with next steps shortly.')
+      await loadQuote()
+    } else {
+      showSuccess('Quote accepted! Redirecting to payment...')
+      
+      // Redirect to order page (which has payment button)
+      setTimeout(() => {
+        router.push(`/orders/${orderId.value}`)
+      }, 1200)
+    }
   } catch (err: any) {
-    error.value = err.message || 'Failed to accept quote'
+    error.value = err.message?.includes('Too many')
+      ? 'Too many attempts. Please wait a moment and try again.'
+      : (err.message || 'Failed to accept quote')
+  } finally {
     isAccepting.value = false
   }
 }
@@ -163,15 +293,19 @@ async function acceptQuote() {
 // Decline quote
 async function declineQuote() {
   if (isDeclining.value || !quote.value) return
+  if (isDeclineReasonTooLong.value) {
+    error.value = `Decline reason must be ${DECLINE_REASON_MAX_LENGTH} characters or less`
+    return
+  }
   
   isDeclining.value = true
   
   try {
-    if (tokenAccessMode.value && accessToken.value) {
+    if (tokenAccessMode.value && activeToken.value) {
       // Use token-based decline
       await trpc.quote.declineQuoteWithToken.mutate({
         orderId: orderId.value,
-        token: accessToken.value,
+        token: activeToken.value,
         reason: declineReason.value || undefined
       })
     } else {
@@ -185,18 +319,21 @@ async function declineQuote() {
     showDeclineModal.value = false
     
     const { showSuccess } = useNotification()
-    showSuccess('Quote declined. We hope to work with you in the future!')
-    
-    // Redirect to orders or home
-    setTimeout(() => {
-      if (tokenAccessMode.value) {
-        router.push('/')
-      } else {
+    if (tokenAccessMode.value) {
+      showSuccess('Quote declined. Thank you for the update.')
+      await loadQuote()
+    } else {
+      showSuccess('Quote declined. We hope to work with you in the future!')
+      
+      // Redirect to orders
+      setTimeout(() => {
         router.push('/orders')
-      }
-    }, 1500)
+      }, 1200)
+    }
   } catch (err: any) {
-    error.value = err.message || 'Failed to decline quote'
+    error.value = err.message?.includes('Too many')
+      ? 'Too many attempts. Please wait a moment and try again.'
+      : (err.message || 'Failed to decline quote')
   } finally {
     isDeclining.value = false
   }
@@ -251,6 +388,15 @@ const canAct = computed(() => {
   return actableStatuses.includes(quote.value.status) && !quote.value.isExpired
 })
 
+const actionBlockedMessage = computed(() => {
+  if (!quote.value || canAct.value) return null
+  if (quote.value.status === 'quote_accepted') return 'Quote has already been accepted.'
+  if (quote.value.status === 'cancelled') return 'Quote has already been declined.'
+  if (quote.value.status === 'invoiced') return 'An invoice has already been issued for this order.'
+  if (['paid', 'in_progress', 'completed', 'delivered'].includes(quote.value.status)) return 'This quote is already in a later fulfillment stage.'
+  return 'This quote is not currently available for action.'
+})
+
 // Status display helpers
 const statusDisplay = computed(() => {
   if (!quote.value) return { text: '', color: '' }
@@ -262,7 +408,7 @@ const statusDisplay = computed(() => {
       return { text: 'Viewed', color: 'text-blue-600 bg-blue-50' }
     case 'quote_accepted':
       return { text: 'Accepted', color: 'text-green-600 bg-green-50' }
-    case 'quote_declined':
+    case 'cancelled':
       return { text: 'Declined', color: 'text-red-600 bg-red-50' }
     default:
       return { text: quote.value.status, color: 'text-gray-600 bg-gray-50' }
@@ -290,6 +436,13 @@ const statusDisplay = computed(() => {
           <h2 class="text-xl font-bold text-gray-900 mb-2">Unable to Load Quote</h2>
           <p class="text-gray-600 mb-6">{{ error }}</p>
           <div class="flex flex-col sm:flex-row gap-3 justify-center">
+            <button
+              @click="refreshQuote"
+              :disabled="isRefreshing"
+              class="inline-block px-6 py-2 bg-cyan-500 text-white rounded-lg hover:bg-cyan-600 disabled:opacity-60 transition-colors"
+            >
+              {{ isRefreshing ? 'Retrying...' : 'Try Again' }}
+            </button>
             <NuxtLink 
               to="/contact" 
               class="inline-block px-6 py-2 bg-cyan-500 text-white rounded-lg hover:bg-cyan-600 transition-colors"
@@ -318,6 +471,13 @@ const statusDisplay = computed(() => {
               {{ statusDisplay.text }}
             </span>
           </div>
+          <button
+            @click="refreshQuote"
+            :disabled="isRefreshing"
+            class="mt-4 text-sm text-cyan-100 hover:text-white underline disabled:no-underline disabled:opacity-60"
+          >
+            {{ isRefreshing ? 'Refreshing...' : 'Refresh quote status' }}
+          </button>
         </div>
         
         <!-- Token Access Notice -->
@@ -326,7 +486,9 @@ const statusDisplay = computed(() => {
             <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <span>Viewing as {{ quote.customerEmail }}</span>
+            <span>
+              Secure link access for {{ quote.customerEmail }}. This link is active for this browser session.
+            </span>
           </div>
         </div>
         
@@ -357,7 +519,7 @@ const statusDisplay = computed(() => {
         </div>
         
         <!-- Already Declined -->
-        <div v-else-if="quote.status === 'quote_declined'" class="bg-gray-50 border-b border-gray-100 px-8 py-4">
+        <div v-else-if="quote.status === 'cancelled'" class="bg-gray-50 border-b border-gray-100 px-8 py-4">
           <div class="flex items-center gap-3 text-gray-700">
             <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -498,11 +660,24 @@ const statusDisplay = computed(() => {
           <!-- View Order Button (for accepted quotes) -->
           <div v-else-if="quote.status === 'quote_accepted'" class="flex justify-center">
             <NuxtLink
+              v-if="!tokenAccessMode"
               :to="`/orders/${orderId}`"
               class="px-8 py-4 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-xl font-bold text-lg hover:from-cyan-600 hover:to-blue-600 transition-all shadow-lg hover:shadow-xl"
             >
               View Order & Pay
             </NuxtLink>
+            <NuxtLink
+              v-else
+              to="/"
+              class="px-8 py-4 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-xl font-bold text-lg hover:from-cyan-600 hover:to-blue-600 transition-all shadow-lg hover:shadow-xl"
+            >
+              Return to Home
+            </NuxtLink>
+          </div>
+
+          <!-- Action not available message -->
+          <div v-else-if="actionBlockedMessage" class="bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm text-slate-600 text-center">
+            {{ actionBlockedMessage }}
           </div>
           
           <!-- Contact Info -->
@@ -573,9 +748,13 @@ const statusDisplay = computed(() => {
               <textarea
                 v-model="declineReason"
                 rows="3"
+                :maxlength="DECLINE_REASON_MAX_LENGTH"
                 placeholder="Let us know why you're declining..."
                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent resize-none"
               ></textarea>
+              <p class="mt-2 text-xs text-gray-500 text-right">
+                {{ declineReasonLength }}/{{ DECLINE_REASON_MAX_LENGTH }}
+              </p>
             </div>
           </div>
           

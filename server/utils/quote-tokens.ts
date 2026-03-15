@@ -10,6 +10,12 @@ import { logger } from './logger'
 // Secret key for token generation (should be in environment variables)
 const TOKEN_SECRET = process.env.QUOTE_TOKEN_SECRET || process.env.JWT_SECRET || 'default-secret-change-in-production'
 const TOKEN_EXPIRY_DAYS = 30
+const TOKEN_SIGNATURE_LENGTH = 16
+const MAX_TOKEN_LENGTH = 4096
+
+if (TOKEN_SECRET === 'default-secret-change-in-production') {
+  logger.warn('QUOTE_TOKEN_SECRET is not set; quote tokens are using a fallback secret')
+}
 
 export interface QuoteToken {
   orderId: number
@@ -18,30 +24,68 @@ export interface QuoteToken {
   token: string
 }
 
+export interface QuoteTokenValidationResult {
+  valid: boolean
+  orderId?: number
+  email?: string
+  error?: string
+}
+
+interface ValidateQuoteTokenWithStoreOptions {
+  requireStoredToken?: boolean
+  rejectUsedToken?: boolean
+}
+
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase()
+}
+
+function buildSignature(orderId: number, email: string, expiresAtMs: number): string {
+  const payload = `${orderId}:${email}:${expiresAtMs}`
+  const hmac = crypto.createHmac('sha256', TOKEN_SECRET)
+  hmac.update(payload)
+  return hmac.digest('hex').substring(0, TOKEN_SIGNATURE_LENGTH)
+}
+
+function hashToken(token: string): string {
+  return crypto.createHash('sha256').update(token).digest('hex')
+}
+
+function safeSignatureEqual(provided: string, expected: string): boolean {
+  if (provided.length !== expected.length) {
+    return false
+  }
+  return crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected))
+}
+
 /**
  * Generate a secure token for quote access
  */
 export function generateQuoteToken(orderId: number, email: string): QuoteToken {
+  if (!Number.isInteger(orderId) || orderId <= 0) {
+    throw new Error('Invalid order ID for quote token generation')
+  }
+  const normalizedEmail = normalizeEmail(email)
+  if (!normalizedEmail.includes('@')) {
+    throw new Error('Invalid email for quote token generation')
+  }
+
   const expiresAt = new Date()
   expiresAt.setDate(expiresAt.getDate() + TOKEN_EXPIRY_DAYS)
   
-  // Create a hash-based token
-  const payload = `${orderId}:${email}:${expiresAt.getTime()}`
-  const hmac = crypto.createHmac('sha256', TOKEN_SECRET)
-  hmac.update(payload)
-  const signature = hmac.digest('hex')
+  const signature = buildSignature(orderId, normalizedEmail, expiresAt.getTime())
   
   // Combine into a URL-safe token
   const token = Buffer.from(JSON.stringify({
     o: orderId,
-    e: email,
+    e: normalizedEmail,
     x: expiresAt.getTime(),
-    s: signature.substring(0, 16) // Short signature for URL
+    s: signature // Short signature for URL
   })).toString('base64url')
   
   return {
     orderId,
-    email,
+    email: normalizedEmail,
     expiresAt,
     token
   }
@@ -50,14 +94,35 @@ export function generateQuoteToken(orderId: number, email: string): QuoteToken {
 /**
  * Validate and decode a quote access token
  */
-export function validateQuoteToken(token: string): { valid: boolean; orderId?: number; email?: string; error?: string } {
+export function validateQuoteToken(token: string): QuoteTokenValidationResult {
   try {
-    const decoded = JSON.parse(Buffer.from(token, 'base64url').toString())
+    if (typeof token !== 'string' || token.length === 0 || token.length > MAX_TOKEN_LENGTH) {
+      return { valid: false, error: 'Invalid token format' }
+    }
+
+    const decoded = JSON.parse(Buffer.from(token, 'base64url').toString('utf8'))
+    const orderId = Number(decoded?.o)
+    const email = typeof decoded?.e === 'string' ? normalizeEmail(decoded.e) : ''
+    const expiresAtMs = Number(decoded?.x)
+    const providedSignature = typeof decoded?.s === 'string' ? decoded.s.toLowerCase() : ''
+
+    if (!Number.isInteger(orderId) || orderId <= 0) {
+      return { valid: false, error: 'Invalid token payload' }
+    }
+
+    if (!email || !email.includes('@')) {
+      return { valid: false, error: 'Invalid token payload' }
+    }
+
+    if (!Number.isFinite(expiresAtMs) || expiresAtMs <= 0) {
+      return { valid: false, error: 'Invalid token payload' }
+    }
+
+    if (!/^[a-f0-9]{16}$/.test(providedSignature)) {
+      return { valid: false, error: 'Invalid token signature' }
+    }
     
-    const orderId = decoded.o
-    const email = decoded.e
-    const expiresAt = new Date(decoded.x)
-    const providedSignature = decoded.s
+    const expiresAt = new Date(expiresAtMs)
     
     // Check expiration
     if (expiresAt < new Date()) {
@@ -65,19 +130,72 @@ export function validateQuoteToken(token: string): { valid: boolean; orderId?: n
     }
     
     // Verify signature
-    const payload = `${orderId}:${email}:${expiresAt.getTime()}`
-    const hmac = crypto.createHmac('sha256', TOKEN_SECRET)
-    hmac.update(payload)
-    const expectedSignature = hmac.digest('hex').substring(0, 16)
+    const expectedSignature = buildSignature(orderId, email, expiresAt.getTime()).toLowerCase()
     
-    if (providedSignature !== expectedSignature) {
+    if (!safeSignatureEqual(providedSignature, expectedSignature)) {
       return { valid: false, error: 'Invalid token signature' }
     }
     
     return { valid: true, orderId, email }
   } catch (error) {
-    logger.error('Token validation error', { error })
+    logger.debug('Token validation error', { error })
     return { valid: false, error: 'Invalid token format' }
+  }
+}
+
+/**
+ * Validate a token and (optionally) enforce DB-stored token tracking.
+ * Falls back to stateless validation if the tracking table isn't available.
+ */
+export async function validateQuoteTokenWithStore(
+  token: string,
+  options: ValidateQuoteTokenWithStoreOptions = {}
+): Promise<QuoteTokenValidationResult> {
+  const parsed = validateQuoteToken(token)
+  if (!parsed.valid || !parsed.orderId) {
+    return parsed
+  }
+
+  try {
+    const result = await query<{
+      id: number
+      expires_at: Date
+      used_at: Date | null
+    }>(
+      `SELECT id, expires_at, used_at
+       FROM quote_access_tokens
+       WHERE quote_id = $1 AND token_hash = $2
+       LIMIT 1`,
+      [parsed.orderId, hashToken(token)]
+    )
+
+    if (result.rows.length === 0) {
+      if (options.requireStoredToken) {
+        return { valid: false, error: 'Access token is invalid or has been replaced' }
+      }
+      return parsed
+    }
+
+    const row = result.rows[0]
+    if (row.expires_at < new Date()) {
+      return { valid: false, error: 'Token has expired' }
+    }
+
+    if (options.rejectUsedToken && row.used_at) {
+      return { valid: false, error: 'This quote link has already been used' }
+    }
+
+    return parsed
+  } catch (error: any) {
+    if (error?.code === '42P01') {
+      // quote_access_tokens table may not exist in older deployments
+      return parsed
+    }
+    logger.warn('Quote token DB verification failed, falling back to stateless validation', {
+      errorCode: error?.code,
+      message: error?.message
+    })
+    return parsed
   }
 }
 
@@ -92,12 +210,34 @@ export async function storeQuoteToken(orderId: number, token: string, expiresAt:
        ON CONFLICT (quote_id) DO UPDATE SET
          token_hash = $2,
          expires_at = $3,
+        used_at = NULL,
          created_at = NOW()`,
-      [orderId, crypto.createHash('sha256').update(token).digest('hex'), expiresAt]
+      [orderId, hashToken(token), expiresAt]
     )
   } catch (error) {
     // Table might not exist yet, log but don't fail
     logger.warn('Could not store quote token', { orderId, error })
+  }
+}
+
+/**
+ * Mark a token as used (for one-time actions like accept/decline).
+ */
+export async function markQuoteTokenUsed(orderId: number, token: string): Promise<void> {
+  try {
+    await query(
+      `UPDATE quote_access_tokens
+       SET used_at = COALESCE(used_at, NOW())
+       WHERE quote_id = $1 AND token_hash = $2`,
+      [orderId, hashToken(token)]
+    )
+  } catch (error: any) {
+    // Table might not exist yet, or DB may be temporarily unavailable.
+    logger.warn('Could not mark quote token as used', {
+      orderId,
+      errorCode: error?.code,
+      message: error?.message
+    })
   }
 }
 
@@ -107,13 +247,14 @@ export async function storeQuoteToken(orderId: number, token: string, expiresAt:
  */
 export function generateQuoteViewUrl(orderId: number, email: string, baseUrl: string): string {
   const tokenData = generateQuoteToken(orderId, email)
+  const normalizedBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl
   
   // Store token asynchronously - don't block URL generation
   storeQuoteToken(orderId, tokenData.token, tokenData.expiresAt).catch(err => {
     logger.warn('Failed to store quote view token', { orderId, error: err })
   })
   
-  return `${baseUrl}/orders/${orderId}/quote?token=${tokenData.token}`
+  return `${normalizedBaseUrl}/orders/${orderId}/quote?token=${tokenData.token}`
 }
 
 /**
@@ -122,11 +263,12 @@ export function generateQuoteViewUrl(orderId: number, email: string, baseUrl: st
  */
 export function generateQuoteAcceptUrl(orderId: number, email: string, baseUrl: string): string {
   const tokenData = generateQuoteToken(orderId, email)
+  const normalizedBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl
   
   // Store token asynchronously - don't block URL generation
   storeQuoteToken(orderId, tokenData.token, tokenData.expiresAt).catch(err => {
     logger.warn('Failed to store quote accept token', { orderId, error: err })
   })
   
-  return `${baseUrl}/orders/${orderId}/quote?token=${tokenData.token}&action=accept`
+  return `${normalizedBaseUrl}/orders/${orderId}/quote?token=${tokenData.token}&action=accept`
 }

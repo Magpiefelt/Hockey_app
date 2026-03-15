@@ -127,9 +127,9 @@ async function loadHistory() {
 
   try {
     const trpc = useTrpc()
-    const result = await trpc.admin.getOrderStatusHistory.query({ orderId: props.orderId })
+    const result = await trpc.admin.getOrderStatusHistory.query({ orderId: props.orderId }) as StatusHistoryItem[]
     if (requestId !== activeRequestId) return
-    history.value = result
+    history.value = Array.isArray(result) ? result : []
   } catch (err: any) {
     if (requestId !== activeRequestId) return
     error.value = err.message || 'Failed to load status history'
