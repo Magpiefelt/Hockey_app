@@ -89,7 +89,7 @@ async function handleCheckoutCompleted(session: any) {
   try {
     // Use transaction to ensure all database updates succeed or fail together
     // This prevents inconsistent state where payment is recorded but order status isn't updated
-    const orderDetails = await transaction(async (client) => {
+    const paymentProcessingResult = await transaction(async (client) => {
       // Update invoice status
       await client.query(
         `UPDATE invoices 
@@ -99,11 +99,13 @@ async function handleCheckoutCompleted(session: any) {
       )
 
       // Create payment record
-      await client.query(
+      const paymentInsertResult = await client.query(
         `INSERT INTO payments (invoice_id, stripe_payment_id, amount_cents, currency, status, paid_at)
          SELECT id, $1, $2, $3, $4, NOW()
          FROM invoices
-         WHERE stripe_invoice_id = $5`,
+         WHERE stripe_invoice_id = $5
+         ON CONFLICT (stripe_payment_id) DO NOTHING
+         RETURNING id`,
         [
           session.payment_intent,
           session.amount_total,
@@ -112,6 +114,7 @@ async function handleCheckoutCompleted(session: any) {
           session.id
         ]
       )
+      const isNewPayment = paymentInsertResult.rows.length > 0
 
       // Update order status to paid
       await client.query(
@@ -147,9 +150,14 @@ async function handleCheckoutCompleted(session: any) {
       
       // Auto-block calendar date when payment is successful
       // Only block if admin confirmed the datetime when submitting quote
-      if (currentOrderDetails && (currentOrderDetails.event_datetime || currentOrderDetails.event_date)) {
+      if (currentOrderDetails?.admin_confirmed_datetime && (currentOrderDetails.event_datetime || currentOrderDetails.event_date)) {
         const eventDate = currentOrderDetails.event_datetime || currentOrderDetails.event_date
-        if (!eventDate) return currentOrderDetails
+        if (!eventDate) {
+          return {
+            orderDetails: currentOrderDetails,
+            isNewPayment
+          }
+        }
         const dateStr = eventDate instanceof Date
           ? eventDate.toISOString().split('T')[0]
           : new Date(String(eventDate)).toISOString().split('T')[0]
@@ -213,17 +221,28 @@ async function handleCheckoutCompleted(session: any) {
         }
       }
 
-      return currentOrderDetails
+      return {
+        orderDetails: currentOrderDetails,
+        isNewPayment
+      }
     })
 
     // Send payment receipt email AFTER transaction commits successfully
     // This ensures we only send emails for successfully processed payments
-    if (orderDetails) {
+    if (paymentProcessingResult.isNewPayment && paymentProcessingResult.orderDetails) {
       await sendPaymentReceipt({
-        to: orderDetails.contact_email,
-        name: orderDetails.contact_name,
-        amount: orderDetails.total_amount,
+        to: paymentProcessingResult.orderDetails.contact_email,
+        name: paymentProcessingResult.orderDetails.contact_name,
+        amount: paymentProcessingResult.orderDetails.total_amount,
         orderId
+      })
+    }
+
+    if (!paymentProcessingResult.isNewPayment) {
+      logger.info('Duplicate checkout completion webhook processed idempotently', {
+        orderId,
+        sessionId: session.id,
+        paymentIntent: session.payment_intent
       })
     }
 
