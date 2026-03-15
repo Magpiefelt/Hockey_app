@@ -1,12 +1,18 @@
 import { z } from 'zod'
+import { createHash, randomBytes } from 'crypto'
 import { router, publicProcedure, protectedProcedure } from '../trpc'
 import { queryOne, queryOneOrFail, executeQuery } from '../../utils/database'
+import { transaction } from '../../db/connection'
 import { hashPassword, verifyPassword, generateToken, setAuthCookie, clearAuthCookie } from '../../utils/auth'
 import { sanitizeEmail, sanitizeString } from '../../utils/sanitize'
 import { isValidEmail, isStrongPassword } from '../../utils/validation'
 import { ConflictError, AuthenticationError, NotFoundError } from '../../utils/errors'
 import { logAuthEvent, AuditAction } from '../../utils/audit'
 import { logger } from '../../utils/logger'
+
+export function hashPasswordResetToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex')
+}
 
 export const authRouter = router({
   /**
@@ -382,8 +388,8 @@ export const authRouter = router({
       }
       
       // Generate secure random token
-      const crypto = await import('crypto')
-      const token = crypto.randomBytes(32).toString('hex')
+      const token = randomBytes(32).toString('hex')
+      const tokenHash = hashPasswordResetToken(token)
       
       // Token expires in 1 hour
       const expiresAt = new Date(Date.now() + 60 * 60 * 1000)
@@ -393,7 +399,7 @@ export const authRouter = router({
         await executeQuery(
           `INSERT INTO password_reset_tokens (user_id, token, expires_at)
            VALUES ($1, $2, $3)`,
-          [user.id, token, expiresAt]
+          [user.id, tokenHash, expiresAt]
         )
       } catch (dbErr: any) {
         if (dbErr.message?.includes('password_reset_tokens')) {
@@ -402,7 +408,7 @@ export const authRouter = router({
             CREATE TABLE IF NOT EXISTS password_reset_tokens (
               id SERIAL PRIMARY KEY,
               user_id INTEGER NOT NULL REFERENCES users(id),
-              token VARCHAR(255) NOT NULL UNIQUE,
+              token VARCHAR(255) NOT NULL UNIQUE, -- stores SHA-256 hash of reset token
               expires_at TIMESTAMPTZ NOT NULL,
               used BOOLEAN DEFAULT FALSE,
               used_at TIMESTAMPTZ,
@@ -412,7 +418,7 @@ export const authRouter = router({
           await executeQuery(
             `INSERT INTO password_reset_tokens (user_id, token, expires_at)
              VALUES ($1, $2, $3)`,
-            [user.id, token, expiresAt]
+            [user.id, tokenHash, expiresAt]
           )
         } else {
           throw dbErr
@@ -459,54 +465,38 @@ export const authRouter = router({
       }
       
       logger.info('Password reset attempt', { token: input.token.substring(0, 8) + '...' })
-      
-      // Find valid token
-      const tokenRecord = await queryOne<{
-        id: number
-        user_id: number
-        expires_at: Date
-        used: boolean
-      }>(
-        `SELECT id, user_id, expires_at, used
-         FROM password_reset_tokens
-         WHERE token = $1`,
-        [input.token]
-      )
-      
-      if (!tokenRecord) {
-        logger.warn('Invalid password reset token', { token: input.token.substring(0, 8) + '...' })
-        throw new AuthenticationError('Invalid or expired password reset token')
-      }
-      
-      // Check if token has been used
-      if (tokenRecord.used) {
-        logger.warn('Password reset token already used', { tokenId: tokenRecord.id })
-        throw new AuthenticationError('This password reset link has already been used')
-      }
-      
-      // Check if token has expired
-      if (new Date() > new Date(tokenRecord.expires_at)) {
-        logger.warn('Password reset token expired', { tokenId: tokenRecord.id })
-        throw new AuthenticationError('This password reset link has expired. Please request a new one.')
-      }
-      
+      const tokenHash = hashPasswordResetToken(input.token)
       // Hash new password
       const newPasswordHash = await hashPassword(input.newPassword)
+
+      const resetUserId = await transaction<number>(async (client) => {
+        // Atomically consume the token so concurrent requests can't reuse it.
+        const tokenConsumeResult = await client.query<{ id: number; user_id: number }>(
+          `UPDATE password_reset_tokens
+           SET used = TRUE, used_at = NOW()
+           WHERE token = $1
+             AND used = FALSE
+             AND expires_at > NOW()
+           RETURNING id, user_id`,
+          [tokenHash]
+        )
+
+        if (tokenConsumeResult.rows.length === 0) {
+          throw new AuthenticationError('Invalid or expired password reset token')
+        }
+
+        const consumedToken = tokenConsumeResult.rows[0]
+        await client.query(
+          'UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2',
+          [newPasswordHash, consumedToken.user_id]
+        )
+
+        return consumedToken.user_id
+      })
+
+      logger.info('Password reset successful', { userId: resetUserId })
       
-      // Update password and mark token as used
-      await executeQuery(
-        'UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2',
-        [newPasswordHash, tokenRecord.user_id]
-      )
-      
-      await executeQuery(
-        'UPDATE password_reset_tokens SET used = TRUE, used_at = NOW() WHERE id = $1',
-        [tokenRecord.id]
-      )
-      
-      logger.info('Password reset successful', { userId: tokenRecord.user_id })
-      
-      await logAuthEvent(AuditAction.PASSWORD_RESET, tokenRecord.user_id, true, {
+      await logAuthEvent(AuditAction.PASSWORD_RESET, resetUserId, true, {
         ip: ctx.event.context.ip,
         userAgent: ctx.event.context.userAgent
       })
