@@ -15,7 +15,7 @@ import {
   sendCustomEmailEnhanced
 } from '../../utils/email-enhanced'
 import { generateQuoteViewUrl, generateQuoteAcceptUrl } from '../../utils/quote-tokens'
-import { ORDER_STATUS_LABELS, ORDER_STATUS_VALUES, getAllowedOrderTransitions, isValidOrderStatusTransition } from '../../utils/order-status'
+import { ORDER_STATUS_LABELS, ORDER_STATUS_VALUES, getAllowedOrderTransitions, isValidOrderStatusTransition, type OrderStatus } from '../../utils/order-status'
 
 export const adminEnhancementsRouter = router({
   /**
@@ -46,9 +46,9 @@ export const adminEnhancementsRouter = router({
         }
       }
 
-      const transitionSets = rows.map((row) => new Set(getAllowedOrderTransitions(row.status)))
-      const firstSet = transitionSets[0] ?? new Set<string>()
-      const intersection = [...firstSet].filter((status) =>
+      const transitionSets = rows.map((row) => new Set<OrderStatus>(getAllowedOrderTransitions(row.status)))
+      const firstSet = transitionSets[0] ?? new Set<OrderStatus>()
+      const intersection: OrderStatus[] = [...firstSet].filter((status) =>
         transitionSets.every((set) => set.has(status))
       )
 
