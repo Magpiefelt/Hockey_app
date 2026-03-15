@@ -286,7 +286,7 @@
     </div>
 
     <!-- Template Manager -->
-    <div class="mt-8 bg-slate-900/50 border border-slate-800 rounded-2xl p-5 lg:p-6">
+    <div class="mt-8 bg-slate-900/50 border border-slate-800 rounded-2xl p-5 lg:p-6" @keydown="handleTemplateKeydown">
       <div class="flex items-center justify-between mb-6">
         <div>
           <h2 class="text-xl font-semibold text-white">Template Manager</h2>
@@ -1316,9 +1316,10 @@ function handleResend(emailId: number) {
 function handleTemplateKeydown(event: KeyboardEvent) {
   if (!(event.ctrlKey || event.metaKey)) return
   if (event.key.toLowerCase() !== 's') return
-  if (!selectedTemplate.value || !canSaveTemplate.value) return
+  if (!selectedTemplate.value) return
 
   event.preventDefault()
+  if (!canSaveTemplate.value) return
   saveTemplate()
 }
 
@@ -1396,14 +1397,12 @@ function formatTemplate(template: string) {
 onMounted(() => {
   Promise.all([fetchEmails(), fetchStats(), fetchTemplates()])
   if (typeof window !== 'undefined') {
-    window.addEventListener('keydown', handleTemplateKeydown)
     window.addEventListener('beforeunload', handleBeforeUnload)
   }
 })
 
 onBeforeUnmount(() => {
   if (typeof window !== 'undefined') {
-    window.removeEventListener('keydown', handleTemplateKeydown)
     window.removeEventListener('beforeunload', handleBeforeUnload)
   }
 })
