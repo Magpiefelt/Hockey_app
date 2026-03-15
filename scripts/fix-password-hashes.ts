@@ -11,7 +11,7 @@
  * properly hashes passwords.
  */
 
-import { query, queryOne, executeQuery } from '../server/utils/database'
+import { queryMany, executeQuery } from '../server/utils/database'
 import { hashPassword } from '../server/utils/auth'
 
 interface User {
@@ -26,7 +26,7 @@ async function fixPasswordHashes() {
   try {
     // Get all users
     console.log('📊 Fetching all users from database...')
-    const users = await query<User>('SELECT id, email, password_hash FROM users ORDER BY id')
+    const users = await queryMany<User>('SELECT id, email, password_hash FROM users ORDER BY id')
     
     console.log(`Found ${users.length} users\n`)
     

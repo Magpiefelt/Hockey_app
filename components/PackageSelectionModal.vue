@@ -134,6 +134,10 @@ interface Package {
   popular?: boolean
 }
 
+type PackageWithRequiredFeatures = Omit<Package, 'features'> & {
+  features: string[]
+}
+
 interface Props {
   packages: Package[]
 }
@@ -144,7 +148,7 @@ const emit = defineEmits<{
 }>()
 
 const isDetailsModalOpen = ref(false)
-const selectedPackageForDetails = ref<Package | null>(null)
+const selectedPackageForDetails = ref<PackageWithRequiredFeatures | null>(null)
 
 // Map of package slugs to fallback MDI icons
 const packageIconMap: Record<string, string> = {
@@ -189,7 +193,10 @@ const selectPackage = (packageId: string) => {
 }
 
 const showDetails = (pkg: Package) => {
-  selectedPackageForDetails.value = pkg
+  selectedPackageForDetails.value = {
+    ...pkg,
+    features: pkg.features ?? []
+  }
   isDetailsModalOpen.value = true
 }
 

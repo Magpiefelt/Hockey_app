@@ -44,7 +44,7 @@
             v-model="form.description"
             label="Description"
             placeholder="Describe what's included in this package..."
-            rows="3"
+            :rows="3"
           />
 
           <!-- Price, Price Suffix, and Icon Row -->

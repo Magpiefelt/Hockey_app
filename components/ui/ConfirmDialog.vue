@@ -145,12 +145,12 @@ const iconBackgroundClass = computed(() => {
 
 const confirmVariant = computed(() => {
   const variants = {
-    danger: 'danger',
-    warning: 'warning',
+    danger: 'primary',
+    warning: 'primary',
     info: 'primary',
-    success: 'success'
+    success: 'primary'
   }
-  return variants[props.type] as 'danger' | 'warning' | 'primary' | 'success'
+  return variants[props.type] as 'primary' | 'secondary' | 'outline' | 'ghost'
 })
 
 // Handle keyboard events

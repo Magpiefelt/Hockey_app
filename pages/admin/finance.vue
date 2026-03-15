@@ -268,7 +268,7 @@
               class="p-4 flex items-center justify-between"
             >
               <div class="flex items-center gap-3">
-                <span class="text-slate-500 text-sm w-6">{{ index + 1 }}.</span>
+                <span class="text-slate-500 text-sm w-6">{{ Number(index) + 1 }}.</span>
                 <span class="text-white font-medium">{{ service.service }}</span>
               </div>
               <div class="text-right">
@@ -298,7 +298,7 @@
             >
               <div class="flex items-center gap-3">
                 <div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-sm font-bold text-slate-300">
-                  {{ index + 1 }}
+                  {{ Number(index) + 1 }}
                 </div>
                 <div>
                   <p class="text-white font-medium">{{ customer.name }}</p>
