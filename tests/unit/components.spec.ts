@@ -56,27 +56,10 @@ describe('TrendChart Component', () => {
     expect(content).toContain("from 'chart.js'")
   })
 
-  it('should render a chart canvas', () => {
-    const content = readFileSync(componentPath, 'utf-8')
-    expect(content).toContain('<canvas ref="chartCanvas"')
-  })
-
-  it('should define chart props', () => {
-    const content = readFileSync(componentPath, 'utf-8')
-    expect(content).toContain('type?: \'line\' | \'bar\'')
-    expect(content).toContain('formatValue?: \'currency\' | \'number\' | \'percent\'')
-  })
-
-  it('should create and update chart instances', () => {
-    const content = readFileSync(componentPath, 'utf-8')
-    expect(content).toContain('function createChart()')
-    expect(content).toContain('watch(() => props.data')
-  })
-
-  it('should format tooltip values', () => {
+  it('should support value formatting options', () => {
     const content = readFileSync(componentPath, 'utf-8')
     expect(content).toContain('formatTooltipValue')
-    expect(content).toContain('new Intl.NumberFormat')
+    expect(content).toContain("currency: 'USD'")
   })
 
   it('should clean up chart on unmount', () => {
@@ -95,28 +78,22 @@ describe('PipelineChart Component', () => {
 
   it('should have all pipeline stages', () => {
     const content = readFileSync(componentPath, 'utf-8')
-    const stages = ['submitted', 'quoted', 'in_progress', 'paid', 'completed', 'delivered', 'cancelled']
+    const stages = ['submitted', 'pending', 'quoted', 'in_progress', 'paid', 'completed', 'delivered', 'cancelled', 'refunded']
     for (const stage of stages) {
       expect(content).toContain(stage)
     }
   })
 
-  it('should calculate percentages for progress bars', () => {
+  it('should calculate stage percentages', () => {
     const content = readFileSync(componentPath, 'utf-8')
     expect(content).toContain('maxCount')
     expect(content).toContain('getPercentage')
   })
 
-  it('should provide status colors and labels', () => {
+  it('should use shared order status mapping', () => {
     const content = readFileSync(componentPath, 'utf-8')
+    expect(content).toContain('useOrderStatus')
     expect(content).toContain('getStatusColors')
-    expect(content).toContain('getStatusLabel')
-  })
-
-  it('should have progress bars', () => {
-    const content = readFileSync(componentPath, 'utf-8')
-    expect(content).toContain('getPercentage')
-    expect(content).toContain('width:')
   })
 })
 

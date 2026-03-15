@@ -2,10 +2,19 @@ import { z } from 'zod'
 import { TRPCError } from '@trpc/server'
 import { router, adminProcedure } from '../trpc'
 import { query, transaction } from '../../db/connection'
-import { sendCustomEmail, sendQuoteEmail, sendOrderConfirmation, sendInvoiceEmail, sendPaymentReceipt } from '../../utils/email'
+import { sendCustomEmail, sendOrderConfirmation, sendInvoiceEmail, sendPaymentReceipt } from '../../utils/email'
 import { sendEnhancedQuoteEmail } from '../../utils/email-enhanced'
 import { generateQuoteViewUrl } from '../../utils/quote-tokens'
 import { logger } from '../../utils/logger'
+import {
+  ORDER_STATUS_COLORS,
+  ORDER_STATUS_LABELS,
+  ORDER_STATUS_VALUES,
+  MANUAL_COMPLETION_BLOCKED_STATUSES,
+  getAllowedOrderTransitions,
+  isTerminalOrderStatus,
+  isValidOrderStatusTransition
+} from '../../utils/order-status'
 
 export const adminRouter = router({
   /**
@@ -100,6 +109,7 @@ export const adminRouter = router({
     list: adminProcedure
       .input(z.object({
         status: z.string().optional(),
+        packageId: z.coerce.number().int().positive().optional(),
         search: z.string().optional(),
         limit: z.number().optional(),
         offset: z.number().optional(),
@@ -119,7 +129,7 @@ export const adminRouter = router({
             qr.contact_phone as phone, qr.organization, qr.status, qr.event_date,
             qr.service_type, qr.sport_type, qr.quoted_amount, qr.total_amount,
             qr.notes, qr.created_at, qr.updated_at,
-            p.slug as package_id, COALESCE(p.name, qr.service_type) as service_name,
+            p.id as package_id, p.name as package_name, COALESCE(p.name, qr.service_type) as service_name,
             fs.team_name,
             COALESCE(file_counts.total_files, 0) as file_count,
             COALESCE(file_counts.upload_count, 0) as upload_count,
@@ -143,7 +153,7 @@ export const adminRouter = router({
             qr.contact_phone as phone, NULL as organization, qr.status, qr.event_date,
             qr.service_type, qr.sport_type, qr.quoted_amount, qr.total_amount,
             NULL as notes, qr.created_at, qr.updated_at,
-            p.slug as package_id, COALESCE(p.name, qr.service_type) as service_name,
+            p.id as package_id, p.name as package_name, COALESCE(p.name, qr.service_type) as service_name,
             NULL as team_name,
             COALESCE(file_counts.total_files, 0) as file_count,
             COALESCE(file_counts.upload_count, 0) as upload_count,
@@ -168,6 +178,12 @@ export const adminRouter = router({
         if (input?.status) {
           sql += ` AND qr.status = $${paramCount}`
           params.push(input.status)
+          paramCount++
+        }
+
+        if (input?.packageId) {
+          sql += ` AND qr.package_id = $${paramCount}`
+          params.push(input.packageId)
           paramCount++
         }
         
@@ -211,6 +227,11 @@ export const adminRouter = router({
           countParams.push(input.status)
           countIdx++
         }
+        if (input?.packageId) {
+          countSql += ` AND qr.package_id = $${countIdx}`
+          countParams.push(input.packageId)
+          countIdx++
+        }
         if (input?.search) {
           countSql += ` AND (qr.contact_name ILIKE $${countIdx} OR qr.contact_email ILIKE $${countIdx} OR qr.contact_phone ILIKE $${countIdx} OR qr.service_type ILIKE $${countIdx} OR qr.id::text = $${countIdx + 1})`
           countParams.push(`%${input.search}%`)
@@ -228,12 +249,13 @@ export const adminRouter = router({
         const total = parseInt(countResult.rows[0]?.total ?? '0') || 0
         
         const orders = result.rows.map(row => ({
-          id: row.id.toString(),
+          id: Number(row.id),
           name: row.name,
           email: row.email,
           phone: row.phone,
           organization: row.organization,
-          packageId: row.package_id,
+          packageId: row.package_id !== null ? Number(row.package_id) : null,
+          packageName: row.package_name || null,
           serviceType: row.service_name,
           sportType: row.sport_type,
           status: row.status,
@@ -273,7 +295,7 @@ export const adminRouter = router({
               qr.service_type,
               qr.sport_type, qr.notes, qr.admin_notes,
               qr.quoted_amount, qr.total_amount, qr.created_at, qr.updated_at,
-              p.slug as package_id, p.name as package_name,
+              p.id as package_id, p.name as package_name,
               fs.team_name, fs.roster_method, fs.roster_players, fs.intro_song,
               fs.warmup_songs, fs.goal_horn, fs.goal_song, fs.win_song,
               fs.sponsors, fs.include_sample, fs.audio_files
@@ -293,7 +315,7 @@ export const adminRouter = router({
               qr.service_type,
               qr.sport_type, NULL as notes, qr.admin_notes,
               qr.quoted_amount, qr.total_amount, qr.created_at, qr.updated_at,
-              p.slug as package_id, p.name as package_name,
+              p.id as package_id, p.name as package_name,
               NULL as team_name, NULL as roster_method, NULL as roster_players, NULL as intro_song,
               NULL as warmup_songs, NULL as goal_horn, NULL as goal_song, NULL as win_song,
               NULL as sponsors, NULL as include_sample, NULL as audio_files
@@ -354,13 +376,13 @@ export const adminRouter = router({
         
         return {
           order: {
-            id: order.id.toString(),
+            id: Number(order.id),
             name: order.name,
             email: order.email,
             emailSnapshot: order.email,
             phone: order.phone,
             organization: order.organization,
-            packageId: order.package_id,
+            packageId: order.package_id !== null ? Number(order.package_id) : null,
             serviceType: order.service_type || order.package_name,
             sportType: order.sport_type,
             status: order.status,
@@ -449,23 +471,7 @@ export const adminRouter = router({
           
           // Validate status transitions
           if (input.status && input.status !== previousStatus) {
-            const validTransitions: Record<string, string[]> = {
-              'pending': ['submitted', 'cancelled'],
-              'submitted': ['in_progress', 'quoted', 'cancelled'],
-              'in_progress': ['quoted', 'cancelled'],
-              'quoted': ['invoiced', 'in_progress', 'cancelled'],
-              'quote_viewed': ['invoiced', 'in_progress', 'cancelled'],
-              'quote_accepted': ['invoiced', 'in_progress', 'cancelled'],
-              'invoiced': ['paid', 'cancelled'],
-              'paid': ['completed', 'delivered', 'refunded'],
-              'completed': ['delivered', 'refunded'],
-              'delivered': ['refunded'],
-              'refunded': [], // Terminal state
-              'cancelled': [] // Terminal state
-            }
-            
-            const allowedNext = validTransitions[previousStatus] || []
-            if (!allowedNext.includes(input.status)) {
+            if (!isValidOrderStatusTransition(previousStatus, input.status)) {
               throw new TRPCError({
                 code: 'BAD_REQUEST',
                 message: `Invalid status transition from '${previousStatus}' to '${input.status}'`
@@ -603,7 +609,7 @@ export const adminRouter = router({
           }
           
           return {
-            id: order.id.toString(),
+            id: Number(order.id),
             name: order.name,
             email: order.email,
             status: order.status
@@ -1170,49 +1176,16 @@ export const adminRouter = router({
       currentStatus: z.string()
     }))
     .query(async ({ input }) => {
-      // Status transition rules - single source of truth
-      // These must match the validTransitions in orders.update
-      const validTransitions: Record<string, string[]> = {
-        'pending': ['submitted', 'cancelled'],
-        'submitted': ['in_progress', 'quoted', 'cancelled'],
-        'in_progress': ['quoted', 'cancelled'],
-        'quoted': ['invoiced', 'in_progress', 'cancelled'],
-        'quote_viewed': ['invoiced', 'in_progress', 'cancelled'],
-        'quote_accepted': ['invoiced', 'in_progress', 'cancelled'],
-        'invoiced': ['paid', 'cancelled'],
-        'paid': ['completed', 'delivered', 'refunded'],
-        'completed': ['delivered', 'refunded'],
-        'delivered': ['refunded'],
-        'refunded': [], // Terminal state
-        'cancelled': [] // Terminal state
-      }
-
-      // Status display labels
-      const statusLabels: Record<string, string> = {
-        'pending': 'Pending',
-        'submitted': 'Submitted',
-        'in_progress': 'In Progress',
-        'quoted': 'Quoted',
-        'quote_viewed': 'Quote Viewed',
-        'quote_accepted': 'Quote Accepted',
-        'invoiced': 'Invoiced',
-        'paid': 'Paid',
-        'completed': 'Completed',
-        'delivered': 'Delivered',
-        'cancelled': 'Cancelled',
-        'refunded': 'Refunded'
-      }
-
-      const allowedStatuses = validTransitions[input.currentStatus] || []
+      const allowedStatuses = getAllowedOrderTransitions(input.currentStatus)
       
       return {
         currentStatus: input.currentStatus,
-        currentStatusLabel: statusLabels[input.currentStatus] || input.currentStatus,
+        currentStatusLabel: ORDER_STATUS_LABELS[input.currentStatus as keyof typeof ORDER_STATUS_LABELS] || input.currentStatus,
         allowedTransitions: allowedStatuses.map(status => ({
           status,
-          label: statusLabels[status] || status
+          label: ORDER_STATUS_LABELS[status] || status
         })),
-        isTerminal: allowedStatuses.length === 0
+        isTerminal: isTerminalOrderStatus(input.currentStatus)
       }
     }),
 
@@ -1221,20 +1194,11 @@ export const adminRouter = router({
    */
   getAllStatuses: adminProcedure
     .query(async () => {
-      const statuses = [
-        { status: 'pending', label: 'Pending', color: 'gray' },
-        { status: 'submitted', label: 'Submitted', color: 'blue' },
-        { status: 'in_progress', label: 'In Progress', color: 'yellow' },
-        { status: 'quoted', label: 'Quoted', color: 'purple' },
-        { status: 'quote_viewed', label: 'Quote Viewed', color: 'purple' },
-        { status: 'quote_accepted', label: 'Quote Accepted', color: 'green' },
-        { status: 'invoiced', label: 'Invoiced', color: 'orange' },
-        { status: 'paid', label: 'Paid', color: 'green' },
-        { status: 'completed', label: 'Completed', color: 'green' },
-        { status: 'delivered', label: 'Delivered', color: 'green' },
-        { status: 'cancelled', label: 'Cancelled', color: 'red' },
-        { status: 'refunded', label: 'Refunded', color: 'orange' }
-      ]
+      const statuses = ORDER_STATUS_VALUES.map(status => ({
+        status,
+        label: ORDER_STATUS_LABELS[status],
+        color: ORDER_STATUS_COLORS[status]
+      }))
       
       return { statuses }
     }),
@@ -1313,8 +1277,7 @@ export const adminRouter = router({
           }
           
           // Validate order is not already in a terminal state
-          const terminalStatuses = ['completed', 'delivered', 'cancelled']
-          if (terminalStatuses.includes(previousStatus)) {
+          if (MANUAL_COMPLETION_BLOCKED_STATUSES.has(previousStatus as any)) {
             logger.warn('Manual completion failed: Terminal status', { 
               orderId, 
               previousStatus, 
