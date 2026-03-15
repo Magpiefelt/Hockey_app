@@ -187,6 +187,54 @@ export const filesRouter = router({
           message: 'Only administrators can upload deliverables'
         })
       }
+
+      // Ensure the target order exists and the caller is allowed to attach files to it.
+      const orderResult = await query(
+        'SELECT id, user_id FROM quote_requests WHERE id = $1',
+        [input.orderId]
+      )
+
+      if (orderResult.rows.length === 0) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Order not found'
+        })
+      }
+
+      const order = orderResult.rows[0]
+      if (order.user_id !== ctx.user.userId && ctx.user.role !== 'admin') {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Not authorized to upload files for this order'
+        })
+      }
+
+      // Ensure the supplied key targets the expected order prefix.
+      const expectedPathPrefix = `orders/${input.orderId}/`
+      if (!input.storagePath.startsWith(expectedPathPrefix)) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Invalid storage path for order'
+        })
+      }
+
+      // Only allow safe URL schemes to avoid malicious links in admin/customer UIs.
+      let parsedStorageUrl: URL
+      try {
+        parsedStorageUrl = new URL(input.storageUrl)
+      } catch {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Invalid storage URL'
+        })
+      }
+
+      if (parsedStorageUrl.protocol !== 'https:' && parsedStorageUrl.protocol !== 'http:') {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Unsupported storage URL protocol'
+        })
+      }
       
       // Sanitize filename
       const safeFilename = sanitizeFilename(input.filename)

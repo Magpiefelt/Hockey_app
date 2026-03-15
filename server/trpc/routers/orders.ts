@@ -595,6 +595,23 @@ export const ordersRouter = router({
       if (order.user_id !== ctx.user.userId && ctx.user.role !== 'admin') {
         throw new AuthorizationError('Not authorized to attach files to this order')
       }
+
+      // Verify the source file exists and belongs to the current caller unless admin.
+      const file = await queryOne<{ id: number; quote_id: number; user_id: number | null }>(
+        `SELECT fu.id, fu.quote_id, qr.user_id
+         FROM file_uploads fu
+         JOIN quote_requests qr ON fu.quote_id = qr.id
+         WHERE fu.id = $1`,
+        [fileId]
+      )
+
+      if (!file) {
+        throw new NotFoundError('File')
+      }
+
+      if (ctx.user.role !== 'admin' && file.user_id !== ctx.user.userId) {
+        throw new AuthorizationError('Not authorized to attach this file')
+      }
       
       // Update the file to link it to the order
       await executeQuery(
