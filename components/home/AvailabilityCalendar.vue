@@ -72,6 +72,62 @@
                 </div>
               </div>
 
+              <div class="mb-6 grid gap-3 sm:grid-cols-3">
+                <div class="rounded-xl border border-white/10 bg-slate-900/50 p-4">
+                  <p class="text-xs uppercase tracking-wide text-slate-400">Upcoming events</p>
+                  <p class="mt-1 text-2xl font-black text-cyan-300">{{ marketingSummary.upcomingCount }}</p>
+                </div>
+                <div class="rounded-xl border border-white/10 bg-slate-900/50 p-4">
+                  <p class="text-xs uppercase tracking-wide text-slate-400">Recent events</p>
+                  <p class="mt-1 text-2xl font-black text-indigo-300">{{ marketingSummary.recentCount }}</p>
+                </div>
+                <div class="rounded-xl border border-white/10 bg-slate-900/50 p-4">
+                  <p class="text-xs uppercase tracking-wide text-slate-400">Events this month</p>
+                  <p class="mt-1 text-2xl font-black text-fuchsia-300">{{ marketingSummary.thisMonthCount }}</p>
+                </div>
+              </div>
+
+              <div
+                v-if="upcomingHighlights.length > 0 || recentHighlights.length > 0"
+                class="mb-6 rounded-xl border border-white/10 bg-slate-900/40 p-4"
+              >
+                <p class="mb-3 text-sm font-semibold text-slate-200">Where you can catch us</p>
+                <div class="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <p class="mb-2 text-xs uppercase tracking-wide text-cyan-300">Upcoming</p>
+                    <ul class="space-y-2">
+                      <li
+                        v-for="eventItem in upcomingHighlights"
+                        :key="`upcoming-${eventItem.isoDate}-${eventItem.title}`"
+                        class="rounded-lg border border-cyan-500/20 bg-cyan-500/5 px-3 py-2"
+                      >
+                        <p class="text-sm font-semibold text-white">{{ eventItem.title }}</p>
+                        <p class="text-xs text-slate-300">{{ formatDate(eventItem.parsedDate) }} • {{ eventItem.category }}</p>
+                      </li>
+                    </ul>
+                    <p v-if="upcomingHighlights.length === 0" class="text-xs text-slate-400">
+                      New events will appear here as soon as they are confirmed.
+                    </p>
+                  </div>
+                  <div>
+                    <p class="mb-2 text-xs uppercase tracking-wide text-indigo-300">Recently attended</p>
+                    <ul class="space-y-2">
+                      <li
+                        v-for="eventItem in recentHighlights"
+                        :key="`recent-${eventItem.isoDate}-${eventItem.title}`"
+                        class="rounded-lg border border-indigo-500/20 bg-indigo-500/5 px-3 py-2"
+                      >
+                        <p class="text-sm font-semibold text-white">{{ eventItem.title }}</p>
+                        <p class="text-xs text-slate-300">{{ formatDate(eventItem.parsedDate) }} • {{ eventItem.category }}</p>
+                      </li>
+                    </ul>
+                    <p v-if="recentHighlights.length === 0" class="text-xs text-slate-400">
+                      Recent events will appear here.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               <div v-if="nextAvailableDates.length" class="mb-5 rounded-xl border border-white/10 bg-slate-900/40 p-4">
                 <p class="mb-3 text-sm font-semibold text-slate-200">Quick pick next available dates</p>
                 <div class="flex flex-wrap gap-2">
@@ -143,6 +199,12 @@
                   <Icon name="mdi:close-circle" class="w-4 h-4" />
                   This date is unavailable ({{ getUnavailableReason(selectedDate) }})
                 </p>
+                <div
+                  v-if="selectedDateHighlight"
+                  class="mx-auto mt-3 w-fit rounded-full border border-cyan-400/30 bg-cyan-500/10 px-3 py-1.5 text-xs font-semibold text-cyan-300"
+                >
+                  We’re attending {{ selectedDateHighlight.title }} on this date
+                </div>
                 <NuxtLink
                   :to="requestLinkForSelectedDate"
                   class="mt-4 inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 px-5 py-2.5 text-sm font-bold text-white transition-transform hover:scale-105"
@@ -199,6 +261,27 @@ import '@vuepic/vue-datepicker/dist/main.css'
 import { useCalendarStore } from '~/stores/calendar'
 import { storeToRefs } from 'pinia'
 
+interface EventHighlight {
+  date: string
+  title: string
+  category: string
+  lifecycle: 'upcoming' | 'recent'
+}
+
+interface EventSummary {
+  upcomingCount: number
+  recentCount: number
+  thisMonthCount: number
+}
+
+const props = withDefaults(defineProps<{
+  eventHighlights?: EventHighlight[]
+  eventSummary?: EventSummary | null
+}>(), {
+  eventHighlights: () => [],
+  eventSummary: null
+})
+
 const selectedDate = ref<Date | null>(null)
 
 // Use centralized calendar store
@@ -247,6 +330,69 @@ const today = computed(() => {
 })
 
 const unavailableDateSet = computed(() => new Set(calendarStore.unavailableDateStrings))
+
+const normalizedHighlights = computed(() => {
+  return props.eventHighlights
+    .map((highlight) => {
+      const parsedDate = parseISODateToLocal(highlight.date)
+      if (!parsedDate) return null
+      return {
+        ...highlight,
+        parsedDate,
+        isoDate: formatLocalDateToISO(parsedDate)
+      }
+    })
+    .filter((value): value is EventHighlight & { parsedDate: Date; isoDate: string } => value !== null)
+    .sort((a, b) => a.parsedDate.getTime() - b.parsedDate.getTime())
+})
+
+const upcomingHighlights = computed(() => {
+  return normalizedHighlights.value
+    .filter((item) => item.lifecycle === 'upcoming')
+    .slice(0, 6)
+})
+
+const recentHighlights = computed(() => {
+  return [...normalizedHighlights.value]
+    .filter((item) => item.lifecycle === 'recent')
+    .sort((a, b) => b.parsedDate.getTime() - a.parsedDate.getTime())
+    .slice(0, 4)
+})
+
+const highlightByDate = computed(() => {
+  const map = new Map<string, (EventHighlight & { parsedDate: Date; isoDate: string })>()
+  for (const item of normalizedHighlights.value) {
+    map.set(item.isoDate, item)
+  }
+  return map
+})
+
+const selectedDateHighlight = computed(() => {
+  if (!selectedDate.value) return null
+  const isoDate = formatLocalDateToISO(selectedDate.value)
+  return highlightByDate.value.get(isoDate) ?? null
+})
+
+const marketingSummary = computed(() => {
+  if (props.eventSummary) {
+    return props.eventSummary
+  }
+
+  const thisMonthStart = new Date(today.value.getFullYear(), today.value.getMonth(), 1)
+  const thisMonthEnd = new Date(today.value.getFullYear(), today.value.getMonth() + 1, 0)
+  const thisMonthStartIso = formatLocalDateToISO(thisMonthStart)
+  const thisMonthEndIso = formatLocalDateToISO(thisMonthEnd)
+
+  const thisMonthCount = normalizedHighlights.value.filter((item) => {
+    return item.isoDate >= thisMonthStartIso && item.isoDate <= thisMonthEndIso
+  }).length
+
+  return {
+    upcomingCount: upcomingHighlights.value.length,
+    recentCount: recentHighlights.value.length,
+    thisMonthCount
+  }
+})
 
 const disabledDatesFunction = computed(() => {
   if (!calendarStore.hasData || calendarStore.unavailableDateStrings.length === 0) {
