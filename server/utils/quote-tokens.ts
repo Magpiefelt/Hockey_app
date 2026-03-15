@@ -8,13 +8,13 @@ import { query } from '../db/connection'
 import { logger } from './logger'
 
 // Secret key for token generation (should be in environment variables)
-const TOKEN_SECRET = process.env.QUOTE_TOKEN_SECRET || process.env.JWT_SECRET || 'default-secret-change-in-production'
+const TOKEN_SECRET = process.env.QUOTE_TOKEN_SECRET || process.env.JWT_SECRET || ''
 const TOKEN_EXPIRY_DAYS = 30
 const TOKEN_SIGNATURE_LENGTH = 16
 const MAX_TOKEN_LENGTH = 4096
 
-if (TOKEN_SECRET === 'default-secret-change-in-production') {
-  logger.warn('QUOTE_TOKEN_SECRET is not set; quote tokens are using a fallback secret')
+if (!TOKEN_SECRET) {
+  logger.error('QUOTE_TOKEN_SECRET (or JWT_SECRET) is not set; quote token operations are disabled')
 }
 
 export interface QuoteToken {
@@ -41,6 +41,9 @@ function normalizeEmail(email: string): string {
 }
 
 function buildSignature(orderId: number, email: string, expiresAtMs: number): string {
+  if (!TOKEN_SECRET) {
+    throw new Error('Quote token secret is not configured')
+  }
   const payload = `${orderId}:${email}:${expiresAtMs}`
   const hmac = crypto.createHmac('sha256', TOKEN_SECRET)
   hmac.update(payload)
@@ -62,6 +65,9 @@ function safeSignatureEqual(provided: string, expected: string): boolean {
  * Generate a secure token for quote access
  */
 export function generateQuoteToken(orderId: number, email: string): QuoteToken {
+  if (!TOKEN_SECRET) {
+    throw new Error('Quote token secret is not configured')
+  }
   if (!Number.isInteger(orderId) || orderId <= 0) {
     throw new Error('Invalid order ID for quote token generation')
   }
@@ -96,6 +102,10 @@ export function generateQuoteToken(orderId: number, email: string): QuoteToken {
  */
 export function validateQuoteToken(token: string): QuoteTokenValidationResult {
   try {
+    if (!TOKEN_SECRET) {
+      return { valid: false, error: 'Quote token secret is not configured' }
+    }
+
     if (typeof token !== 'string' || token.length === 0 || token.length > MAX_TOKEN_LENGTH) {
       return { valid: false, error: 'Invalid token format' }
     }
@@ -189,12 +199,18 @@ export async function validateQuoteTokenWithStore(
   } catch (error: any) {
     if (error?.code === '42P01') {
       // quote_access_tokens table may not exist in older deployments
+      if (options.requireStoredToken) {
+        return { valid: false, error: 'Quote token storage is not available' }
+      }
       return parsed
     }
-    logger.warn('Quote token DB verification failed, falling back to stateless validation', {
+    logger.warn('Quote token DB verification failed', {
       errorCode: error?.code,
       message: error?.message
     })
+    if (options.requireStoredToken) {
+      return { valid: false, error: 'Quote token verification is currently unavailable' }
+    }
     return parsed
   }
 }

@@ -175,12 +175,6 @@ CREATE TRIGGER update_quote_requests_updated_at BEFORE UPDATE ON quote_requests
 CREATE TRIGGER update_invoices_updated_at BEFORE UPDATE ON invoices
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- Insert default admin user (password: admin123)
--- Password hash generated with bcrypt, salt rounds: 10
-INSERT INTO users (name, email, password_hash, role) VALUES
-  ('Admin User', 'admin@elitesportsdj.com', '$2b$10$YUbqwoyZ2hWYkBru0IKaKukR7WtcXurnaNvouEH/9GgnWgwf/LR1a', 'admin')
-ON CONFLICT (email) DO NOTHING;
-
 -- Audit logs table for tracking important events
 CREATE TABLE IF NOT EXISTS audit_logs (
   id SERIAL PRIMARY KEY,

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const { queryMock } = vi.hoisted(() => {
+  process.env.QUOTE_TOKEN_SECRET = 'test-quote-token-secret'
   return {
     queryMock: vi.fn()
   }
@@ -71,14 +72,24 @@ describe('quote token utilities', () => {
     expect(queryMock).toHaveBeenCalledTimes(1)
   })
 
-  it('falls back to stateless validation if tracking table is missing', async () => {
+  it('fails closed when stored-token verification is required but tracking table is missing', async () => {
     queryMock.mockRejectedValue({ code: '42P01' })
     const token = generateQuoteToken(100, 'customer@example.com')
 
     const validation = await validateQuoteTokenWithStore(token.token, { requireStoredToken: true })
 
+    expect(validation.valid).toBe(false)
+    expect(validation.error).toContain('not available')
+  })
+
+  it('still allows stateless validation when stored-token verification is optional', async () => {
+    queryMock.mockRejectedValue({ code: '42P01' })
+    const token = generateQuoteToken(101, 'customer@example.com')
+
+    const validation = await validateQuoteTokenWithStore(token.token, { requireStoredToken: false })
+
     expect(validation.valid).toBe(true)
-    expect(validation.orderId).toBe(100)
+    expect(validation.orderId).toBe(101)
   })
 
   it('rejects a token already marked as used for one-time actions', async () => {

@@ -241,12 +241,6 @@ DROP TRIGGER IF EXISTS update_finance_budgets_updated_at ON finance_budgets;
 CREATE TRIGGER update_finance_budgets_updated_at BEFORE UPDATE ON finance_budgets
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- Insert default admin user (password: admin123)
--- Password hash generated with bcrypt, salt rounds: 10
-INSERT INTO users (name, email, password_hash, role) VALUES
-  ('Admin User', 'admin@elitesportsdj.com', '$2b$10$YUbqwoyZ2hWYkBru0IKaKukR7WtcXurnaNvouEH/9GgnWgwf/LR1a', 'admin')
-ON CONFLICT (email) DO NOTHING;
-
 -- Audit logs table for tracking important events
 CREATE TABLE IF NOT EXISTS audit_logs (
   id SERIAL PRIMARY KEY,
