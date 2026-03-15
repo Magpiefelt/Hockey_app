@@ -6,6 +6,7 @@ import { sendCustomEmail, sendEmail, sendOrderConfirmation, sendInvoiceEmail, se
 import { sendEnhancedQuoteEmail } from '../../utils/email-enhanced'
 import { generateQuoteViewUrl } from '../../utils/quote-tokens'
 import { logger } from '../../utils/logger'
+import { getAppBaseUrl } from '../../utils/config'
 import {
   analyzeManagedEmailTemplateDraft,
   getManagedEmailTemplateDefinitions,
@@ -680,7 +681,7 @@ export const adminRouter = router({
           // Send enhanced quote email to customer with token-based URL
           try {
             // Generate token-based URL so customer can view quote without logging in
-            const appBaseUrl = process.env.APP_URL || 'https://elitesportsdj.com'
+            const appBaseUrl = getAppBaseUrl()
             const quoteViewUrl = generateQuoteViewUrl(input.orderId, order.contact_email, appBaseUrl)
             
             await sendEnhancedQuoteEmail({

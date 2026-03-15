@@ -16,6 +16,7 @@ import { logger } from './logger'
 import { executeQuery } from './database'
 import { generateQuoteViewUrl } from './quote-tokens'
 import { resolveManagedEmailTemplate } from '../services/emailTemplateService'
+import { getAppBaseUrl, getAdminEmail } from './config'
 
 interface EmailOptions {
   to: string
@@ -23,17 +24,6 @@ interface EmailOptions {
   html: string
   text?: string
 }
-
-// Get app base URL from runtime config (consistent with nuxt.config.ts)
-const getAppBaseUrl = () => {
-  try {
-    const config = useRuntimeConfig()
-    return config.public.appBaseUrl || 'https://elitesportsdj.ca'
-  } catch {
-    return process.env.APP_URL || 'https://elitesportsdj.ca'
-  }
-}
-const getAdminEmail = () => process.env.ADMIN_EMAIL || 'admin@elitesportsdj.ca'
 
 /**
  * Log email to database with metadata for resend capability

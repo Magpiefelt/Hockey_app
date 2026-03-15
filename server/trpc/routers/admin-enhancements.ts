@@ -8,6 +8,7 @@ import { TRPCError } from '@trpc/server'
 import { router, adminProcedure } from '../trpc'
 import { query, transaction } from '../../db/connection'
 import { logger } from '../../utils/logger'
+import { getAppBaseUrl } from '../../utils/config'
 import { 
   sendEnhancedQuoteEmail, 
   sendQuoteRevisionEmail, 
@@ -262,19 +263,10 @@ export const adminEnhancementsRouter = router({
           }
         }
         
-        // Generate URLs for email
-        let appUrl: string
-        try {
-          const config = useRuntimeConfig()
-          appUrl = config.public.appBaseUrl || 'https://elitesportsdj.com'
-        } catch {
-          appUrl = process.env.APP_URL || 'https://elitesportsdj.com'
-        }
-        
         // Generate secure token-based quote view URL
         // NOTE: generateQuoteViewUrl internally generates and stores a token,
         // so we don't need to separately call generateQuoteToken + storeQuoteToken
-        const quoteViewUrl = generateQuoteViewUrl(input.orderId, order.contact_email, appUrl)
+        const quoteViewUrl = generateQuoteViewUrl(input.orderId, order.contact_email, getAppBaseUrl())
         
         // Generate payment URL if requested
         let paymentUrl: string | null = null
@@ -888,16 +880,6 @@ export const adminEnhancementsRouter = router({
       
       const order = orderResult.rows[0]
       
-      // IMPROVED: Generate token-based URLs for all customer-facing email resends
-      // This ensures customers can access quotes from email without logging in
-      let appUrl: string
-      try {
-        const config = useRuntimeConfig()
-        appUrl = config.public.appBaseUrl || 'https://elitesportsdj.com'
-      } catch {
-        appUrl = process.env.APP_URL || 'https://elitesportsdj.com'
-      }
-      
       switch (input.emailType) {
         case 'quote': {
           if (!order.quoted_amount) {
@@ -907,7 +889,7 @@ export const adminEnhancementsRouter = router({
             })
           }
           // Generate fresh token-based URL for the resend
-          const quoteViewUrl = generateQuoteViewUrl(input.orderId, order.contact_email, appUrl)
+          const quoteViewUrl = generateQuoteViewUrl(input.orderId, order.contact_email, getAppBaseUrl())
           
           await sendEnhancedQuoteEmail({
             to: order.contact_email,
