@@ -596,9 +596,10 @@ const { data: packagesData } = await useAsyncData('packages', async () => {
 }, { default: () => [] as any[] })
 const packages = computed(() => packagesData.value || [])
 
-const getPackageName = (packageId: string) => {
-  const pkg = packages.value.find((p: any) => p.id === packageId || p.slug === packageId)
-  return pkg?.name || packageId
+const getPackageName = (packageId: string | number | null) => {
+  if (packageId === null || packageId === undefined) return 'Custom Service'
+  const pkg = packages.value.find((p: any) => p.id === packageId || p.slug === String(packageId))
+  return pkg?.name || String(packageId)
 }
 
 

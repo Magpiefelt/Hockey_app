@@ -109,6 +109,7 @@ export const adminRouter = router({
     list: adminProcedure
       .input(z.object({
         status: z.string().optional(),
+        packageId: z.coerce.number().int().positive().optional(),
         search: z.string().optional(),
         limit: z.number().optional(),
         offset: z.number().optional(),
@@ -179,6 +180,12 @@ export const adminRouter = router({
           params.push(input.status)
           paramCount++
         }
+
+        if (input?.packageId) {
+          sql += ` AND qr.package_id = $${paramCount}`
+          params.push(input.packageId)
+          paramCount++
+        }
         
         if (input?.search) {
           sql += ` AND (
@@ -218,6 +225,11 @@ export const adminRouter = router({
         if (input?.status) {
           countSql += ` AND qr.status = $${countIdx}`
           countParams.push(input.status)
+          countIdx++
+        }
+        if (input?.packageId) {
+          countSql += ` AND qr.package_id = $${countIdx}`
+          countParams.push(input.packageId)
           countIdx++
         }
         if (input?.search) {
