@@ -1039,7 +1039,7 @@ export const adminRouter = router({
           templateKey: z.string().min(1),
           subject: z.string().max(200).optional(),
           body: z.string().max(20000).optional(),
-          context: z.record(z.any()).optional()
+          context: z.record(z.string(), z.any()).optional()
         }))
         .query(async ({ input }) => {
           try {
@@ -1064,7 +1064,7 @@ export const adminRouter = router({
           subject: z.string().max(200).optional(),
           body: z.string().max(20000).optional(),
           orderId: z.number().optional(),
-          context: z.record(z.any()).optional()
+          context: z.record(z.string(), z.any()).optional()
         }))
         .mutation(async ({ input }) => {
           try {
