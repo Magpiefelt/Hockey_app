@@ -73,7 +73,7 @@ const isValid = computed(() => {
 })
 
 const canComplete = computed(() => {
-  const terminalStatuses = ['completed', 'delivered', 'cancelled']
+  const terminalStatuses = ['completed', 'delivered', 'cancelled', 'refunded']
   return !terminalStatuses.includes(props.currentStatus)
 })
 
@@ -220,7 +220,7 @@ onUnmounted(() => {
                 <h4 class="text-yellow-400 font-semibold">Cannot Complete This Order</h4>
                 <p class="text-sm text-slate-300 mt-1">
                   This order is already in a terminal status ({{ formatStatus(currentStatus) }}). 
-                  Orders that are completed, delivered, or cancelled cannot be modified.
+                  Orders that are completed, delivered, cancelled, or refunded cannot be modified.
                 </p>
               </div>
             </div>

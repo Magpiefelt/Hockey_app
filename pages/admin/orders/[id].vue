@@ -10,7 +10,7 @@
         Orders
       </NuxtLink>
       <Icon name="mdi:chevron-right" class="w-4 h-4 text-slate-600" />
-      <span class="text-white font-medium">Order #{{ orderId }}</span>
+      <span class="text-white font-medium">Order #{{ displayOrderId }}</span>
     </nav>
 
     <!-- Loading State -->
@@ -585,6 +585,8 @@ const { uploadFile } = useUpload()
 const { showError, showSuccess } = useNotification()
 
 const orderId = computed(() => parseInt(route.params.id as string))
+const isValidOrderId = computed(() => Number.isInteger(orderId.value) && orderId.value > 0)
+const displayOrderId = computed(() => (isValidOrderId.value ? String(orderId.value) : 'Invalid'))
 
 // Load packages from database via tRPC (consistent with other pages)
 const { data: packagesData } = await useAsyncData('packages', async () => {
@@ -705,6 +707,13 @@ const canSubmitQuote = computed(() => {
 
 // Methods
 const fetchOrder = async () => {
+  if (!isValidOrderId.value) {
+    loading.value = false
+    orderData.value = null
+    error.value = 'Invalid order ID. Please go back to the orders list and try again.'
+    return
+  }
+
   try {
     loading.value = true
     error.value = null
@@ -760,7 +769,7 @@ const handleManualCompletion = (data: { orderId: number; amount: number; previou
 const canManuallyComplete = computed(() => {
   if (!orderData.value) return false
   const status = orderData.value.order.status
-  const terminalStatuses = ['completed', 'delivered', 'cancelled']
+  const terminalStatuses = ['completed', 'delivered', 'cancelled', 'refunded']
   return !terminalStatuses.includes(status)
 })
 
@@ -840,13 +849,17 @@ const uploadDeliverables = async () => {
   showSuccess('All deliverables uploaded successfully')
 }
 
-// Fetch order on mount
-onMounted(() => {
-  fetchOrder()
-})
+// Refetch when route changes (e.g. navigating from customer drawer to another order)
+watch(
+  () => orderId.value,
+  () => {
+    fetchOrder()
+  },
+  { immediate: true }
+)
 
 useHead({
-  title: () => `Order #${orderId.value} - Admin - Elite Sports DJ`,
+  title: () => `Order #${displayOrderId.value} - Admin - Elite Sports DJ`,
   meta: [
     { name: 'description', content: 'Manage order details' }
   ]

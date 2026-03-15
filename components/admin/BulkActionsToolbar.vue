@@ -27,18 +27,64 @@ const statusNotes = ref('')
 const emailType = ref<'reminder' | 'status_update' | 'custom'>('reminder')
 const customSubject = ref('')
 const customBody = ref('')
+const availableStatuses = ref<Array<{ value: string; label: string }>>([])
+const statusOptionsLoading = ref(false)
+const statusOptionsError = ref('')
+const missingOrderIds = ref<number[]>([])
 
-// Available statuses for bulk update
-const availableStatuses = [
-  { value: 'in_progress', label: 'In Progress' },
-  { value: 'completed', label: 'Completed' },
-  { value: 'delivered', label: 'Delivered' },
-  { value: 'cancelled', label: 'Cancelled' }
-]
+async function loadAvailableStatuses() {
+  if (!props.selectedIds.length) {
+    availableStatuses.value = []
+    selectedStatus.value = ''
+    missingOrderIds.value = []
+    return
+  }
+
+  statusOptionsLoading.value = true
+  statusOptionsError.value = ''
+  try {
+    const response = await trpc.adminEnhancements.getBulkStatusOptions.query({
+      orderIds: props.selectedIds
+    })
+    availableStatuses.value = response.options.map((opt: { status: string; label: string }) => ({
+      value: opt.status,
+      label: opt.label
+    }))
+    missingOrderIds.value = response.missingOrderIds || []
+    if (!availableStatuses.value.some((s) => s.value === selectedStatus.value)) {
+      selectedStatus.value = ''
+    }
+  } catch (err: any) {
+    const { handleTrpcError } = await import('~/composables/useTrpc')
+    statusOptionsError.value = handleTrpcError(err)
+    availableStatuses.value = []
+    selectedStatus.value = ''
+  } finally {
+    statusOptionsLoading.value = false
+  }
+}
+
+watch(
+  () => showStatusModal.value,
+  (open) => {
+    if (open) {
+      loadAvailableStatuses()
+    }
+  }
+)
+
+watch(
+  () => props.selectedIds.join(','),
+  () => {
+    if (showStatusModal.value) {
+      loadAvailableStatuses()
+    }
+  }
+)
 
 // Methods
 async function bulkUpdateStatus() {
-  if (!selectedStatus.value || isProcessing.value) return
+  if (!selectedStatus.value || isProcessing.value || statusOptionsLoading.value) return
   
   isProcessing.value = true
   
@@ -75,14 +121,16 @@ async function bulkSendEmail() {
       body: emailType.value === 'custom' ? customBody.value : undefined
     })
     
-    emit('actionComplete', 'email', { 
-      success: Array(results.sent).fill(0), 
-      failed: Array(results.failed).fill({ id: 0, error: 'Failed' }) 
-    })
+    emit('actionComplete', 'email', results)
     showEmailModal.value = false
     customSubject.value = ''
     customBody.value = ''
-    showSuccess(`Sent ${results.sent} emails`)
+    if (results.success.length > 0) {
+      showSuccess(`Sent ${results.success.length} emails`)
+    }
+    if (results.failed.length > 0) {
+      showError(`${results.failed.length} email(s) failed to send`)
+    }
   } catch (err: any) {
     const { handleTrpcError } = await import('~/composables/useTrpc')
     showError(handleTrpcError(err))
@@ -187,10 +235,24 @@ async function exportSelected() {
         </div>
         
         <div class="p-6">
+          <div v-if="statusOptionsLoading" class="mb-4 text-sm text-slate-400">
+            Loading valid status options...
+          </div>
+          <div v-else-if="statusOptionsError" class="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-300">
+            {{ statusOptionsError }}
+          </div>
+          <div v-else-if="availableStatuses.length === 0" class="mb-4 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30 text-sm text-yellow-300">
+            No common status transition is valid for all selected orders.
+          </div>
+          <div v-if="missingOrderIds.length > 0" class="mb-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs text-amber-300">
+            {{ missingOrderIds.length }} selected order(s) were not found and may fail during update.
+          </div>
+
           <div class="mb-4">
             <label class="block text-sm font-medium text-slate-300 mb-2">New Status</label>
             <select
               v-model="selectedStatus"
+              :disabled="statusOptionsLoading || availableStatuses.length === 0"
               class="w-full px-4 py-2.5 bg-dark-tertiary border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-brand-500 focus:border-transparent"
             >
               <option value="">Select status...</option>
@@ -220,7 +282,7 @@ async function exportSelected() {
           </UiButton>
           <UiButton
             @click="bulkUpdateStatus"
-            :disabled="!selectedStatus || isProcessing"
+            :disabled="!selectedStatus || isProcessing || statusOptionsLoading || availableStatuses.length === 0"
             :loading="isProcessing"
             variant="primary"
           >
