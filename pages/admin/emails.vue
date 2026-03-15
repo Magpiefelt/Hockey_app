@@ -286,22 +286,40 @@
     </div>
 
     <!-- Template Manager -->
-    <div class="mt-8 bg-slate-900/50 border border-slate-800 rounded-2xl p-5 lg:p-6">
+    <div class="mt-8 bg-slate-900/50 border border-slate-800 rounded-2xl p-5 lg:p-6" @keydown="handleTemplateKeydown">
       <div class="flex items-center justify-between mb-6">
         <div>
           <h2 class="text-xl font-semibold text-white">Template Manager</h2>
           <p class="text-sm text-slate-400 mt-1">
-            Create admin-managed overrides for built-in email templates.
+            Edit customer-facing email copy with preview and test tools.
           </p>
         </div>
         <button
-          @click="fetchTemplates"
+          @click="refreshTemplates"
           :disabled="templateLoading"
           class="px-4 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 rounded-lg text-sm transition-colors"
         >
           <Icon :name="templateLoading ? 'mdi:loading' : 'mdi:refresh'" :class="{ 'animate-spin': templateLoading }" class="w-4 h-4 inline mr-1" />
           Refresh
         </button>
+      </div>
+
+      <div class="mb-6 border border-slate-700/70 rounded-xl bg-slate-950/50 p-4">
+        <div class="flex flex-wrap items-center gap-2 mb-2">
+          <h3 class="text-sm font-semibold text-slate-200">How to use the template manager</h3>
+          <span class="text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full bg-slate-800 text-slate-300">
+            {{ templatesUsingOverrideCount }}/{{ templates.length }} overrides active
+          </span>
+          <span v-if="templatesWithFailuresCount > 0" class="text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full bg-red-500/20 text-red-300">
+            {{ templatesWithFailuresCount }} templates with recent failures
+          </span>
+        </div>
+        <ol class="grid md:grid-cols-2 gap-x-6 gap-y-1 text-xs text-slate-400 list-decimal list-inside">
+          <li>Select the email type you want to edit.</li>
+          <li>Update subject/body and click variables to insert placeholders.</li>
+          <li>Render preview and send a test to yourself.</li>
+          <li>Save override when ready. You can reset to default anytime.</li>
+        </ol>
       </div>
 
       <div v-if="templateLoading" class="flex items-center justify-center py-10">
@@ -344,6 +362,12 @@
             <div v-if="template.stats" class="mt-2 flex items-center gap-2 text-[11px] text-slate-500">
               <span>Sent {{ template.stats.sent }}</span>
               <span>Failed {{ template.stats.failed }}</span>
+              <span
+                v-if="template.stats.failed > 0"
+                class="px-1.5 py-0.5 rounded bg-red-500/20 text-red-300 uppercase tracking-wide text-[10px]"
+              >
+                Needs review
+              </span>
             </div>
           </button>
           <p v-if="filteredTemplates.length === 0" class="text-xs text-slate-500 py-2 px-1">
@@ -389,7 +413,7 @@
 
           <div class="grid md:grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-medium text-slate-400 mb-2">Template Key</label>
+              <label class="block text-sm font-medium text-slate-400 mb-2">Technical Template ID (read-only)</label>
               <input
                 :value="selectedTemplate.key"
                 readonly
@@ -397,7 +421,7 @@
               />
             </div>
             <div>
-              <label class="block text-sm font-medium text-slate-400 mb-2">Test Recipient</label>
+              <label class="block text-sm font-medium text-slate-400 mb-2">Send Test To</label>
               <input
                 v-model="testRecipient"
                 type="email"
@@ -450,18 +474,69 @@
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-slate-400 mb-2">Preview Context (JSON)</label>
-            <textarea
-              v-model="testContextJson"
-              rows="4"
-              placeholder='{"name":"Alex","orderId":245}'
-              @input="queueTemplateAnalysis"
-              class="w-full px-4 py-2.5 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all font-mono text-xs"
-            />
+            <div class="flex items-center justify-between gap-3 mb-2">
+              <label class="block text-sm font-medium text-slate-400">Preview/Test Values</label>
+              <div class="flex flex-wrap items-center gap-2">
+                <button
+                  @click="loadSampleContext"
+                  type="button"
+                  class="px-2 py-1 text-xs rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
+                >
+                  Use sample values
+                </button>
+                <button
+                  @click="clearContextFields"
+                  type="button"
+                  class="px-2 py-1 text-xs rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
+                >
+                  Clear all values
+                </button>
+              </div>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-3">
+              <div
+                v-for="field in templateContextFields"
+                :key="field.key"
+                class="bg-slate-800/40 border border-slate-700 rounded-lg p-3"
+              >
+                <div class="flex items-center justify-between gap-2 mb-1">
+                  <label class="text-xs font-medium text-slate-300">{{ field.label }}</label>
+                  <span class="text-[10px] font-mono text-slate-500">{{ formatVariableToken(field.key) }}</span>
+                </div>
+                <input
+                  v-if="field.inputType !== 'boolean'"
+                  v-model="field.value"
+                  :type="field.inputType"
+                  class="w-full px-3 py-2 bg-slate-900/70 border border-slate-700 rounded-lg text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
+                  :placeholder="field.sampleValue || 'Enter value'"
+                />
+                <select
+                  v-else
+                  v-model="field.value"
+                  class="w-full px-3 py-2 bg-slate-900/70 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
+                >
+                  <option value="">Use default</option>
+                  <option value="true">True</option>
+                  <option value="false">False</option>
+                </select>
+              </div>
+            </div>
+            <p v-if="templateContextFields.length === 0" class="text-xs text-slate-500">
+              This template has no custom preview values. Default sample values will be used.
+            </p>
+
+            <p class="text-[11px] text-slate-500 mt-2">
+              Values here are only for preview and test sends. They do not change customer data.
+            </p>
+            <p v-if="templateContextError" class="text-xs text-red-300 mt-1">
+              {{ templateContextError }}
+            </p>
           </div>
 
           <div>
             <p class="text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wide">Template Variables</p>
+            <p class="text-[11px] text-slate-500 mb-2">Click a variable to insert it at your cursor.</p>
             <div class="flex flex-wrap gap-2">
               <span
                 v-for="variable in selectedTemplate.variables"
@@ -512,14 +587,14 @@
           <div class="flex flex-wrap items-center gap-2">
             <button
               @click="previewTemplate"
-              :disabled="templateBusy"
+              :disabled="!canRenderTemplate"
               class="px-4 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 rounded-lg text-sm transition-colors"
             >
-              Preview
+              Render Preview
             </button>
             <button
               @click="saveTemplate"
-              :disabled="templateBusy"
+              :disabled="!canSaveTemplate"
               class="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 disabled:opacity-50 text-white rounded-lg text-sm font-semibold transition-colors"
             >
               Save Override
@@ -540,12 +615,15 @@
             </button>
             <button
               @click="sendTestTemplate"
-              :disabled="templateBusy || !testRecipient || !!templateValidationError"
+              :disabled="!canSendTestTemplate"
               class="px-4 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 disabled:opacity-50 text-emerald-300 rounded-lg text-sm transition-colors"
             >
-              Send Test
+              Send Test Email
             </button>
           </div>
+          <p class="text-[11px] text-slate-500">
+            Tip: press <span class="font-semibold text-slate-300">Ctrl/Cmd + S</span> to save your draft quickly.
+          </p>
 
           <p v-if="templateValidationError" class="text-xs text-red-300">
             {{ templateValidationError }}
@@ -579,11 +657,24 @@
       @confirm="confirmResend"
       @cancel="cancelResend"
     />
+
+    <!-- Discard Unsaved Template Changes -->
+    <UiConfirmDialog
+      :is-open="showTemplateDiscardConfirm"
+      title="Discard unsaved changes?"
+      message="You have unsaved template edits. If you continue, those edits will be lost."
+      type="warning"
+      confirm-text="Discard Changes"
+      cancel-text="Keep Editing"
+      @confirm="confirmTemplateDiscard"
+      @cancel="cancelTemplateDiscard"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
+import { onBeforeRouteLeave } from 'vue-router'
 
 definePageMeta({
   layout: 'admin',
@@ -606,6 +697,8 @@ const selectedEmail = ref<any>(null)
 const showDetailModal = ref(false)
 const showResendConfirm = ref(false)
 const emailToResend = ref<any>(null)
+const showTemplateDiscardConfirm = ref(false)
+const pendingTemplateKey = ref<string | null>(null)
 
 const { showSuccess, showError } = useNotification()
 
@@ -622,6 +715,7 @@ type ManagedTemplate = {
   label: string
   description: string
   variables: string[]
+  sampleData?: Record<string, unknown>
   defaultSubject: string
   defaultBody: string
   override: TemplateOverride | null
@@ -649,6 +743,14 @@ type TemplateAnalysis = {
   isValid: boolean
 }
 
+type TemplateContextField = {
+  key: string
+  label: string
+  value: string
+  sampleValue: string
+  inputType: 'text' | 'number' | 'boolean'
+}
+
 // Filters
 const filters = ref({
   status: 'all',
@@ -664,7 +766,8 @@ const templateSearch = ref('')
 const globalTemplateVariables = ref<string[]>([])
 const selectedTemplateKey = ref('')
 const testRecipient = ref('')
-const testContextJson = ref('')
+const templateContextFields = ref<TemplateContextField[]>([])
+const templateContextDraftByKey = ref<Record<string, Record<string, string>>>({})
 const templatePreview = ref<{ subject: string; html: string } | null>(null)
 const templateAnalysis = ref<TemplateAnalysis | null>(null)
 const analyzingTemplate = ref(false)
@@ -697,6 +800,8 @@ const filteredTemplates = computed(() => {
 const subjectCharCount = computed(() => templateForm.value.subject.length)
 const bodyCharCount = computed(() => templateForm.value.body.length)
 const templateLastUpdated = computed(() => selectedTemplate.value?.override?.updatedAt || null)
+const templatesUsingOverrideCount = computed(() => templates.value.filter((template) => template.isUsingOverride).length)
+const templatesWithFailuresCount = computed(() => templates.value.filter((template) => (template.stats?.failed || 0) > 0).length)
 const isTemplateDirty = computed(() => {
   if (!selectedTemplate.value) return false
   const baselineEnabled = selectedTemplate.value.override?.enabled ?? false
@@ -723,6 +828,17 @@ const templateValidationError = computed(() => {
   }
   return ''
 })
+const templateContextError = computed(() => {
+  for (const field of templateContextFields.value) {
+    if (field.inputType === 'number' && field.value.trim() && Number.isNaN(Number(field.value))) {
+      return `Value for "${field.label}" must be a valid number.`
+    }
+  }
+  return ''
+})
+const canRenderTemplate = computed(() => !templateBusy.value && !templateValidationError.value && !templateContextError.value)
+const canSaveTemplate = computed(() => !templateBusy.value && isTemplateDirty.value && !templateValidationError.value)
+const canSendTestTemplate = computed(() => !templateBusy.value && !!testRecipient.value && !templateValidationError.value && !templateContextError.value)
 
 // Fetch emails
 async function fetchEmails() {
@@ -757,14 +873,76 @@ async function fetchStats() {
   }
 }
 
-function parseTemplateContext() {
-  const raw = testContextJson.value.trim()
-  if (!raw) return {}
-  const parsed = JSON.parse(raw)
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    throw new Error('Preview context must be a JSON object')
+function getTemplateSampleContext(template: ManagedTemplate) {
+  if (!template.sampleData || typeof template.sampleData !== 'object' || Array.isArray(template.sampleData)) {
+    return {} as Record<string, unknown>
   }
-  return parsed as Record<string, unknown>
+  return template.sampleData as Record<string, unknown>
+}
+
+function formatVariableLabel(variable: string) {
+  return variable
+    .replace(/_/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/^\w/, (char) => char.toUpperCase())
+}
+
+function buildTemplateContextFields(
+  template: ManagedTemplate,
+  existingDraft: Record<string, string> = {}
+): TemplateContextField[] {
+  const sampleData = getTemplateSampleContext(template)
+  return template.variables.map((variable) => {
+    const sampleValue = sampleData[variable]
+    const inputType: TemplateContextField['inputType'] =
+      typeof sampleValue === 'number'
+        ? 'number'
+        : typeof sampleValue === 'boolean'
+          ? 'boolean'
+          : 'text'
+
+    const sampleValueString =
+      sampleValue === undefined || sampleValue === null
+        ? ''
+        : typeof sampleValue === 'object'
+          ? JSON.stringify(sampleValue)
+          : String(sampleValue)
+
+    return {
+      key: variable,
+      label: formatVariableLabel(variable),
+      inputType,
+      sampleValue: sampleValueString,
+      value: existingDraft[variable] ?? sampleValueString
+    }
+  })
+}
+
+function buildTemplateContextPayload() {
+  const context: Record<string, unknown> = {}
+  for (const field of templateContextFields.value) {
+    const raw = field.value.trim()
+    if (!raw) continue
+
+    if (field.inputType === 'number') {
+      const numericValue = Number(raw)
+      if (Number.isNaN(numericValue)) {
+        throw new Error(`Value for "${field.label}" must be a valid number.`)
+      }
+      context[field.key] = numericValue
+      continue
+    }
+
+    if (field.inputType === 'boolean') {
+      context[field.key] = raw === 'true'
+      continue
+    }
+
+    context[field.key] = raw
+  }
+  return context
 }
 
 function applyTemplateToForm(template: ManagedTemplate) {
@@ -773,17 +951,51 @@ function applyTemplateToForm(template: ManagedTemplate) {
     subject: template.override?.subject || template.defaultSubject,
     body: template.override?.body || template.defaultBody
   }
+  templateContextFields.value = buildTemplateContextFields(
+    template,
+    templateContextDraftByKey.value[template.key] || {}
+  )
   templatePreview.value = null
   templateAnalysis.value = null
 }
 
-function selectTemplate(templateKey: string) {
+function applySelectedTemplate(templateKey: string) {
   selectedTemplateKey.value = templateKey
   const template = templates.value.find(item => item.key === templateKey)
   if (template) {
     applyTemplateToForm(template)
     queueTemplateAnalysis()
   }
+}
+
+function selectTemplate(templateKey: string) {
+  if (templateKey === selectedTemplateKey.value) return
+  if (isTemplateDirty.value) {
+    pendingTemplateKey.value = templateKey
+    showTemplateDiscardConfirm.value = true
+    return
+  }
+  applySelectedTemplate(templateKey)
+}
+
+function confirmTemplateDiscard() {
+  showTemplateDiscardConfirm.value = false
+  if (!pendingTemplateKey.value) return
+  applySelectedTemplate(pendingTemplateKey.value)
+  pendingTemplateKey.value = null
+}
+
+function cancelTemplateDiscard() {
+  showTemplateDiscardConfirm.value = false
+  pendingTemplateKey.value = null
+}
+
+async function refreshTemplates() {
+  if (isTemplateDirty.value && typeof window !== 'undefined') {
+    const shouldRefresh = window.confirm('You have unsaved template changes. Refresh and discard current edits?')
+    if (!shouldRefresh) return
+  }
+  await fetchTemplates()
 }
 
 async function fetchTemplates() {
@@ -857,12 +1069,18 @@ function insertTemplateVariable(variable: string) {
   const selectionEnd = target.selectionEnd ?? selectionStart
   const currentValue = activeTemplateField.value === 'subject' ? templateForm.value.subject : templateForm.value.body
   const nextValue = `${currentValue.slice(0, selectionStart)}${token}${currentValue.slice(selectionEnd)}`
+  const cursorPosition = selectionStart + token.length
 
   if (activeTemplateField.value === 'subject') {
     templateForm.value.subject = nextValue
   } else {
     templateForm.value.body = nextValue
   }
+
+  nextTick(() => {
+    target.focus()
+    target.setSelectionRange(cursorPosition, cursorPosition)
+  })
 
   queueTemplateAnalysis()
 }
@@ -877,6 +1095,18 @@ function revertTemplateEdits() {
   queueTemplateAnalysis()
 }
 
+function loadSampleContext() {
+  if (!selectedTemplate.value) return
+  templateContextFields.value = buildTemplateContextFields(selectedTemplate.value, {})
+}
+
+function clearContextFields() {
+  templateContextFields.value = templateContextFields.value.map((field) => ({
+    ...field,
+    value: ''
+  }))
+}
+
 async function previewTemplate() {
   if (!selectedTemplate.value) return
 
@@ -885,7 +1115,7 @@ async function previewTemplate() {
     if (templateValidationError.value) {
       throw new Error(templateValidationError.value)
     }
-    const context = parseTemplateContext()
+    const context = buildTemplateContextPayload()
     templatePreview.value = await trpc.admin.emails.templates.preview.query({
       templateKey: selectedTemplate.value.key,
       subject: templateForm.value.subject,
@@ -952,7 +1182,7 @@ async function sendTestTemplate() {
     if (templateValidationError.value) {
       throw new Error(templateValidationError.value)
     }
-    const context = parseTemplateContext()
+    const context = buildTemplateContextPayload()
     const result = await trpc.admin.emails.templates.sendTest.mutate({
       templateKey: selectedTemplate.value.key,
       to: testRecipient.value,
@@ -976,6 +1206,16 @@ async function sendTestTemplate() {
 watch(selectedTemplateKey, () => {
   queueTemplateAnalysis()
 })
+watch(
+  templateContextFields,
+  (fields) => {
+    if (!selectedTemplateKey.value) return
+    templateContextDraftByKey.value[selectedTemplateKey.value] = Object.fromEntries(
+      fields.map((field) => [field.key, field.value])
+    )
+  },
+  { deep: true }
+)
 
 // Debounced search
 let searchTimeout: NodeJS.Timeout
@@ -1073,6 +1313,31 @@ function handleResend(emailId: number) {
   }
 }
 
+function handleTemplateKeydown(event: KeyboardEvent) {
+  if (!(event.ctrlKey || event.metaKey)) return
+  if (event.key.toLowerCase() !== 's') return
+  if (!selectedTemplate.value) return
+
+  event.preventDefault()
+  if (!canSaveTemplate.value) return
+  saveTemplate()
+}
+
+function handleBeforeUnload(event: BeforeUnloadEvent) {
+  if (!isTemplateDirty.value) return
+  event.preventDefault()
+  event.returnValue = ''
+}
+
+onBeforeRouteLeave((to, from, next) => {
+  if (!isTemplateDirty.value || typeof window === 'undefined') {
+    next()
+    return
+  }
+  const shouldLeave = window.confirm('You have unsaved template changes. Leave this page and discard edits?')
+  next(shouldLeave)
+})
+
 // Helpers
 function getStatusClass(status: string) {
   const classes: Record<string, string> = {
@@ -1131,6 +1396,15 @@ function formatTemplate(template: string) {
 // Lifecycle
 onMounted(() => {
   Promise.all([fetchEmails(), fetchStats(), fetchTemplates()])
+  if (typeof window !== 'undefined') {
+    window.addEventListener('beforeunload', handleBeforeUnload)
+  }
+})
+
+onBeforeUnmount(() => {
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('beforeunload', handleBeforeUnload)
+  }
 })
 
 useHead({
