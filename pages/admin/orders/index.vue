@@ -342,7 +342,7 @@ const route = useRoute()
 
 const loading = ref(true)
 const error = ref<string | null>(null)
-const orders = ref<Order[]>([])
+const orders = ref<any[]>([])
 const packages = ref<any[]>([])
 const currentPage = ref(1)
 const isInitializing = ref(true)

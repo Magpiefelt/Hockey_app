@@ -103,12 +103,12 @@ const { isLoading: isLoadingAvailability } = storeToRefs(calendarStore)
  * the previous day in timezones behind UTC (e.g., MST, PST).
  * Instead, we parse the parts manually and create a local date.
  */
-const parseDateStringToLocal = (dateStr: string): Date | null => {
+const parseDateStringToLocal = (dateStr: string | Date): Date | null => {
   if (!dateStr) return null
   
   // If it's already a Date object somehow
   if (dateStr instanceof Date) {
-    return isNaN((dateStr as Date).getTime()) ? null : dateStr as unknown as Date
+    return isNaN(dateStr.getTime()) ? null : dateStr
   }
   
   const str = String(dateStr)

@@ -173,7 +173,7 @@ export const ordersRouter = router({
         const userId = ctx.user?.userId || null
         
         // Insert order into quote_requests
-        const orderResult = await client.query<{ id: number }>(
+        const orderResult = await client.query(
           `INSERT INTO quote_requests (
             user_id, package_id, contact_name, contact_email, contact_phone,
             organization, status, event_date, service_type, sport_type, notes

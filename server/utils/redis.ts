@@ -9,7 +9,9 @@ import { logger } from './logger'
 interface RedisClient {
   get(key: string): Promise<string | null>
   set(key: string, value: string, options?: { EX?: number; PX?: number }): Promise<void>
-  del(key: string): Promise<void>
+  del(...keys: string[]): Promise<void>
+  keys(pattern: string): Promise<string[]>
+  ping(): Promise<string>
   incr(key: string): Promise<number>
   expire(key: string, seconds: number): Promise<void>
   ttl(key: string): Promise<number>
@@ -44,8 +46,25 @@ class InMemoryRedis implements RedisClient {
     this.store.set(key, { value, expiry })
   }
   
-  async del(key: string): Promise<void> {
-    this.store.delete(key)
+  async del(...keys: string[]): Promise<void> {
+    for (const key of keys) {
+      this.store.delete(key)
+    }
+  }
+
+  async keys(pattern: string): Promise<string[]> {
+    // Simple glob support for "*" wildcard.
+    if (!pattern.includes('*')) {
+      return this.store.has(pattern) ? [pattern] : []
+    }
+
+    const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&')
+    const regex = new RegExp(`^${escaped.replace(/\*/g, '.*')}$`)
+    return Array.from(this.store.keys()).filter(key => regex.test(key))
+  }
+
+  async ping(): Promise<string> {
+    return 'PONG'
   }
   
   async incr(key: string): Promise<number> {
@@ -123,8 +142,15 @@ async function initRedis(): Promise<RedisClient> {
           await client.set(key, value)
         }
       },
-      async del(key: string) {
-        await client.del(key)
+      async del(...keys: string[]) {
+        if (keys.length === 0) return
+        await client.del(...keys)
+      },
+      async keys(pattern: string) {
+        return await client.keys(pattern)
+      },
+      async ping() {
+        return await client.ping()
       },
       async incr(key: string) {
         return await client.incr(key)

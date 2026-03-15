@@ -30,7 +30,7 @@ export default defineEventHandler((event) => {
   if (event.method === 'OPTIONS') {
     setHeader(event, 'Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS')
     setHeader(event, 'Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-Request-ID')
-    setHeader(event, 'Access-Control-Max-Age', '86400') // 24 hours
+    setHeader(event, 'Access-Control-Max-Age', 86400) // 24 hours
     
     // Respond to preflight
     event.node.res.statusCode = 204

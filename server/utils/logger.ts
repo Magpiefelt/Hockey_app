@@ -14,6 +14,10 @@ interface LogContext {
   [key: string]: any
 }
 
+function isErrorLike(value: unknown): value is { name?: string; message?: string; stack?: string } {
+  return typeof value === 'object' && value !== null && ('message' in value || 'name' in value || 'stack' in value)
+}
+
 class Logger {
   private minLevel: LogLevel
   
@@ -66,9 +70,14 @@ class Logger {
     this.log(LogLevel.WARN, message, context)
   }
   
-  error(message: string, error?: Error, context?: LogContext) {
+  error(message: string, errorOrContext?: unknown, context?: LogContext) {
+    const error = isErrorLike(errorOrContext) ? errorOrContext : undefined
+    const mergedContext: LogContext | undefined = error
+      ? context
+      : ({ ...(errorOrContext as LogContext | undefined), ...context })
+
     this.log(LogLevel.ERROR, message, {
-      ...context,
+      ...mergedContext,
       error: error ? {
         name: error.name,
         message: error.message,

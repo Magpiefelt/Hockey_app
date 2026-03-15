@@ -11,7 +11,7 @@ definePageMeta({
 
 const route = useRoute()
 const router = useRouter()
-const { $trpc } = useNuxtApp()
+const trpc = useTrpc()
 
 const orderId = computed(() => parseInt(route.params.id as string))
 
@@ -65,31 +65,31 @@ async function loadQuote() {
       tokenAccessMode.value = true
       
       // Use token-based access
-      quote.value = await $trpc.quote.getQuoteWithToken.query({
+      quote.value = await trpc.quote.getQuoteWithToken.query({
         orderId: orderId.value,
         token: accessToken.value
       })
       
       // Record view event with token
-      await $trpc.quote.recordQuoteViewWithToken.mutate({
+      await trpc.quote.recordQuoteViewWithToken.mutate({
         orderId: orderId.value,
         token: accessToken.value
       })
     } else {
       // Use authenticated access
-      quote.value = await $trpc.quote.getQuote.query({
+      quote.value = await trpc.quote.getQuote.query({
         orderId: orderId.value
       })
       
       // Record view event
-      await $trpc.quote.recordQuoteView.mutate({
+      await trpc.quote.recordQuoteView.mutate({
         orderId: orderId.value
       })
     }
     
     // Load revision history if authenticated
     try {
-      revisions.value = await $trpc.quote.getRevisionHistory.query({
+      revisions.value = await trpc.quote.getRevisionHistory.query({
         orderId: orderId.value
       })
     } catch {
@@ -130,13 +130,13 @@ async function acceptQuote() {
   try {
     if (tokenAccessMode.value && accessToken.value) {
       // Use token-based acceptance
-      await $trpc.quote.acceptQuoteWithToken.mutate({
+      await trpc.quote.acceptQuoteWithToken.mutate({
         orderId: orderId.value,
         token: accessToken.value
       })
     } else {
       // Use authenticated acceptance
-      await $trpc.quote.acceptQuote.mutate({
+      await trpc.quote.acceptQuote.mutate({
         orderId: orderId.value
       })
     }
@@ -169,14 +169,14 @@ async function declineQuote() {
   try {
     if (tokenAccessMode.value && accessToken.value) {
       // Use token-based decline
-      await $trpc.quote.declineQuoteWithToken.mutate({
+      await trpc.quote.declineQuoteWithToken.mutate({
         orderId: orderId.value,
         token: accessToken.value,
         reason: declineReason.value || undefined
       })
     } else {
       // Use authenticated decline
-      await $trpc.quote.declineQuote.mutate({
+      await trpc.quote.declineQuote.mutate({
         orderId: orderId.value,
         reason: declineReason.value || undefined
       })

@@ -178,7 +178,7 @@
           </div>
           <div>
             <p class="text-sm text-slate-500 mb-1">Email</p>
-            <p class="text-slate-900 font-medium">{{ orderData.order.emailSnapshot }}</p>
+            <p class="text-slate-900 font-medium">{{ orderData.order.email }}</p>
           </div>
           <div v-if="orderData.order.packageId">
             <p class="text-sm text-slate-500 mb-1">Package</p>
@@ -386,7 +386,7 @@ const ordersStore = useOrdersStore()
 const orderData = computed(() => ordersStore.currentOrder)
 const loading = computed(() => ordersStore.isLoading)
 const error = computed(() => ordersStore.error)
-const downloadingFileId = ref<number | null>(null)
+const downloadingFileId = ref<string | number | null>(null)
 const showCancelDialog = ref(false)
 const cancelReason = ref('')
 const isCancelling = ref(false)
@@ -566,7 +566,7 @@ const getProgressHeight = (status: string) => {
   return progressMap[status] || '0%'
 }
 
-const downloadFile = async (fileId: number, filename: string) => {
+const downloadFile = async (fileId: string | number, filename: string) => {
   try {
     downloadingFileId.value = fileId
     const { url } = await trpc.files.getDownloadUrl.query({ fileId })
