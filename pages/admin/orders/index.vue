@@ -9,7 +9,7 @@
       <div class="flex items-center gap-3">
         <div class="px-4 py-2 bg-slate-800/50 border border-slate-700 rounded-xl">
           <span class="text-sm text-slate-400">
-            <span class="font-semibold text-white">{{ filteredOrders.length }}</span> orders
+            <span class="font-semibold text-white">{{ totalOrders }}</span> orders
           </span>
         </div>
       </div>
@@ -345,6 +345,7 @@ const error = ref<string | null>(null)
 const orders = ref<Order[]>([])
 const packages = ref<any[]>([])
 const currentPage = ref(1)
+const isInitializing = ref(true)
 const pageSize = 20
 const totalOrders = ref(0)
 const totalPages = computed(() => Math.ceil(totalOrders.value / pageSize))
@@ -403,7 +404,11 @@ const handleBulkActionComplete = (action: string, results: { success: number[]; 
   clearSelection()
 }
 
-const filters = ref({
+const filters = ref<{
+  status: string
+  packageId: number | ''
+  search: string
+}>({
   status: '',
   packageId: '',
   search: ''
@@ -448,11 +453,6 @@ const packageOptions = computed(() => [
 // Server handles filtering and pagination — client only applies local sorting
 const filteredOrders = computed(() => {
   let result = [...orders.value]
-
-  // Client-side package filter (not sent to server)
-  if (filters.value.packageId) {
-    result = result.filter(o => o.packageId === filters.value.packageId)
-  }
 
   // Apply sorting
   result.sort((a, b) => {
@@ -527,12 +527,21 @@ onUnmounted(() => {
 
 // When status filter changes, fetch immediately; when search changes, debounce
 watch(() => filters.value.status, () => {
+  if (isInitializing.value) return
+  currentPage.value = 1
+  selectedOrderIds.value = []
+  fetchOrders()
+})
+
+watch(() => filters.value.packageId, () => {
+  if (isInitializing.value) return
   currentPage.value = 1
   selectedOrderIds.value = []
   fetchOrders()
 })
 
 watch(() => filters.value.search, () => {
+  if (isInitializing.value) return
   if (searchDebounceTimer) clearTimeout(searchDebounceTimer)
   searchDebounceTimer = setTimeout(() => {
     currentPage.value = 1
@@ -543,6 +552,7 @@ watch(() => filters.value.search, () => {
 
 // When page changes, re-fetch from server
 watch(currentPage, () => {
+  if (isInitializing.value) return
   selectedOrderIds.value = []
   fetchOrders()
 })
@@ -563,6 +573,7 @@ const fetchOrders = async () => {
   try {
     const queryParams: { 
       status?: string; 
+      packageId?: number;
       search?: string;
       page?: number;
       pageSize?: number;
@@ -571,6 +582,7 @@ const fetchOrders = async () => {
       pageSize: pageSize
     }
     if (filters.value.status) queryParams.status = filters.value.status
+    if (filters.value.packageId !== '') queryParams.packageId = Number(filters.value.packageId)
     if (filters.value.search) queryParams.search = filters.value.search
     
     const response = await trpc.admin.orders.list.query(queryParams)
@@ -593,6 +605,11 @@ const fetchOrders = async () => {
 }
 
 const resetFilters = () => {
+  if (searchDebounceTimer) {
+    clearTimeout(searchDebounceTimer)
+    searchDebounceTimer = null
+  }
+  isInitializing.value = true
   filters.value = {
     status: '',
     packageId: '',
@@ -600,6 +617,8 @@ const resetFilters = () => {
   }
   currentPage.value = 1
   selectedOrderIds.value = []
+  isInitializing.value = false
+  fetchOrders()
 }
 
 // Get package name from order data
@@ -665,6 +684,7 @@ function handleOrderSaved(data: any) {
 }
 
 onMounted(async () => {
+  isInitializing.value = true
   // Honour URL query params from global search or dashboard links
   if (route.query.search) {
     filters.value.search = String(route.query.search)
@@ -672,12 +692,19 @@ onMounted(async () => {
   if (route.query.status) {
     filters.value.status = String(route.query.status)
   }
+  if (route.query.packageId) {
+    const maybePackageId = Number(route.query.packageId)
+    if (Number.isFinite(maybePackageId) && maybePackageId > 0) {
+      filters.value.packageId = maybePackageId
+    }
+  }
 
   // Fetch both packages and orders in parallel
   await Promise.all([
     fetchPackages(),
     fetchOrders()
   ])
+  isInitializing.value = false
 })
 
 useHead({

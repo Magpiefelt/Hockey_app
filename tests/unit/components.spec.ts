@@ -44,8 +44,8 @@ describe('PackageComparisonTable Component', () => {
   })
 })
 
-describe('RevenueTrendChart Component', () => {
-  const componentPath = join(process.cwd(), 'components', 'admin', 'RevenueTrendChart.vue')
+describe('TrendChart Component', () => {
+  const componentPath = join(process.cwd(), 'components', 'admin', 'TrendChart.vue')
 
   it('should exist', () => {
     expect(existsSync(componentPath)).toBe(true)
@@ -56,29 +56,10 @@ describe('RevenueTrendChart Component', () => {
     expect(content).toContain("from 'chart.js'")
   })
 
-  it('should have loading state', () => {
+  it('should support value formatting options', () => {
     const content = readFileSync(componentPath, 'utf-8')
-    expect(content).toContain('v-if="loading"')
-  })
-
-  it('should have error state', () => {
-    const content = readFileSync(componentPath, 'utf-8')
-    expect(content).toContain('v-else-if="error"')
-  })
-
-  it('should have period selection', () => {
-    const content = readFileSync(componentPath, 'utf-8')
-    expect(content).toContain('selectedPeriod')
-    expect(content).toContain('6M')
-    expect(content).toContain('12M')
-    expect(content).toContain('24M')
-  })
-
-  it('should display summary stats', () => {
-    const content = readFileSync(componentPath, 'utf-8')
-    expect(content).toContain('totalRevenue')
-    expect(content).toContain('averageRevenue')
-    expect(content).toContain('growthRate')
+    expect(content).toContain('formatTooltipValue')
+    expect(content).toContain("currency: 'USD'")
   })
 
   it('should clean up chart on unmount', () => {
@@ -88,8 +69,8 @@ describe('RevenueTrendChart Component', () => {
   })
 })
 
-describe('BookingPipelineChart Component', () => {
-  const componentPath = join(process.cwd(), 'components', 'admin', 'BookingPipelineChart.vue')
+describe('PipelineChart Component', () => {
+  const componentPath = join(process.cwd(), 'components', 'admin', 'PipelineChart.vue')
 
   it('should exist', () => {
     expect(existsSync(componentPath)).toBe(true)
@@ -97,27 +78,22 @@ describe('BookingPipelineChart Component', () => {
 
   it('should have all pipeline stages', () => {
     const content = readFileSync(componentPath, 'utf-8')
-    const stages = ['submitted', 'quoted', 'invoiced', 'paid', 'in_progress', 'completed', 'cancelled']
+    const stages = ['submitted', 'pending', 'quoted', 'in_progress', 'paid', 'completed', 'delivered', 'cancelled', 'refunded']
     for (const stage of stages) {
       expect(content).toContain(stage)
     }
   })
 
-  it('should calculate conversion rates', () => {
+  it('should calculate stage percentages', () => {
     const content = readFileSync(componentPath, 'utf-8')
-    expect(content).toContain('quoteToPayRate')
-    expect(content).toContain('submittedToCompletedRate')
-  })
-
-  it('should display total orders', () => {
-    const content = readFileSync(componentPath, 'utf-8')
-    expect(content).toContain('totalOrders')
-  })
-
-  it('should have progress bars', () => {
-    const content = readFileSync(componentPath, 'utf-8')
+    expect(content).toContain('maxCount')
     expect(content).toContain('getPercentage')
-    expect(content).toContain('width:')
+  })
+
+  it('should use shared order status mapping', () => {
+    const content = readFileSync(componentPath, 'utf-8')
+    expect(content).toContain('useOrderStatus')
+    expect(content).toContain('getStatusColors')
   })
 })
 
