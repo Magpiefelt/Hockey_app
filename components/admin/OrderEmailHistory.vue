@@ -27,25 +27,44 @@ const emails = ref<Array<{
 
 const isResending = ref<number | null>(null)
 const resendType = ref<'quote' | 'invoice' | 'confirmation' | 'reminder' | null>(null)
+let activeRequestId = 0
 
 // Load email history
 async function loadEmails() {
+  if (!props.orderId || props.orderId <= 0) {
+    emails.value = []
+    error.value = 'Invalid order ID'
+    loading.value = false
+    return
+  }
+
+  const requestId = ++activeRequestId
   loading.value = true
   error.value = null
   
   try {
-    emails.value = await trpc.adminEnhancements.getEmailHistory.query({
+    const result = await trpc.adminEnhancements.getEmailHistory.query({
       orderId: props.orderId
     })
+    if (requestId !== activeRequestId) return
+    emails.value = result
   } catch (err: any) {
+    if (requestId !== activeRequestId) return
     const { handleTrpcError } = await import('~/composables/useTrpc')
     error.value = handleTrpcError(err)
   } finally {
+    if (requestId !== activeRequestId) return
     loading.value = false
   }
 }
 
-onMounted(loadEmails)
+watch(
+  () => props.orderId,
+  () => {
+    loadEmails()
+  },
+  { immediate: true }
+)
 
 // Resend email
 async function resendEmail(type: 'quote' | 'reminder') {
@@ -146,7 +165,13 @@ defineExpose({
       
       <!-- Error -->
       <div v-else-if="error" class="text-error-400 text-sm py-4 text-center">
-        {{ error }}
+        <p>{{ error }}</p>
+        <button
+          @click="loadEmails"
+          class="mt-3 px-3 py-1.5 text-xs rounded-lg bg-error-500/20 text-error-300 hover:bg-error-500/30 transition-colors"
+        >
+          Retry
+        </button>
       </div>
       
       <!-- Empty -->

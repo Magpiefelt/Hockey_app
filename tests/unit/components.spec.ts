@@ -158,3 +158,33 @@ describe('BulkActionsToolbar Component', () => {
     expect(content).toContain('results.failed.length')
   })
 })
+
+describe('OrderStatusHistory Component', () => {
+  const componentPath = join(process.cwd(), 'components', 'admin', 'OrderStatusHistory.vue')
+
+  it('should exist', () => {
+    expect(existsSync(componentPath)).toBe(true)
+  })
+
+  it('should react to order id changes and allow retry', () => {
+    const content = readFileSync(componentPath, 'utf-8')
+    expect(content).toContain('watch(')
+    expect(content).toContain('props.orderId')
+    expect(content).toContain('@click="loadHistory"')
+  })
+})
+
+describe('OrderEmailHistory Component', () => {
+  const componentPath = join(process.cwd(), 'components', 'admin', 'OrderEmailHistory.vue')
+
+  it('should exist', () => {
+    expect(existsSync(componentPath)).toBe(true)
+  })
+
+  it('should react to order id changes and show retry action', () => {
+    const content = readFileSync(componentPath, 'utf-8')
+    expect(content).toContain('watch(')
+    expect(content).toContain('props.orderId')
+    expect(content).toContain('@click="loadEmails"')
+  })
+})
