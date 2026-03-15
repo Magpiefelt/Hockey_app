@@ -264,7 +264,7 @@ const getPackageIconFallback = (slug: string): string => {
 const formatPrice = (cents: number): string => {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'CAD',
     minimumFractionDigits: 0
   }).format(cents / 100)
 }

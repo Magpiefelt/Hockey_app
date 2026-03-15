@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS packages (
   name VARCHAR(100) NOT NULL,
   description TEXT,
   price_cents INTEGER NOT NULL,
-  currency VARCHAR(10) NOT NULL DEFAULT 'usd',
+  currency VARCHAR(10) NOT NULL DEFAULT 'cad',
   is_popular BOOLEAN NOT NULL DEFAULT FALSE,
   features JSONB,
   icon VARCHAR(10),
@@ -96,7 +96,7 @@ CREATE TABLE IF NOT EXISTS invoices (
   stripe_invoice_id VARCHAR(100) UNIQUE NOT NULL,
   stripe_customer_id VARCHAR(100),
   amount_cents INTEGER NOT NULL,
-  currency VARCHAR(10) NOT NULL DEFAULT 'usd',
+  currency VARCHAR(10) NOT NULL DEFAULT 'cad',
   invoice_url TEXT,
   status VARCHAR(20) NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'sent', 'paid', 'failed', 'void', 'uncollectible')),
   customer_snapshot JSONB,
@@ -117,7 +117,7 @@ CREATE TABLE IF NOT EXISTS payments (
   invoice_id INTEGER NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
   stripe_payment_id VARCHAR(100) UNIQUE,
   amount_cents INTEGER NOT NULL,
-  currency VARCHAR(10) NOT NULL DEFAULT 'usd',
+  currency VARCHAR(10) NOT NULL DEFAULT 'cad',
   status VARCHAR(20) NOT NULL CHECK (status IN ('succeeded', 'pending', 'failed', 'refunded', 'cancelled')),
   paid_at TIMESTAMPTZ DEFAULT NOW(),
   created_at TIMESTAMPTZ DEFAULT NOW()
@@ -126,6 +126,38 @@ CREATE TABLE IF NOT EXISTS payments (
 -- Create indexes
 CREATE INDEX IF NOT EXISTS idx_payments_invoice_id ON payments(invoice_id);
 CREATE INDEX IF NOT EXISTS idx_payments_stripe_payment_id ON payments(stripe_payment_id);
+
+-- Finance expenses table (actual expense tracking)
+CREATE TABLE IF NOT EXISTS finance_expenses (
+  id SERIAL PRIMARY KEY,
+  description VARCHAR(255) NOT NULL,
+  category VARCHAR(50) NOT NULL,
+  amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
+  incurred_on DATE NOT NULL,
+  vendor VARCHAR(120),
+  notes TEXT,
+  created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_finance_expenses_incurred_on ON finance_expenses(incurred_on DESC);
+CREATE INDEX IF NOT EXISTS idx_finance_expenses_category ON finance_expenses(category);
+
+-- Monthly finance budgets table
+CREATE TABLE IF NOT EXISTS finance_budgets (
+  id SERIAL PRIMARY KEY,
+  year INTEGER NOT NULL CHECK (year >= 2000 AND year <= 2100),
+  month INTEGER NOT NULL CHECK (month >= 1 AND month <= 12),
+  category VARCHAR(50) NOT NULL,
+  amount_cents INTEGER NOT NULL CHECK (amount_cents >= 0),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (year, month, category)
+);
+
+CREATE INDEX IF NOT EXISTS idx_finance_budgets_month_year ON finance_budgets(year, month);
+CREATE INDEX IF NOT EXISTS idx_finance_budgets_category ON finance_budgets(category);
 
 -- File uploads table (rosters, audio files, deliverables)
 CREATE TABLE IF NOT EXISTS file_uploads (
@@ -164,18 +196,19 @@ CREATE INDEX IF NOT EXISTS idx_order_status_history_changed_at ON order_status_h
 CREATE TABLE IF NOT EXISTS email_logs (
   id SERIAL PRIMARY KEY,
   quote_id INTEGER REFERENCES quote_requests(id) ON DELETE SET NULL,
-  recipient_email VARCHAR(120) NOT NULL,
+  to_email VARCHAR(120) NOT NULL,
   subject VARCHAR(255) NOT NULL,
-  email_type VARCHAR(50) NOT NULL,
+  template VARCHAR(50) NOT NULL,
   status VARCHAR(20) NOT NULL DEFAULT 'sent' CHECK (status IN ('sent', 'failed', 'bounced')),
   error_message TEXT,
+  metadata_json JSONB,
   sent_at TIMESTAMPTZ DEFAULT NOW(),
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Create indexes
 CREATE INDEX IF NOT EXISTS idx_email_logs_quote_id ON email_logs(quote_id);
-CREATE INDEX IF NOT EXISTS idx_email_logs_recipient ON email_logs(recipient_email);
+CREATE INDEX IF NOT EXISTS idx_email_logs_to_email ON email_logs(to_email);
 CREATE INDEX IF NOT EXISTS idx_email_logs_sent_at ON email_logs(sent_at DESC);
 
 -- Create updated_at trigger function
@@ -198,6 +231,14 @@ CREATE TRIGGER update_quote_requests_updated_at BEFORE UPDATE ON quote_requests
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_invoices_updated_at BEFORE UPDATE ON invoices
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_finance_expenses_updated_at ON finance_expenses;
+CREATE TRIGGER update_finance_expenses_updated_at BEFORE UPDATE ON finance_expenses
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_finance_budgets_updated_at ON finance_budgets;
+CREATE TRIGGER update_finance_budgets_updated_at BEFORE UPDATE ON finance_budgets
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Insert default admin user (password: admin123)

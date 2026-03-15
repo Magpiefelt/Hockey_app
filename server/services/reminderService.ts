@@ -44,6 +44,30 @@ const DEFAULT_REMINDER_SCHEDULE: ReminderSchedule = {
   maxReminders: 6
 }
 
+function normalizeReminderOffsets(days: unknown, fallback: number[]): number[] {
+  if (!Array.isArray(days)) return fallback
+
+  return Array.from(
+    new Set(
+      days
+        .map(day => Number(day))
+        .filter(day => Number.isInteger(day) && day >= 0 && day <= 365)
+    )
+  ).sort((a, b) => b - a)
+}
+
+function normalizeReminderSchedule(settings: Partial<ReminderSchedule>): ReminderSchedule {
+  const maxReminders = Number(settings.maxReminders)
+
+  return {
+    daysBefore: normalizeReminderOffsets(settings.daysBefore, DEFAULT_REMINDER_SCHEDULE.daysBefore),
+    daysAfter: normalizeReminderOffsets(settings.daysAfter, DEFAULT_REMINDER_SCHEDULE.daysAfter),
+    maxReminders: Number.isInteger(maxReminders)
+      ? Math.min(20, Math.max(1, maxReminders))
+      : DEFAULT_REMINDER_SCHEDULE.maxReminders
+  }
+}
+
 /**
  * Get reminder settings
  */
@@ -54,7 +78,7 @@ export async function getReminderSettings(): Promise<ReminderSchedule> {
     )
     
     if (result.rows.length > 0 && result.rows[0].value) {
-      return { ...DEFAULT_REMINDER_SCHEDULE, ...result.rows[0].value }
+      return normalizeReminderSchedule({ ...DEFAULT_REMINDER_SCHEDULE, ...result.rows[0].value })
     }
   } catch (error) {
     logger.warn('Could not load reminder settings, using defaults', { error })
@@ -68,7 +92,7 @@ export async function getReminderSettings(): Promise<ReminderSchedule> {
  */
 export async function saveReminderSettings(settings: Partial<ReminderSchedule>): Promise<ReminderSchedule> {
   const currentSettings = await getReminderSettings()
-  const newSettings = { ...currentSettings, ...settings }
+  const newSettings = normalizeReminderSchedule({ ...currentSettings, ...settings })
   
   try {
     await query(
@@ -91,41 +115,84 @@ export async function getPendingReminders(): Promise<PendingReminder[]> {
   const settings = await getReminderSettings()
   
   // Get all unpaid invoices
-  const result = await query(
-    `SELECT 
-      i.quote_id as order_id,
-      i.stripe_invoice_id as invoice_number,
-      i.amount_cents as amount,
-      i.customer_snapshot,
-      i.created_at,
-      qr.contact_name,
-      qr.contact_email,
-      (
-        SELECT COUNT(*) FROM email_logs 
-        WHERE quote_id = i.quote_id 
-        AND template LIKE 'reminder%'
-      ) as reminders_sent,
-      (
-        SELECT MAX(created_at) FROM email_logs 
-        WHERE quote_id = i.quote_id 
-        AND template LIKE 'reminder%'
-      ) as last_reminder_date
-    FROM invoices i
-    JOIN quote_requests qr ON i.quote_id = qr.id
-    WHERE i.status IN ('sent', 'draft')
-    AND qr.status IN ('quoted', 'invoiced')
-    ORDER BY i.created_at`
-  )
+  let result
+  try {
+    result = await query(
+      `SELECT 
+        i.quote_id as order_id,
+        i.stripe_invoice_id as invoice_number,
+        i.amount_cents as amount,
+        i.customer_snapshot,
+        i.created_at,
+        qr.contact_name,
+        qr.contact_email,
+        (
+          SELECT COUNT(*) FROM email_logs 
+          WHERE quote_id = i.quote_id 
+          AND template LIKE 'reminder_%'
+          AND status = 'sent'
+        ) as reminders_sent,
+        (
+          SELECT MAX(COALESCE(sent_at, created_at)) FROM email_logs 
+          WHERE quote_id = i.quote_id 
+          AND template LIKE 'reminder_%'
+          AND status = 'sent'
+        ) as last_reminder_date,
+        EXISTS (
+          SELECT 1
+          FROM settings s
+          WHERE s.key = CONCAT('reminder_paused_', i.quote_id)
+          AND LOWER(COALESCE(s.value->>'paused', 'false')) = 'true'
+        ) as reminders_paused
+      FROM invoices i
+      JOIN quote_requests qr ON i.quote_id = qr.id
+      WHERE i.status IN ('sent', 'draft')
+      AND qr.status IN ('quoted', 'invoiced')
+      ORDER BY i.created_at`
+    )
+  } catch (error) {
+    logger.warn('Could not load paused reminder settings, falling back', { error })
+    result = await query(
+      `SELECT 
+        i.quote_id as order_id,
+        i.stripe_invoice_id as invoice_number,
+        i.amount_cents as amount,
+        i.customer_snapshot,
+        i.created_at,
+        qr.contact_name,
+        qr.contact_email,
+        (
+          SELECT COUNT(*) FROM email_logs 
+          WHERE quote_id = i.quote_id 
+          AND template LIKE 'reminder_%'
+          AND status = 'sent'
+        ) as reminders_sent,
+        (
+          SELECT MAX(COALESCE(sent_at, created_at)) FROM email_logs 
+          WHERE quote_id = i.quote_id 
+          AND template LIKE 'reminder_%'
+          AND status = 'sent'
+        ) as last_reminder_date,
+        false as reminders_paused
+      FROM invoices i
+      JOIN quote_requests qr ON i.quote_id = qr.id
+      WHERE i.status IN ('sent', 'draft')
+      AND qr.status IN ('quoted', 'invoiced')
+      ORDER BY i.created_at`
+    )
+  }
   
   const now = new Date()
   now.setHours(0, 0, 0, 0)
   const pendingReminders: PendingReminder[] = []
   
   for (const row of result.rows) {
+    if (row.reminders_paused === true) continue
+
     const snapshot = row.customer_snapshot || {}
     const dueDate = snapshot.dueDate ? new Date(snapshot.dueDate) : null
     
-    if (!dueDate) continue
+    if (!dueDate || Number.isNaN(dueDate.getTime())) continue
     
     dueDate.setHours(0, 0, 0, 0)
     const daysUntilDue = Math.floor((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
@@ -241,15 +308,22 @@ export async function sendPaymentReminder(reminder: PendingReminder): Promise<bo
     }
 
     // Send email with correct positional arguments
-    await sendEmail(
+    const wasSent = await sendEmail(
       { to: reminder.customerEmail, subject, html: reminderHtml },
       template,
       reminderData,
       reminder.orderId
     )
-    
-    // Log the reminder
-    await logReminder(reminder, 'sent')
+
+    if (!wasSent) {
+      logger.warn('Payment reminder email send failed', {
+        orderId: reminder.orderId,
+        invoiceNumber: reminder.invoiceNumber,
+        type: reminder.reminderType,
+        to: reminder.customerEmail
+      })
+      return false
+    }
     
     logger.info('Payment reminder sent', {
       orderId: reminder.orderId,
@@ -264,42 +338,7 @@ export async function sendPaymentReminder(reminder: PendingReminder): Promise<bo
       orderId: reminder.orderId,
       invoiceNumber: reminder.invoiceNumber
     })
-    
-    await logReminder(reminder, 'failed', error.message)
     return false
-  }
-}
-
-/**
- * Log reminder to database
- */
-async function logReminder(
-  reminder: PendingReminder,
-  status: 'sent' | 'failed',
-  errorMessage?: string
-): Promise<void> {
-  try {
-    await query(
-      `INSERT INTO email_logs (
-        quote_id, 
-        to_email, 
-        subject, 
-        template, 
-        status, 
-        error_message,
-        sent_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
-      [
-        reminder.orderId,
-        reminder.customerEmail,
-        `Payment Reminder - ${reminder.invoiceNumber}`,
-        `reminder_${reminder.reminderType}`,
-        status === 'sent' ? 'sent' : 'failed',
-        errorMessage
-      ]
-    )
-  } catch (error) {
-    logger.warn('Failed to log reminder', { error, orderId: reminder.orderId })
   }
 }
 
@@ -341,22 +380,22 @@ export async function getReminderHistory(orderId: number): Promise<ReminderLog[]
   const result = await query(
     `SELECT 
       id,
-      order_id,
+      quote_id as order_id,
       subject as invoice_number,
       template as reminder_type,
-      created_at as sent_at,
+      COALESCE(sent_at, created_at) as sent_at,
       status as email_status,
       error_message
     FROM email_logs
     WHERE quote_id = $1
-    AND template LIKE 'reminder%'
-    ORDER BY created_at DESC`,
+    AND template LIKE 'reminder_%'
+    ORDER BY COALESCE(sent_at, created_at) DESC`,
     [orderId]
   )
   
   return result.rows.map(row => ({
     id: row.id,
-    orderId: row.order_id,
+    orderId: parseInt(row.order_id) || orderId,
     invoiceNumber: row.invoice_number,
     reminderType: row.reminder_type,
     sentAt: row.sent_at?.toISOString(),
@@ -377,13 +416,13 @@ export async function getReminderStats(): Promise<{
 }> {
   // Total reminders sent
   const totalResult = await query(
-    `SELECT COUNT(*) as count FROM email_logs WHERE template LIKE 'reminder%' AND status = 'sent'`
+    `SELECT COUNT(*) as count FROM email_logs WHERE template LIKE 'reminder_%' AND status = 'sent'`
   )
   
   // Reminders sent this month
   const monthResult = await query(
     `SELECT COUNT(*) as count FROM email_logs 
-     WHERE template LIKE 'reminder%' 
+     WHERE template LIKE 'reminder_%' 
      AND status = 'sent'
      AND DATE_TRUNC('month', created_at) = DATE_TRUNC('month', CURRENT_DATE)`
   )
@@ -468,7 +507,8 @@ export async function areRemindersPaused(orderId: number): Promise<boolean> {
     
     if (result.rows.length > 0) {
       const value = result.rows[0].value
-      return value?.paused === true
+      if (typeof value?.paused === 'boolean') return value.paused
+      if (typeof value?.paused === 'string') return value.paused.toLowerCase() === 'true'
     }
   } catch {
     // Settings table may not exist yet

@@ -108,7 +108,7 @@ const formattedValue = computed(() => {
       // Assuming value is in cents
       return new Intl.NumberFormat('en-US', {
         style: 'currency',
-        currency: 'USD',
+        currency: 'CAD',
         minimumFractionDigits: 0,
         maximumFractionDigits: 0
       }).format(props.value / 100)

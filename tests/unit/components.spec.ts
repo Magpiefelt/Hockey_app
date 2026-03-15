@@ -59,7 +59,7 @@ describe('TrendChart Component', () => {
   it('should support value formatting options', () => {
     const content = readFileSync(componentPath, 'utf-8')
     expect(content).toContain('formatTooltipValue')
-    expect(content).toContain("currency: 'USD'")
+    expect(content).toContain("currency: 'CAD'")
   })
 
   it('should clean up chart on unmount', () => {

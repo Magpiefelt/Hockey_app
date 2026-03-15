@@ -151,7 +151,7 @@ export const packagesRouter = router({
       name: z.string().min(1).max(100),
       description: z.string().optional(),
       priceCents: z.number().int().min(0),
-      currency: z.string().default('usd'),
+      currency: z.string().default('cad'),
       isPopular: z.boolean().default(false),
       features: z.array(z.string()).optional(),
       icon: z.string().max(10).optional(),

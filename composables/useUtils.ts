@@ -10,7 +10,7 @@ export const useUtils = () => {
       if (value === null || value === undefined) return 'N/A'
       return new Intl.NumberFormat('en-US', {
         style: 'currency',
-        currency: 'USD'
+        currency: 'CAD'
       }).format(value / 100) // Assuming value is in cents
     },
 
@@ -21,7 +21,7 @@ export const useUtils = () => {
       if (value === null || value === undefined) return 'N/A'
       return new Intl.NumberFormat('en-US', {
         style: 'currency',
-        currency: 'USD'
+        currency: 'CAD'
       }).format(value / 100) // Assuming value is in cents
     },
 

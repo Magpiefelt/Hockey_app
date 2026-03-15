@@ -6,7 +6,93 @@
 import { z } from 'zod'
 import { router, adminProcedure } from '../trpc'
 import { query } from '../../db/connection'
-import { calculateTax, getTaxRates, getProvinceName, getSupportedProvinces } from '../../utils/tax'
+import { getTaxRates, getProvinceName, getSupportedProvinces } from '../../utils/tax'
+
+interface TaxReportOrderRow {
+  orderId: number
+  customerName: string
+  customerEmail: string
+  orderDate: string
+  paymentDate: string
+  province: string
+  provinceName: string
+  service: string
+  subtotal: number
+  gst: number
+  pst: number
+  hst: number
+  totalTax: number
+  total: number
+}
+
+interface TaxReportSummaryRow {
+  subtotal: number
+  gst: number
+  pst: number
+  hst: number
+  totalTax: number
+  total: number
+  orderCount: number
+}
+
+function escapeCsvCell(value: unknown): string {
+  const raw = String(value ?? '')
+  if (/[",\n]/.test(raw)) {
+    return `"${raw.replace(/"/g, '""')}"`
+  }
+  return raw
+}
+
+export function buildTaxReportCsv(orders: TaxReportOrderRow[], summary: TaxReportSummaryRow): string {
+  const headers = [
+    'Order ID',
+    'Customer Name',
+    'Customer Email',
+    'Order Date',
+    'Payment Date',
+    'Province',
+    'Service',
+    'Subtotal',
+    'GST',
+    'PST',
+    'HST',
+    'Total Tax',
+    'Total'
+  ]
+
+  const orderRows = orders.map(order => [
+    order.orderId,
+    order.customerName,
+    order.customerEmail,
+    order.orderDate,
+    order.paymentDate,
+    order.provinceName || order.province,
+    order.service,
+    (order.subtotal / 100).toFixed(2),
+    (order.gst / 100).toFixed(2),
+    (order.pst / 100).toFixed(2),
+    (order.hst / 100).toFixed(2),
+    (order.totalTax / 100).toFixed(2),
+    (order.total / 100).toFixed(2)
+  ])
+
+  const summaryRows = [
+    [],
+    ['SUMMARY'],
+    ['Total Orders', summary.orderCount],
+    ['Subtotal', '', '', '', '', '', '', (summary.subtotal / 100).toFixed(2)],
+    ['GST', '', '', '', '', '', '', '', (summary.gst / 100).toFixed(2)],
+    ['PST', '', '', '', '', '', '', '', '', (summary.pst / 100).toFixed(2)],
+    ['HST', '', '', '', '', '', '', '', '', '', (summary.hst / 100).toFixed(2)],
+    ['Total Tax', '', '', '', '', '', '', '', '', '', '', (summary.totalTax / 100).toFixed(2)],
+    ['Grand Total', '', '', '', '', '', '', '', '', '', '', '', (summary.total / 100).toFixed(2)]
+  ]
+
+  const lines = [headers, ...orderRows, ...summaryRows]
+  return lines
+    .map(line => line.map(escapeCsvCell).join(','))
+    .join('\n')
+}
 
 export const financeRouter = router({
   /**
@@ -39,6 +125,31 @@ export const financeRouter = router({
          AND DATE_TRUNC('month', created_at) = DATE_TRUNC('month', CURRENT_DATE)`
       )
       const monthlyRevenue = monthlyResult.rows.length > 0 ? parseFloat(monthlyResult.rows[0].revenue) || 0 : 0
+
+      // Expense tracking (if expense tables are available)
+      let yearToDateExpenses = 0
+      let monthlyExpenses = 0
+      try {
+        const ytdExpensesResult = await query(
+          `SELECT COALESCE(SUM(amount_cents), 0) as total
+           FROM finance_expenses
+           WHERE EXTRACT(YEAR FROM incurred_on) = EXTRACT(YEAR FROM CURRENT_DATE)`
+        )
+        yearToDateExpenses = ytdExpensesResult.rows.length > 0
+          ? parseFloat(ytdExpensesResult.rows[0].total) || 0
+          : 0
+
+        const monthlyExpensesResult = await query(
+          `SELECT COALESCE(SUM(amount_cents), 0) as total
+           FROM finance_expenses
+           WHERE DATE_TRUNC('month', incurred_on) = DATE_TRUNC('month', CURRENT_DATE)`
+        )
+        monthlyExpenses = monthlyExpensesResult.rows.length > 0
+          ? parseFloat(monthlyExpensesResult.rows[0].total) || 0
+          : 0
+      } catch {
+        // Expense tracking may not be migrated yet
+      }
       
       // Last month revenue (for comparison)
       const lastMonthResult = await query(
@@ -198,6 +309,10 @@ export const financeRouter = router({
         totalRevenue,
         yearToDateRevenue,
         monthlyRevenue,
+        yearToDateExpenses,
+        monthlyExpenses,
+        yearToDateNetRevenue: yearToDateRevenue - yearToDateExpenses,
+        monthlyNetRevenue: monthlyRevenue - monthlyExpenses,
         lastMonthRevenue,
         pendingPayments,
         paidOrderCount,
@@ -410,7 +525,7 @@ export const financeRouter = router({
       format: z.enum(['json', 'csv']).default('json')
     }))
     .query(async ({ input }) => {
-      const { year, quarter } = input
+      const { year, quarter, format } = input
       let periodLabel = `${year}`
       
       const exportParams: any[] = [year]
@@ -481,8 +596,8 @@ export const financeRouter = router({
           orderId: row.order_id,
           customerName: row.customer_name,
           customerEmail: row.customer_email,
-          orderDate: row.order_date?.toISOString().split('T')[0],
-          paymentDate: row.payment_date?.toISOString().split('T')[0],
+          orderDate: row.order_date?.toISOString().split('T')[0] || '',
+          paymentDate: row.payment_date?.toISOString().split('T')[0] || '',
           province: row.province,
           provinceName: getProvinceName(row.province),
           service: row.service,
@@ -506,12 +621,23 @@ export const financeRouter = router({
         orderCount: acc.orderCount + 1
       }), { subtotal: 0, gst: 0, pst: 0, hst: 0, totalTax: 0, total: 0, orderCount: 0 })
       
-      return {
+      const payload = {
         period: periodLabel,
         generatedAt: new Date().toISOString(),
         orders,
         summary
       }
+
+      if (format === 'csv') {
+        return {
+          ...payload,
+          filename: `tax-report-${periodLabel.replace(/\s+/g, '-').toLowerCase()}.csv`,
+          mimeType: 'text/csv',
+          content: buildTaxReportCsv(orders, summary)
+        }
+      }
+
+      return payload
     }),
 
   /**

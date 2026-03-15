@@ -126,7 +126,7 @@ function getPercentage(count: number): number {
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'CAD',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0
   }).format(value / 100)

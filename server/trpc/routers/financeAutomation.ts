@@ -12,6 +12,7 @@ import * as taxService from '../../services/taxService'
 import * as invoiceService from '../../services/invoiceService'
 import * as reminderService from '../../services/reminderService'
 import * as reportingService from '../../services/reportingService'
+import * as expenseService from '../../services/expenseService'
 
 export const financeAutomationRouter = router({
   // ==================== TAX MANAGEMENT ====================
@@ -297,6 +298,119 @@ export const financeAutomationRouter = router({
     .mutation(async ({ input }) => {
       await reminderService.resumeReminders(input.orderId)
       return { success: true }
+    }),
+
+  // ==================== EXPENSES & BUDGETS ====================
+
+  /**
+   * Get expense summary for period
+   */
+  getExpenseSummary: adminProcedure
+    .input(z.object({
+      startDate: z.string().optional(),
+      endDate: z.string().optional()
+    }).optional())
+    .query(async ({ input }) => {
+      return expenseService.getExpenseSummary({
+        startDate: input?.startDate,
+        endDate: input?.endDate
+      })
+    }),
+
+  /**
+   * List expenses with optional filters
+   */
+  listExpenses: adminProcedure
+    .input(z.object({
+      page: z.number().min(1).default(1).optional(),
+      limit: z.number().min(1).max(100).default(20).optional(),
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
+      category: z.string().optional()
+    }).optional())
+    .query(async ({ input }) => {
+      return expenseService.listExpenses({
+        page: input?.page,
+        limit: input?.limit,
+        startDate: input?.startDate,
+        endDate: input?.endDate,
+        category: input?.category
+      })
+    }),
+
+  /**
+   * Create expense record
+   */
+  createExpense: adminProcedure
+    .input(z.object({
+      description: z.string().min(1).max(255),
+      category: z.string().optional(),
+      amountCents: z.number().int().positive(),
+      incurredOn: z.string(),
+      vendor: z.string().max(120).optional(),
+      notes: z.string().max(2000).optional()
+    }))
+    .mutation(async ({ input, ctx }) => {
+      return expenseService.createExpense({
+        ...input,
+        createdBy: ctx.user?.userId
+      })
+    }),
+
+  /**
+   * Update an expense record
+   */
+  updateExpense: adminProcedure
+    .input(z.object({
+      expenseId: z.number().int().positive(),
+      description: z.string().min(1).max(255).optional(),
+      category: z.string().optional(),
+      amountCents: z.number().int().positive().optional(),
+      incurredOn: z.string().optional(),
+      vendor: z.string().max(120).optional(),
+      notes: z.string().max(2000).optional()
+    }))
+    .mutation(async ({ input }) => {
+      const { expenseId, ...updates } = input
+      return expenseService.updateExpense(expenseId, updates)
+    }),
+
+  /**
+   * Delete expense record
+   */
+  deleteExpense: adminProcedure
+    .input(z.object({
+      expenseId: z.number().int().positive()
+    }))
+    .mutation(async ({ input }) => {
+      await expenseService.deleteExpense(input.expenseId)
+      return { success: true }
+    }),
+
+  /**
+   * Set category budget for a month
+   */
+  upsertBudget: adminProcedure
+    .input(z.object({
+      year: z.number().min(2000).max(2100),
+      month: z.number().min(1).max(12),
+      category: z.string(),
+      amountCents: z.number().int().nonnegative()
+    }))
+    .mutation(async ({ input }) => {
+      return expenseService.upsertBudget(input)
+    }),
+
+  /**
+   * Compare monthly budgets to actual expenses
+   */
+  getBudgetVsActual: adminProcedure
+    .input(z.object({
+      year: z.number().min(2000).max(2100),
+      month: z.number().min(1).max(12)
+    }))
+    .query(async ({ input }) => {
+      return expenseService.getBudgetVsActual(input)
     }),
   
   // ==================== REPORTING ====================

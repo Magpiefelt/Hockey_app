@@ -157,7 +157,7 @@ export function formatTaxBreakdown(breakdown: TaxBreakdown): {
   const format = (cents: number) => 
     new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'USD'
+      currency: 'CAD'
     }).format(cents / 100)
   
   return {

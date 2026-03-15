@@ -384,6 +384,64 @@ const EMBEDDED_MIGRATIONS: EmbeddedMigration[] = [
         ('Dave Richardson', 'Arena Manager, Southland Leisure Centre', 'Professional, reliable, and incredibly talented. Elite Sports DJ brings an energy to our events that keeps fans coming back. Highly recommended!', 5, 3)
       ON CONFLICT DO NOTHING;
     `
+  },
+  {
+    id: 17,
+    name: 'add_finance_expenses_and_budgets',
+    filename: '017_add_finance_expenses_and_budgets.sql',
+    sql: `
+      CREATE TABLE IF NOT EXISTS finance_expenses (
+        id SERIAL PRIMARY KEY,
+        description VARCHAR(255) NOT NULL,
+        category VARCHAR(50) NOT NULL,
+        amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
+        incurred_on DATE NOT NULL,
+        vendor VARCHAR(120),
+        notes TEXT,
+        created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_finance_expenses_incurred_on ON finance_expenses(incurred_on DESC);
+      CREATE INDEX IF NOT EXISTS idx_finance_expenses_category ON finance_expenses(category);
+
+      DROP TRIGGER IF EXISTS update_finance_expenses_updated_at ON finance_expenses;
+      CREATE TRIGGER update_finance_expenses_updated_at
+        BEFORE UPDATE ON finance_expenses
+        FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+      CREATE TABLE IF NOT EXISTS finance_budgets (
+        id SERIAL PRIMARY KEY,
+        year INTEGER NOT NULL CHECK (year >= 2000 AND year <= 2100),
+        month INTEGER NOT NULL CHECK (month >= 1 AND month <= 12),
+        category VARCHAR(50) NOT NULL,
+        amount_cents INTEGER NOT NULL CHECK (amount_cents >= 0),
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE (year, month, category)
+      );
+      CREATE INDEX IF NOT EXISTS idx_finance_budgets_month_year ON finance_budgets(year, month);
+      CREATE INDEX IF NOT EXISTS idx_finance_budgets_category ON finance_budgets(category);
+
+      DROP TRIGGER IF EXISTS update_finance_budgets_updated_at ON finance_budgets;
+      CREATE TRIGGER update_finance_budgets_updated_at
+        BEFORE UPDATE ON finance_budgets
+        FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    `
+  },
+  {
+    id: 18,
+    name: 'standardize_cad_currency',
+    filename: '018_standardize_cad_currency.sql',
+    sql: `
+      ALTER TABLE packages ALTER COLUMN currency SET DEFAULT 'cad';
+      ALTER TABLE invoices ALTER COLUMN currency SET DEFAULT 'cad';
+      ALTER TABLE payments ALTER COLUMN currency SET DEFAULT 'cad';
+
+      UPDATE packages SET currency = 'cad' WHERE LOWER(currency) = 'usd';
+      UPDATE invoices SET currency = 'cad' WHERE LOWER(currency) = 'usd';
+      UPDATE payments SET currency = 'cad' WHERE LOWER(currency) = 'usd';
+    `
   }
 ]
 

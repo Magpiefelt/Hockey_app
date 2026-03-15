@@ -46,7 +46,7 @@
             <div>
               <label for="quoted-amount" class="block text-sm font-medium text-slate-300 mb-2">
                 Quoted Amount
-                <span class="text-slate-500 font-normal ml-1">(USD)</span>
+                <span class="text-slate-500 font-normal ml-1">(CAD)</span>
               </label>
               <div class="relative">
                 <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">$</span>
@@ -70,7 +70,7 @@
             <div>
               <label for="total-amount" class="block text-sm font-medium text-slate-300 mb-2">
                 Total Amount
-                <span class="text-slate-500 font-normal ml-1">(USD)</span>
+                <span class="text-slate-500 font-normal ml-1">(CAD)</span>
               </label>
               <div class="relative">
                 <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">$</span>

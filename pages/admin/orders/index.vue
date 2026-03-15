@@ -659,7 +659,7 @@ const getInitials = (name: string) => {
 const formatPrice = (cents: number) => {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'CAD',
     minimumFractionDigits: 0
   }).format(cents / 100)
 }
