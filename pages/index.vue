@@ -940,6 +940,8 @@ interface HomeEventHighlight {
   date: string
   title: string
   category: string
+  location?: string | null
+  description?: string | null
   lifecycle: 'upcoming' | 'recent'
 }
 

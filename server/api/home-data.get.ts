@@ -96,100 +96,33 @@ export default defineEventHandler(async (event) => {
 
   // --- Event highlights (public-safe marketing data) ---
   try {
-    let eventResult
-    try {
-      eventResult = await query(
-        `WITH events AS (
-           SELECT
-             qr.event_date,
-             qr.status,
-             NULLIF(TRIM(fs.team_name), '') AS team_name,
-             NULLIF(TRIM(qr.organization), '') AS organization,
-             NULLIF(TRIM(qr.sport_type), '') AS sport_type,
-             NULLIF(TRIM(qr.service_type), '') AS service_type
-           FROM quote_requests qr
-           LEFT JOIN form_submissions fs ON fs.quote_id = qr.id
-           WHERE qr.status IN ('paid', 'confirmed', 'in_progress', 'completed')
-             AND qr.event_date IS NOT NULL
-             AND qr.event_date >= CURRENT_DATE - INTERVAL '120 days'
-         ),
-         labeled AS (
-           SELECT
-             event_date,
-             CASE
-               WHEN team_name IS NOT NULL THEN team_name
-               WHEN organization IS NOT NULL THEN organization
-               WHEN sport_type IS NOT NULL THEN INITCAP(REPLACE(sport_type, '-', ' ')) || ' Event'
-               WHEN service_type IS NOT NULL THEN INITCAP(REPLACE(service_type, '-', ' ')) || ' Event'
-               ELSE 'Sports Event'
-             END AS title,
-             CASE
-               WHEN sport_type IS NOT NULL THEN INITCAP(REPLACE(sport_type, '-', ' '))
-               WHEN service_type IS NOT NULL THEN INITCAP(REPLACE(service_type, '-', ' '))
-               ELSE 'Live Event'
-             END AS category,
-             CASE WHEN event_date >= CURRENT_DATE THEN 'upcoming' ELSE 'recent' END AS lifecycle
-           FROM events
-         )
-         SELECT event_date, title, category, lifecycle
-         FROM labeled
-         ORDER BY
-           CASE WHEN lifecycle = 'upcoming' THEN 0 ELSE 1 END,
-           CASE WHEN lifecycle = 'upcoming' THEN event_date END ASC,
-           CASE WHEN lifecycle = 'recent' THEN event_date END DESC
-         LIMIT 14`
-      )
-    } catch (eventErr: any) {
-      // Graceful fallback if form_submissions table is not available
-      if (eventErr?.code === '42P01') {
-        eventResult = await query(
-          `WITH events AS (
-             SELECT
-               qr.event_date,
-               qr.status,
-               NULL::text AS team_name,
-               NULLIF(TRIM(qr.organization), '') AS organization,
-               NULLIF(TRIM(qr.sport_type), '') AS sport_type,
-               NULLIF(TRIM(qr.service_type), '') AS service_type
-             FROM quote_requests qr
-             WHERE qr.status IN ('paid', 'confirmed', 'in_progress', 'completed')
-               AND qr.event_date IS NOT NULL
-               AND qr.event_date >= CURRENT_DATE - INTERVAL '120 days'
-           ),
-           labeled AS (
-             SELECT
-               event_date,
-               CASE
-                 WHEN organization IS NOT NULL THEN organization
-                 WHEN sport_type IS NOT NULL THEN INITCAP(REPLACE(sport_type, '-', ' ')) || ' Event'
-                 WHEN service_type IS NOT NULL THEN INITCAP(REPLACE(service_type, '-', ' ')) || ' Event'
-                 ELSE 'Sports Event'
-               END AS title,
-               CASE
-                 WHEN sport_type IS NOT NULL THEN INITCAP(REPLACE(sport_type, '-', ' '))
-                 WHEN service_type IS NOT NULL THEN INITCAP(REPLACE(service_type, '-', ' '))
-                 ELSE 'Live Event'
-               END AS category,
-               CASE WHEN event_date >= CURRENT_DATE THEN 'upcoming' ELSE 'recent' END AS lifecycle
-             FROM events
-           )
-           SELECT event_date, title, category, lifecycle
-           FROM labeled
-           ORDER BY
-             CASE WHEN lifecycle = 'upcoming' THEN 0 ELSE 1 END,
-             CASE WHEN lifecycle = 'upcoming' THEN event_date END ASC,
-             CASE WHEN lifecycle = 'recent' THEN event_date END DESC
-           LIMIT 14`
-        )
-      } else {
-        throw eventErr
-      }
-    }
+    const eventResult = await query(
+      `SELECT
+         event_date,
+         title,
+         category,
+         location,
+         description,
+         CASE WHEN event_date >= CURRENT_DATE THEN 'upcoming' ELSE 'recent' END AS lifecycle
+       FROM public_event_highlights
+       WHERE is_visible = TRUE
+         AND event_date IS NOT NULL
+         AND event_date >= CURRENT_DATE - INTERVAL '120 days'
+       ORDER BY
+         CASE WHEN event_date >= CURRENT_DATE THEN 0 ELSE 1 END,
+         CASE WHEN event_date >= CURRENT_DATE THEN event_date END ASC,
+         CASE WHEN event_date < CURRENT_DATE THEN event_date END DESC,
+         display_order ASC,
+         id DESC
+       LIMIT 20`
+    )
 
     result.eventHighlights = eventResult.rows.map((row: any) => ({
       date: row.event_date,
       title: row.title,
       category: row.category,
+      location: row.location || null,
+      description: row.description || null,
       lifecycle: row.lifecycle
     }))
 
@@ -200,8 +133,8 @@ export default defineEventHandler(async (event) => {
          COUNT(*) FILTER (
            WHERE DATE_TRUNC('month', event_date) = DATE_TRUNC('month', CURRENT_DATE)
          ) AS this_month_count
-       FROM quote_requests
-       WHERE status IN ('paid', 'confirmed', 'in_progress', 'completed')
+       FROM public_event_highlights
+       WHERE is_visible = TRUE
          AND event_date IS NOT NULL
          AND event_date >= CURRENT_DATE - INTERVAL '120 days'`
     )
@@ -213,7 +146,7 @@ export default defineEventHandler(async (event) => {
       thisMonthCount: Number(summary?.this_month_count || 0)
     }
   } catch (err) {
-    logger.warn('home-data: failed to fetch event highlights', err as Error)
+    logger.warn('home-data: failed to fetch event highlights (or table missing)', err as Error)
   }
 
   return result

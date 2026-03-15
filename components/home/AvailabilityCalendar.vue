@@ -103,6 +103,7 @@
                       >
                         <p class="text-sm font-semibold text-white">{{ eventItem.title }}</p>
                         <p class="text-xs text-slate-300">{{ formatDate(eventItem.parsedDate) }} • {{ eventItem.category }}</p>
+                        <p v-if="eventItem.location" class="text-xs text-slate-400">{{ eventItem.location }}</p>
                       </li>
                     </ul>
                     <p v-if="upcomingHighlights.length === 0" class="text-xs text-slate-400">
@@ -119,6 +120,7 @@
                       >
                         <p class="text-sm font-semibold text-white">{{ eventItem.title }}</p>
                         <p class="text-xs text-slate-300">{{ formatDate(eventItem.parsedDate) }} • {{ eventItem.category }}</p>
+                        <p v-if="eventItem.location" class="text-xs text-slate-400">{{ eventItem.location }}</p>
                       </li>
                     </ul>
                     <p v-if="recentHighlights.length === 0" class="text-xs text-slate-400">
@@ -205,6 +207,9 @@
                 >
                   We’re attending {{ selectedDateHighlight.title }} on this date
                 </div>
+                <div v-if="selectedDateHighlight?.description" class="mt-2 text-xs text-slate-300">
+                  {{ selectedDateHighlight.description }}
+                </div>
                 <NuxtLink
                   :to="requestLinkForSelectedDate"
                   class="mt-4 inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 px-5 py-2.5 text-sm font-bold text-white transition-transform hover:scale-105"
@@ -265,6 +270,8 @@ interface EventHighlight {
   date: string
   title: string
   category: string
+  location?: string | null
+  description?: string | null
   lifecycle: 'upcoming' | 'recent'
 }
 
