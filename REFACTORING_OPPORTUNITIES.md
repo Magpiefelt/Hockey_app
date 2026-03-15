@@ -1,5 +1,8 @@
 # Refactoring & Wrapper Opportunities
 
+> **Status:** Opportunities 1-6 and 8 have been implemented. See the
+> Implementation Status section at the bottom for details.
+
 This document identifies the largest files in the codebase, the cross-cutting
 patterns that make them hard to maintain, and concrete extraction/wrapper
 proposals with estimated line savings and priority.
@@ -359,35 +362,37 @@ emails customizable from the admin UI.
 
 ## Summary Table
 
-| # | Opportunity | Est. line savings | Risk | Priority |
-|---|-------------|------------------:|------|----------|
-| 1 | Split `admin.ts` into sub-routers | ~0 (structural) | Low | **HIGH** |
-| 2 | Unify email core helpers | ~120 | Low | **HIGH** |
-| 3 | Resilient query wrapper | ~200 | Low | **MEDIUM** |
-| 4 | Shared SQL status constants | ~50 (literals) | Low | **MEDIUM** |
-| 5 | Deduplicate quote-detail fetch | ~120 | Low | **HIGH** |
-| 6 | Shared email HTML layout | ~500 | Low | **MEDIUM** |
-| 7 | SQL filter builder utility | ~150 | Low | **LOW-MEDIUM** |
-| 8 | Shared `getAppBaseUrl()` | ~30 | Low | **LOW** |
-| 9 | Deduplicate admin/finance stats | ~90 | Low | **LOW-MEDIUM** |
-| 10 | Use managed templates for status emails | ~60 | Low | **LOW** |
-
-**Total estimated reduction:** ~1300+ lines of duplicated or boilerplate code.
+| # | Opportunity | Est. line savings | Risk | Priority | Status |
+|---|-------------|------------------:|------|----------|--------|
+| 1 | Split `admin.ts` into sub-routers | ~0 (structural) | Low | **HIGH** | **DONE** |
+| 2 | Unify email core helpers | ~120 | Low | **HIGH** | **DONE** |
+| 3 | Resilient query wrapper | ~200 | Low | **MEDIUM** | **DONE** |
+| 4 | Shared SQL status constants | ~50 (literals) | Low | **MEDIUM** | **DONE** |
+| 5 | Deduplicate quote-detail fetch | ~120 | Low | **HIGH** | **DONE** |
+| 6 | Shared email HTML layout | ~500 | Low | **MEDIUM** | **DONE** |
+| 7 | SQL filter builder utility | ~150 | Low | **LOW-MEDIUM** | Remaining |
+| 8 | Shared `getAppBaseUrl()` | ~30 | Low | **LOW** | **DONE** |
+| 9 | Deduplicate admin/finance stats | ~90 | Low | **LOW-MEDIUM** | Remaining |
+| 10 | Use managed templates for status emails | ~60 | Low | **LOW** | Remaining |
 
 ---
 
-## Recommended Implementation Order
+## Implementation Status
 
-1. **Opportunity 2** (email core) – quick win, removes the most dangerous
-   duplication
-2. **Opportunity 5** (quote-public dedup) – focused on one file, easy to test
-3. **Opportunity 8** (shared config) – 5-minute change, unblocks others
-4. **Opportunity 1** (split admin.ts) – biggest structural improvement; do
-   after #2 and #5 so the new sub-files are already smaller
-5. **Opportunity 3** (resilient query) – apply file-by-file after #1
-6. **Opportunity 4** (SQL constants) – mechanical find-and-replace
-7. **Opportunity 6** (email layout) – large savings but needs design review
-   for template flexibility
-8. **Opportunity 7** (filter builder) – nice-to-have
-9. **Opportunity 9** (admin/finance dedup) – needs frontend coordination
-10. **Opportunity 10** (managed status templates) – last, lowest risk
+### Completed (7 of 10)
+
+| Opportunity | New files created | Key changes |
+|------------|-------------------|-------------|
+| **#8** Shared config | `server/utils/config.ts` | Unified `getAppBaseUrl()`, `getAdminEmail()`, `getBusinessName()`, `getSupportEmail()` |
+| **#2** Email core | `server/utils/email-core.ts` | Extracted `logEmail()` and `sendEmailCore()` from both `email.ts` and `email-enhanced.ts` |
+| **#5** Quote dedup | — | Extracted `fetchQuoteDetails()` in `quote-public.ts` |
+| **#3** Resilient query | `server/utils/resilient-query.ts` | `queryWithFallback()` and `querySafe()` wrappers |
+| **#4** SQL constants | — | Added `PAID_STATUS_SQL`, `PENDING_PAYMENT_SQL`, `ACTIVE_STATUS_SQL` to `order-status.ts` |
+| **#1** Admin split | `server/trpc/routers/admin/` | Split 1643-line monolith into `index.ts` (356), `orders.ts` (582), `emails.ts` (405) |
+| **#6** Email layout | `server/utils/email-layout.ts` | `wrapEmailLayout()` removes ~70 lines of HTML boilerplate per email function |
+
+### Remaining (3 of 10)
+
+- **#7** SQL filter builder – nice-to-have utility for parameterized WHERE clauses
+- **#9** Admin/finance stats dedup – requires frontend coordination to verify which endpoint is used
+- **#10** Managed templates for status notifications – low priority correctness improvement
