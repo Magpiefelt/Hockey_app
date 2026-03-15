@@ -57,6 +57,112 @@ const quoteAuthedActionProcedure = protectedProcedure.use(rateLimit({
   message: 'Too many quote actions'
 }))
 
+/**
+ * Fetch quote details and revision notes for a given order.
+ * Shared by both authenticated and token-based endpoints.
+ */
+async function fetchQuoteDetails(orderId: number) {
+  let result
+  try {
+    result = await query(
+      `SELECT 
+        qr.id, qr.user_id, qr.contact_name, qr.contact_email,
+        qr.status, qr.quoted_amount, qr.event_date, qr.sport_type,
+        qr.quote_expires_at, qr.current_quote_version, qr.admin_notes,
+        qr.event_datetime, qr.event_time,
+        p.name as package_name, p.description as package_description,
+        fs.team_name
+       FROM quote_requests qr
+       LEFT JOIN packages p ON qr.package_id = p.id
+       LEFT JOIN form_submissions fs ON qr.id = fs.quote_id
+       WHERE qr.id = $1`,
+      [orderId]
+    )
+  } catch {
+    try {
+      result = await query(
+        `SELECT 
+          qr.id, qr.user_id, qr.contact_name, qr.contact_email,
+          qr.status, qr.quoted_amount, qr.event_date, qr.sport_type,
+          qr.admin_notes,
+          NULL as quote_expires_at, 1 as current_quote_version,
+          NULL as event_datetime, NULL as event_time,
+          p.name as package_name, p.description as package_description,
+          NULL as team_name
+         FROM quote_requests qr
+         LEFT JOIN packages p ON qr.package_id = p.id
+         WHERE qr.id = $1`,
+        [orderId]
+      )
+    } catch {
+      result = await query(
+        `SELECT 
+          qr.id, qr.user_id, qr.contact_name, qr.contact_email,
+          qr.status, qr.quoted_amount, qr.event_date, qr.sport_type,
+          qr.admin_notes,
+          NULL as quote_expires_at, 1 as current_quote_version,
+          NULL as event_datetime, NULL as event_time,
+          p.name as package_name, p.description as package_description,
+          NULL as team_name
+         FROM quote_requests qr
+         LEFT JOIN packages p ON qr.package_id = p.id
+         WHERE qr.id = $1`,
+        [orderId]
+      )
+    }
+  }
+
+  if (result.rows.length === 0) {
+    throw new TRPCError({ code: 'NOT_FOUND', message: 'Quote not found' })
+  }
+
+  const order = result.rows[0]
+
+  if (!order.quoted_amount) {
+    throw new TRPCError({
+      code: 'BAD_REQUEST',
+      message: 'No quote has been provided for this order yet'
+    })
+  }
+
+  let quoteNotes: string | null = null
+  try {
+    const notesResult = await query(
+      `SELECT notes FROM quote_revisions 
+       WHERE quote_id = $1 
+       ORDER BY version DESC LIMIT 1`,
+      [orderId]
+    )
+    if (notesResult.rows.length > 0) {
+      quoteNotes = notesResult.rows[0].notes
+    }
+  } catch {
+    // quote_revisions table may not exist yet
+  }
+
+  return {
+    order,
+    dto: {
+      id: order.id.toString(),
+      customerName: order.contact_name,
+      customerEmail: order.contact_email,
+      status: order.status,
+      quotedAmount: order.quoted_amount,
+      packageName: order.package_name,
+      packageDescription: order.package_description,
+      teamName: order.team_name,
+      sportType: order.sport_type,
+      eventDate: order.event_date?.toISOString(),
+      eventDateTime: order.event_datetime?.toISOString() || null,
+      eventTime: order.event_time || null,
+      expiresAt: order.quote_expires_at?.toISOString() || null,
+      isExpired: false,
+      version: order.current_quote_version || 1,
+      notes: quoteNotes
+    }
+  }
+}
+
 export const quotePublicRouter = router({
   /**
    * Get quote details for customer view (authenticated)
@@ -66,121 +172,16 @@ export const quotePublicRouter = router({
       orderId: z.number()
     }))
     .query(async ({ input, ctx }) => {
-      // Use a safe query that handles missing columns
-      let result
-      try {
-        result = await query(
-          `SELECT 
-            qr.id, qr.user_id, qr.contact_name, qr.contact_email,
-            qr.status, qr.quoted_amount, qr.event_date, qr.sport_type,
-            qr.quote_expires_at, qr.current_quote_version, qr.admin_notes,
-            qr.event_datetime, qr.event_time,
-            p.name as package_name, p.description as package_description,
-            fs.team_name
-           FROM quote_requests qr
-           LEFT JOIN packages p ON qr.package_id = p.id
-           LEFT JOIN form_submissions fs ON qr.id = fs.quote_id
-           WHERE qr.id = $1`,
-          [input.orderId]
-        )
-      } catch {
-        // Fallback if new columns or tables don't exist yet
-        try {
-          result = await query(
-            `SELECT 
-              qr.id, qr.user_id, qr.contact_name, qr.contact_email,
-              qr.status, qr.quoted_amount, qr.event_date, qr.sport_type,
-              qr.admin_notes,
-              NULL as quote_expires_at, 1 as current_quote_version,
-              NULL as event_datetime, NULL as event_time,
-              p.name as package_name, p.description as package_description,
-              NULL as team_name
-             FROM quote_requests qr
-             LEFT JOIN packages p ON qr.package_id = p.id
-             WHERE qr.id = $1`,
-            [input.orderId]
-          )
-        } catch {
-          // Final fallback without organization/notes columns
-          result = await query(
-            `SELECT 
-              qr.id, qr.user_id, qr.contact_name, qr.contact_email,
-              qr.status, qr.quoted_amount, qr.event_date, qr.sport_type,
-              qr.admin_notes,
-              NULL as quote_expires_at, 1 as current_quote_version,
-              NULL as event_datetime, NULL as event_time,
-              p.name as package_name, p.description as package_description,
-              NULL as team_name
-             FROM quote_requests qr
-             LEFT JOIN packages p ON qr.package_id = p.id
-             WHERE qr.id = $1`,
-            [input.orderId]
-          )
-        }
-      }
-      
-      if (result.rows.length === 0) {
-        throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: 'Quote not found'
-        })
-      }
-      
-      const order = result.rows[0]
-      
-      // Check ownership
+      const { order, dto } = await fetchQuoteDetails(input.orderId)
+
       if (order.user_id !== ctx.user.userId && ctx.user.role !== 'admin') {
         throw new TRPCError({
           code: 'FORBIDDEN',
           message: 'Not authorized to view this quote'
         })
       }
-      
-      // Check if quote exists
-      if (!order.quoted_amount) {
-        throw new TRPCError({
-          code: 'BAD_REQUEST',
-          message: 'No quote has been provided for this order yet'
-        })
-      }
-      
-      // Note: Quote expiration is no longer enforced
-      const isExpired = false
-      
-      // Get latest quote notes from revisions if available
-      let quoteNotes = null
-      try {
-        const notesResult = await query(
-          `SELECT notes FROM quote_revisions 
-           WHERE quote_id = $1 
-           ORDER BY version DESC LIMIT 1`,
-          [input.orderId]
-        )
-        if (notesResult.rows.length > 0) {
-          quoteNotes = notesResult.rows[0].notes
-        }
-      } catch (err) {
-        // Table might not exist
-      }
-      
-      return {
-        id: order.id.toString(),
-        customerName: order.contact_name,
-        customerEmail: order.contact_email,
-        status: order.status,
-        quotedAmount: order.quoted_amount,
-        packageName: order.package_name,
-        packageDescription: order.package_description,
-        teamName: order.team_name,
-        sportType: order.sport_type,
-        eventDate: order.event_date?.toISOString(),
-        eventDateTime: order.event_datetime?.toISOString() || null,
-        eventTime: order.event_time || null,
-        expiresAt: order.quote_expires_at?.toISOString() || null,
-        isExpired,
-        version: order.current_quote_version || 1,
-        notes: quoteNotes
-      }
+
+      return dto
     }),
 
   /**
@@ -193,112 +194,9 @@ export const quotePublicRouter = router({
     }))
     .query(async ({ input }) => {
       await validateTokenOrderAccess(input.orderId, input.token)
-      
-      let result
-      try {
-        result = await query(
-          `SELECT 
-            qr.id, qr.contact_name, qr.contact_email,
-            qr.status, qr.quoted_amount, qr.event_date, qr.sport_type,
-            qr.quote_expires_at, qr.current_quote_version,
-            qr.event_datetime, qr.event_time,
-            p.name as package_name, p.description as package_description,
-            fs.team_name
-           FROM quote_requests qr
-           LEFT JOIN packages p ON qr.package_id = p.id
-           LEFT JOIN form_submissions fs ON qr.id = fs.quote_id
-           WHERE qr.id = $1`,
-          [input.orderId]
-        )
-      } catch {
-        // Fallback if new columns or tables don't exist yet
-        try {
-          result = await query(
-            `SELECT 
-              qr.id, qr.contact_name, qr.contact_email,
-              qr.status, qr.quoted_amount, qr.event_date, qr.sport_type,
-              NULL as quote_expires_at, 1 as current_quote_version,
-              NULL as event_datetime, NULL as event_time,
-              p.name as package_name, p.description as package_description,
-              NULL as team_name
-             FROM quote_requests qr
-             LEFT JOIN packages p ON qr.package_id = p.id
-             WHERE qr.id = $1`,
-            [input.orderId]
-          )
-        } catch {
-          result = await query(
-            `SELECT 
-              qr.id, qr.contact_name, qr.contact_email,
-              qr.status, qr.quoted_amount, qr.event_date, qr.sport_type,
-              NULL as quote_expires_at, 1 as current_quote_version,
-              NULL as event_datetime, NULL as event_time,
-              p.name as package_name, p.description as package_description,
-              NULL as team_name
-             FROM quote_requests qr
-             LEFT JOIN packages p ON qr.package_id = p.id
-             WHERE qr.id = $1`,
-            [input.orderId]
-          )
-        }
-      }
-      
-      if (result.rows.length === 0) {
-        throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: 'Quote not found'
-        })
-      }
-      
-      const order = result.rows[0]
-      
-      // Check if quote exists
-      if (!order.quoted_amount) {
-        throw new TRPCError({
-          code: 'BAD_REQUEST',
-          message: 'No quote has been provided for this order yet'
-        })
-      }
-      
-      // Note: Quote expiration is no longer enforced
-      const isExpired = false
-      
-      // Get latest quote notes from revisions if available
-      let quoteNotes = null
-      try {
-        const notesResult = await query(
-          `SELECT notes FROM quote_revisions 
-           WHERE quote_id = $1 
-           ORDER BY version DESC LIMIT 1`,
-          [input.orderId]
-        )
-        if (notesResult.rows.length > 0) {
-          quoteNotes = notesResult.rows[0].notes
-        }
-      } catch (err) {
-        // Table might not exist
-      }
-      
+      const { dto } = await fetchQuoteDetails(input.orderId)
       logger.info('Quote accessed via email token', { orderId: input.orderId })
-      
-      return {
-        id: order.id.toString(),
-        customerName: order.contact_name,
-        customerEmail: order.contact_email,
-        status: order.status,
-        quotedAmount: order.quoted_amount,
-        packageName: order.package_name,
-        packageDescription: order.package_description,
-        teamName: order.team_name,
-        sportType: order.sport_type,
-        eventDate: order.event_date?.toISOString(),
-        eventDateTime: order.event_datetime?.toISOString() || null,
-        eventTime: order.event_time || null,
-        expiresAt: order.quote_expires_at?.toISOString() || null,
-        isExpired,
-        version: order.current_quote_version || 1,
-        notes: quoteNotes
-      }
+      return dto
     }),
 
   /**
