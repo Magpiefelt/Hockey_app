@@ -451,7 +451,7 @@ const filteredOrders = computed(() => {
 
   // Client-side package filter (not sent to server)
   if (filters.value.packageId) {
-    result = result.filter(o => o.packageId === filters.value.packageId)
+    result = result.filter(o => String(o.packageId ?? '') === String(filters.value.packageId))
   }
 
   // Apply sorting

@@ -9,7 +9,7 @@
 
 export const useTrpc = () => {
   const nuxtApp = useNuxtApp()
-  return nuxtApp.$client as ReturnType<typeof nuxtApp.$client>
+  return nuxtApp.$client as typeof nuxtApp.$client
 }
 
 /**
