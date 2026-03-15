@@ -475,42 +475,59 @@
 
           <div>
             <div class="flex items-center justify-between gap-3 mb-2">
-              <label class="block text-sm font-medium text-slate-400">Preview/Test Data (JSON)</label>
+              <label class="block text-sm font-medium text-slate-400">Preview/Test Values</label>
               <div class="flex flex-wrap items-center gap-2">
                 <button
                   @click="loadSampleContext"
                   type="button"
                   class="px-2 py-1 text-xs rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
                 >
-                  Use sample data
+                  Use sample values
                 </button>
                 <button
-                  @click="formatContextJson"
+                  @click="clearContextFields"
                   type="button"
-                  :disabled="!testContextJson.trim()"
-                  class="px-2 py-1 text-xs rounded-md bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-300 transition-colors"
+                  class="px-2 py-1 text-xs rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
                 >
-                  Format JSON
-                </button>
-                <button
-                  @click="clearContextJson"
-                  type="button"
-                  :disabled="!testContextJson.trim()"
-                  class="px-2 py-1 text-xs rounded-md bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-300 transition-colors"
-                >
-                  Clear
+                  Clear all values
                 </button>
               </div>
             </div>
-            <textarea
-              v-model="testContextJson"
-              rows="4"
-              placeholder='{"name":"Alex","orderId":245}'
-              @input="queueTemplateAnalysis"
-              class="w-full px-4 py-2.5 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all font-mono text-xs"
-            />
+
+            <div class="grid md:grid-cols-2 gap-3">
+              <div
+                v-for="field in templateContextFields"
+                :key="field.key"
+                class="bg-slate-800/40 border border-slate-700 rounded-lg p-3"
+              >
+                <div class="flex items-center justify-between gap-2 mb-1">
+                  <label class="text-xs font-medium text-slate-300">{{ field.label }}</label>
+                  <span class="text-[10px] font-mono text-slate-500">{{ formatVariableToken(field.key) }}</span>
+                </div>
+                <input
+                  v-if="field.inputType !== 'boolean'"
+                  v-model="field.value"
+                  :type="field.inputType"
+                  class="w-full px-3 py-2 bg-slate-900/70 border border-slate-700 rounded-lg text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
+                  :placeholder="field.sampleValue || 'Enter value'"
+                />
+                <select
+                  v-else
+                  v-model="field.value"
+                  class="w-full px-3 py-2 bg-slate-900/70 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
+                >
+                  <option value="">Use default</option>
+                  <option value="true">True</option>
+                  <option value="false">False</option>
+                </select>
+              </div>
+            </div>
+            <p v-if="templateContextFields.length === 0" class="text-xs text-slate-500">
+              This template has no custom preview values. Default sample values will be used.
+            </p>
+
             <p class="text-[11px] text-slate-500 mt-2">
-              This data is only used for preview and test emails. It does not update customer records.
+              Values here are only for preview and test sends. They do not change customer data.
             </p>
             <p v-if="templateContextError" class="text-xs text-red-300 mt-1">
               {{ templateContextError }}
@@ -726,6 +743,14 @@ type TemplateAnalysis = {
   isValid: boolean
 }
 
+type TemplateContextField = {
+  key: string
+  label: string
+  value: string
+  sampleValue: string
+  inputType: 'text' | 'number' | 'boolean'
+}
+
 // Filters
 const filters = ref({
   status: 'all',
@@ -741,8 +766,8 @@ const templateSearch = ref('')
 const globalTemplateVariables = ref<string[]>([])
 const selectedTemplateKey = ref('')
 const testRecipient = ref('')
-const testContextJson = ref('')
-const templateContextDraftByKey = ref<Record<string, string>>({})
+const templateContextFields = ref<TemplateContextField[]>([])
+const templateContextDraftByKey = ref<Record<string, Record<string, string>>>({})
 const templatePreview = ref<{ subject: string; html: string } | null>(null)
 const templateAnalysis = ref<TemplateAnalysis | null>(null)
 const analyzingTemplate = ref(false)
@@ -804,17 +829,12 @@ const templateValidationError = computed(() => {
   return ''
 })
 const templateContextError = computed(() => {
-  const raw = testContextJson.value.trim()
-  if (!raw) return ''
-  try {
-    const parsed = JSON.parse(raw)
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      return 'Preview/test data must be a JSON object (example: {"name":"Alex"}).'
+  for (const field of templateContextFields.value) {
+    if (field.inputType === 'number' && field.value.trim() && Number.isNaN(Number(field.value))) {
+      return `Value for "${field.label}" must be a valid number.`
     }
-    return ''
-  } catch {
-    return 'Preview/test data must be valid JSON.'
   }
+  return ''
 })
 const canRenderTemplate = computed(() => !templateBusy.value && !templateValidationError.value && !templateContextError.value)
 const canSaveTemplate = computed(() => !templateBusy.value && isTemplateDirty.value && !templateValidationError.value)
@@ -853,29 +873,76 @@ async function fetchStats() {
   }
 }
 
-function parseTemplateContext() {
-  const raw = testContextJson.value.trim()
-  if (!raw) return {}
-  try {
-    const parsed = JSON.parse(raw)
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      throw new Error('Preview/test data must be a JSON object')
-    }
-    return parsed as Record<string, unknown>
-  } catch (error: any) {
-    throw new Error(error?.message || 'Preview/test data must be valid JSON')
-  }
-}
-
 function getTemplateSampleContext(template: ManagedTemplate) {
   if (!template.sampleData || typeof template.sampleData !== 'object' || Array.isArray(template.sampleData)) {
-    return {}
+    return {} as Record<string, unknown>
   }
-  return template.sampleData
+  return template.sampleData as Record<string, unknown>
 }
 
-function buildTemplateContextDraft(template: ManagedTemplate) {
-  return JSON.stringify(getTemplateSampleContext(template), null, 2)
+function formatVariableLabel(variable: string) {
+  return variable
+    .replace(/_/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/^\w/, (char) => char.toUpperCase())
+}
+
+function buildTemplateContextFields(
+  template: ManagedTemplate,
+  existingDraft: Record<string, string> = {}
+): TemplateContextField[] {
+  const sampleData = getTemplateSampleContext(template)
+  return template.variables.map((variable) => {
+    const sampleValue = sampleData[variable]
+    const inputType: TemplateContextField['inputType'] =
+      typeof sampleValue === 'number'
+        ? 'number'
+        : typeof sampleValue === 'boolean'
+          ? 'boolean'
+          : 'text'
+
+    const sampleValueString =
+      sampleValue === undefined || sampleValue === null
+        ? ''
+        : typeof sampleValue === 'object'
+          ? JSON.stringify(sampleValue)
+          : String(sampleValue)
+
+    return {
+      key: variable,
+      label: formatVariableLabel(variable),
+      inputType,
+      sampleValue: sampleValueString,
+      value: existingDraft[variable] ?? sampleValueString
+    }
+  })
+}
+
+function buildTemplateContextPayload() {
+  const context: Record<string, unknown> = {}
+  for (const field of templateContextFields.value) {
+    const raw = field.value.trim()
+    if (!raw) continue
+
+    if (field.inputType === 'number') {
+      const numericValue = Number(raw)
+      if (Number.isNaN(numericValue)) {
+        throw new Error(`Value for "${field.label}" must be a valid number.`)
+      }
+      context[field.key] = numericValue
+      continue
+    }
+
+    if (field.inputType === 'boolean') {
+      context[field.key] = raw === 'true'
+      continue
+    }
+
+    context[field.key] = raw
+  }
+  return context
 }
 
 function applyTemplateToForm(template: ManagedTemplate) {
@@ -884,7 +951,10 @@ function applyTemplateToForm(template: ManagedTemplate) {
     subject: template.override?.subject || template.defaultSubject,
     body: template.override?.body || template.defaultBody
   }
-  testContextJson.value = templateContextDraftByKey.value[template.key] ?? buildTemplateContextDraft(template)
+  templateContextFields.value = buildTemplateContextFields(
+    template,
+    templateContextDraftByKey.value[template.key] || {}
+  )
   templatePreview.value = null
   templateAnalysis.value = null
 }
@@ -1027,24 +1097,14 @@ function revertTemplateEdits() {
 
 function loadSampleContext() {
   if (!selectedTemplate.value) return
-  testContextJson.value = buildTemplateContextDraft(selectedTemplate.value)
+  templateContextFields.value = buildTemplateContextFields(selectedTemplate.value, {})
 }
 
-function clearContextJson() {
-  testContextJson.value = ''
-}
-
-function formatContextJson() {
-  if (!testContextJson.value.trim()) return
-  try {
-    const parsed = JSON.parse(testContextJson.value)
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      throw new Error('Preview/test data must be a JSON object')
-    }
-    testContextJson.value = JSON.stringify(parsed, null, 2)
-  } catch (error: any) {
-    showError(error?.message || 'Preview/test data must be valid JSON')
-  }
+function clearContextFields() {
+  templateContextFields.value = templateContextFields.value.map((field) => ({
+    ...field,
+    value: ''
+  }))
 }
 
 async function previewTemplate() {
@@ -1055,7 +1115,7 @@ async function previewTemplate() {
     if (templateValidationError.value) {
       throw new Error(templateValidationError.value)
     }
-    const context = parseTemplateContext()
+    const context = buildTemplateContextPayload()
     templatePreview.value = await trpc.admin.emails.templates.preview.query({
       templateKey: selectedTemplate.value.key,
       subject: templateForm.value.subject,
@@ -1122,7 +1182,7 @@ async function sendTestTemplate() {
     if (templateValidationError.value) {
       throw new Error(templateValidationError.value)
     }
-    const context = parseTemplateContext()
+    const context = buildTemplateContextPayload()
     const result = await trpc.admin.emails.templates.sendTest.mutate({
       templateKey: selectedTemplate.value.key,
       to: testRecipient.value,
@@ -1146,10 +1206,16 @@ async function sendTestTemplate() {
 watch(selectedTemplateKey, () => {
   queueTemplateAnalysis()
 })
-watch(testContextJson, (value) => {
-  if (!selectedTemplateKey.value) return
-  templateContextDraftByKey.value[selectedTemplateKey.value] = value
-})
+watch(
+  templateContextFields,
+  (fields) => {
+    if (!selectedTemplateKey.value) return
+    templateContextDraftByKey.value[selectedTemplateKey.value] = Object.fromEntries(
+      fields.map((field) => [field.key, field.value])
+    )
+  },
+  { deep: true }
+)
 
 // Debounced search
 let searchTimeout: NodeJS.Timeout
