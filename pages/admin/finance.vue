@@ -529,16 +529,20 @@ async function exportTaxReport() {
       format: 'csv'
     })
 
-    if (!report || typeof report.content !== 'string') {
+    if (!report || !('content' in report) || typeof report.content !== 'string') {
       throw new Error('CSV export response was invalid')
     }
 
-    const fileName = typeof report.filename === 'string' && report.filename.length > 0
+    const fileName = 'filename' in report && typeof report.filename === 'string' && report.filename.length > 0
       ? report.filename
       : `tax-report-${exportYear.value}${exportQuarter.value ? `-q${exportQuarter.value}` : ''}.csv`
 
+    const mimeType = 'mimeType' in report && typeof report.mimeType === 'string'
+      ? report.mimeType
+      : 'text/csv'
+
     // Download file
-    const blob = new Blob([report.content], { type: report.mimeType || 'text/csv' })
+    const blob = new Blob([report.content], { type: mimeType })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url

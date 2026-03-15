@@ -84,8 +84,13 @@ describe('finance export behavior', () => {
 
     const report = await caller.exportTaxReport({ year: 2026, format: 'csv' })
 
-    expect(report.mimeType).toBe('text/csv')
-    expect(report.filename).toBe('tax-report-2026.csv')
+    expect('content' in report).toBe(true)
+    if (!('content' in report)) {
+      throw new Error('Expected CSV payload with content')
+    }
+
+    expect('mimeType' in report ? report.mimeType : undefined).toBe('text/csv')
+    expect('filename' in report ? report.filename : undefined).toBe('tax-report-2026.csv')
     expect(typeof report.content).toBe('string')
     expect(report.content).toContain('Order ID')
     expect(report.content).toContain('SUMMARY')
