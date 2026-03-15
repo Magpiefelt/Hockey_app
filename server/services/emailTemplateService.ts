@@ -7,7 +7,7 @@ const SETTINGS_DESCRIPTION = 'Admin managed email template overrides'
 const SETTINGS_TABLE_MISSING_CODE = '42P01'
 const TEMPLATE_CACHE_TTL_MS = 30_000
 
-type TemplateDefinition = {
+export type TemplateDefinition = {
   key: string
   label: string
   description: string
@@ -283,7 +283,7 @@ const DEFINITION_BY_KEY = new Map<string, TemplateDefinition>(
   TEMPLATE_DEFINITIONS.map((definition) => [definition.key, definition])
 )
 
-const GLOBAL_VARIABLES = new Set([
+const MANAGED_TEMPLATE_GLOBAL_VARIABLES = [
   'businessName',
   'supportEmail',
   'appUrl',
@@ -299,7 +299,9 @@ const GLOBAL_VARIABLES = new Set([
   'amount',
   'amountFormatted',
   'completionDate'
-])
+] as const
+
+const GLOBAL_VARIABLES = new Set(MANAGED_TEMPLATE_GLOBAL_VARIABLES)
 
 let templateStoreCache: ManagedTemplateStore | null = null
 let templateStoreCacheAt = 0
@@ -407,6 +409,10 @@ async function persistManagedTemplateStore(store: ManagedTemplateStore): Promise
 
 function getTemplateDefinition(templateKey: string): TemplateDefinition | null {
   return DEFINITION_BY_KEY.get(templateKey) || null
+}
+
+function getAllowedVariablesForTemplate(template: TemplateDefinition) {
+  return [...new Set([...template.variables, ...MANAGED_TEMPLATE_GLOBAL_VARIABLES])]
 }
 
 function formatCurrency(cents: unknown): string {
@@ -566,6 +572,40 @@ function sanitizeTemplateBody(body: string) {
 
 export function getManagedEmailTemplateDefinitions(): TemplateDefinition[] {
   return TEMPLATE_DEFINITIONS
+}
+
+export function getManagedEmailGlobalVariables() {
+  return [...MANAGED_TEMPLATE_GLOBAL_VARIABLES]
+}
+
+export function analyzeManagedEmailTemplateDraft(input: {
+  templateKey: string
+  subject: string
+  body: string
+}) {
+  const definition = getTemplateDefinition(input.templateKey)
+  if (!definition) {
+    throw new Error(`Unsupported template key '${input.templateKey}'.`)
+  }
+
+  const subject = sanitizeTemplateSubject(input.subject)
+  const body = sanitizeTemplateBody(input.body)
+  const placeholders = [...new Set([...extractPlaceholders(subject), ...extractPlaceholders(body)])]
+  const allowedVariables = getAllowedVariablesForTemplate(definition)
+  const allowedSet = new Set(allowedVariables)
+  const invalidVariables = placeholders.filter((placeholder) => !allowedSet.has(placeholder))
+  const recommendedVariablesMissing = definition.variables.filter((variable) => !placeholders.includes(variable))
+  const hasUnsafeHtml = /<script\b|<iframe\b|javascript\s*:/i.test(body)
+
+  return {
+    templateKey: definition.key,
+    placeholders,
+    allowedVariables,
+    invalidVariables,
+    recommendedVariablesMissing,
+    hasUnsafeHtml,
+    isValid: invalidVariables.length === 0 && !hasUnsafeHtml
+  }
 }
 
 export async function listManagedEmailTemplates(): Promise<ManagedTemplateConfig[]> {

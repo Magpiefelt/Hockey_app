@@ -88,4 +88,17 @@ describe('emailTemplateService behavior', () => {
     expect(resolved.subject).toBe('Update for Order #91')
     expect(resolved.html).toContain('Your files are ready')
   })
+
+  it('analyzes template drafts and flags invalid placeholders', async () => {
+    const service = await import('../../server/services/emailTemplateService')
+    const analysis = service.analyzeManagedEmailTemplateDraft({
+      templateKey: 'invoice',
+      subject: 'Invoice {{orderId}} {{badField}}',
+      body: '<p>{{name}}</p>'
+    })
+
+    expect(analysis.isValid).toBe(false)
+    expect(analysis.invalidVariables).toContain('badField')
+    expect(analysis.allowedVariables).toContain('invoiceUrl')
+  })
 })

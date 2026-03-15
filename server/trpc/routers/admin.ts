@@ -7,7 +7,9 @@ import { sendEnhancedQuoteEmail } from '../../utils/email-enhanced'
 import { generateQuoteViewUrl } from '../../utils/quote-tokens'
 import { logger } from '../../utils/logger'
 import {
+  analyzeManagedEmailTemplateDraft,
   getManagedEmailTemplateDefinitions,
+  getManagedEmailGlobalVariables,
   listManagedEmailTemplates,
   previewManagedEmailTemplate,
   resetManagedEmailTemplate,
@@ -987,9 +989,38 @@ export const adminRouter = router({
       list: adminProcedure
         .query(async () => {
           const templates = await listManagedEmailTemplates()
+          let templateStats: Array<{ template: string; sent: number; failed: number; total: number; lastSentAt: string | null }> = []
+
+          try {
+            const statsResult = await query(
+              `SELECT
+                 COALESCE(template, email_type) as template,
+                 COUNT(*)::int as total,
+                 COUNT(*) FILTER (WHERE status = 'sent')::int as sent,
+                 COUNT(*) FILTER (WHERE status IN ('failed', 'bounced'))::int as failed,
+                 MAX(COALESCE(sent_at, created_at)) as last_sent_at
+               FROM email_logs
+               GROUP BY COALESCE(template, email_type)`
+            )
+
+            templateStats = statsResult.rows.map((row: any) => ({
+              template: row.template,
+              sent: Number(row.sent) || 0,
+              failed: Number(row.failed) || 0,
+              total: Number(row.total) || 0,
+              lastSentAt: row.last_sent_at?.toISOString?.() || null
+            }))
+          } catch (statsError: any) {
+            logger.warn('Failed to load template stats for admin template manager', {
+              error: statsError?.message
+            })
+          }
+
           return {
             templates,
-            managedTemplateKeys: getManagedEmailTemplateDefinitions().map((template) => template.key)
+            managedTemplateKeys: getManagedEmailTemplateDefinitions().map((template) => template.key),
+            globalVariables: getManagedEmailGlobalVariables(),
+            templateStats
           }
         }),
 
@@ -1053,6 +1084,23 @@ export const adminRouter = router({
             throw new TRPCError({
               code: 'BAD_REQUEST',
               message: error?.message || 'Failed to render template preview'
+            })
+          }
+        }),
+
+      analyze: adminProcedure
+        .input(z.object({
+          templateKey: z.string().min(1),
+          subject: z.string().max(200),
+          body: z.string().max(20000)
+        }))
+        .query(async ({ input }) => {
+          try {
+            return analyzeManagedEmailTemplateDraft(input)
+          } catch (error: any) {
+            throw new TRPCError({
+              code: 'BAD_REQUEST',
+              message: error?.message || 'Failed to analyze template'
             })
           }
         }),
