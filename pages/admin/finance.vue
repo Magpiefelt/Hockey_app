@@ -479,7 +479,7 @@ const availableYears = computed(() => {
 function formatCurrency(cents: number): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'CAD',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0
   }).format(cents / 100)
@@ -526,54 +526,23 @@ async function exportTaxReport() {
     const report = await trpc.finance.exportTaxReport.query({
       year: exportYear.value,
       quarter: exportQuarter.value || undefined,
-      format: 'json'
+      format: 'csv'
     })
-    
-    // Convert to CSV
-    const headers = [
-      'Order ID', 'Customer Name', 'Customer Email', 'Order Date', 'Payment Date',
-      'Province', 'Service', 'Subtotal', 'GST', 'PST', 'HST', 'Total Tax', 'Total'
-    ]
-    
-    const rows = report.orders.map((order: any) => [
-      order.orderId,
-      order.customerName,
-      order.customerEmail,
-      order.orderDate,
-      order.paymentDate,
-      order.provinceName,
-      order.service,
-      (order.subtotal / 100).toFixed(2),
-      (order.gst / 100).toFixed(2),
-      (order.pst / 100).toFixed(2),
-      (order.hst / 100).toFixed(2),
-      (order.totalTax / 100).toFixed(2),
-      (order.total / 100).toFixed(2)
-    ])
-    
-    // Add summary row
-    rows.push([])
-    rows.push(['SUMMARY'])
-    rows.push(['Total Orders', report.summary.orderCount])
-    rows.push(['Subtotal', '', '', '', '', '', '', (report.summary.subtotal / 100).toFixed(2)])
-    rows.push(['GST', '', '', '', '', '', '', '', (report.summary.gst / 100).toFixed(2)])
-    rows.push(['PST', '', '', '', '', '', '', '', '', (report.summary.pst / 100).toFixed(2)])
-    rows.push(['HST', '', '', '', '', '', '', '', '', '', (report.summary.hst / 100).toFixed(2)])
-    rows.push(['Total Tax', '', '', '', '', '', '', '', '', '', '', (report.summary.totalTax / 100).toFixed(2)])
-    rows.push(['Grand Total', '', '', '', '', '', '', '', '', '', '', '', (report.summary.total / 100).toFixed(2)])
-    
-    // Create CSV content
-    const csvContent = [
-      headers.join(','),
-      ...rows.map((row: any[]) => row.map(cell => `"${cell}"`).join(','))
-    ].join('\n')
-    
+
+    if (!report || typeof report.content !== 'string') {
+      throw new Error('CSV export response was invalid')
+    }
+
+    const fileName = typeof report.filename === 'string' && report.filename.length > 0
+      ? report.filename
+      : `tax-report-${exportYear.value}${exportQuarter.value ? `-q${exportQuarter.value}` : ''}.csv`
+
     // Download file
-    const blob = new Blob([csvContent], { type: 'text/csv' })
+    const blob = new Blob([report.content], { type: report.mimeType || 'text/csv' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `tax-report-${report.period.replace(' ', '-')}.csv`
+    a.download = fileName
     a.click()
     URL.revokeObjectURL(url)
     
