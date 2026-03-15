@@ -8,6 +8,7 @@ import { z } from 'zod'
 import { TRPCError } from '@trpc/server'
 import { router, publicProcedure, protectedProcedure } from '../trpc'
 import { query, transaction } from '../../db/connection'
+import { queryWithFallback, querySafe } from '../../utils/resilient-query'
 import { logger } from '../../utils/logger'
 import { sendAdminNotificationEmail } from '../../utils/email-enhanced'
 import { rateLimit } from '../middleware/rateLimit'
@@ -62,55 +63,36 @@ const quoteAuthedActionProcedure = protectedProcedure.use(rateLimit({
  * Shared by both authenticated and token-based endpoints.
  */
 async function fetchQuoteDetails(orderId: number) {
-  let result
-  try {
-    result = await query(
-      `SELECT 
-        qr.id, qr.user_id, qr.contact_name, qr.contact_email,
-        qr.status, qr.quoted_amount, qr.event_date, qr.sport_type,
-        qr.quote_expires_at, qr.current_quote_version, qr.admin_notes,
-        qr.event_datetime, qr.event_time,
-        p.name as package_name, p.description as package_description,
-        fs.team_name
-       FROM quote_requests qr
-       LEFT JOIN packages p ON qr.package_id = p.id
-       LEFT JOIN form_submissions fs ON qr.id = fs.quote_id
-       WHERE qr.id = $1`,
-      [orderId]
-    )
-  } catch {
-    try {
-      result = await query(
-        `SELECT 
-          qr.id, qr.user_id, qr.contact_name, qr.contact_email,
-          qr.status, qr.quoted_amount, qr.event_date, qr.sport_type,
-          qr.admin_notes,
-          NULL as quote_expires_at, 1 as current_quote_version,
-          NULL as event_datetime, NULL as event_time,
-          p.name as package_name, p.description as package_description,
-          NULL as team_name
-         FROM quote_requests qr
-         LEFT JOIN packages p ON qr.package_id = p.id
-         WHERE qr.id = $1`,
-        [orderId]
-      )
-    } catch {
-      result = await query(
-        `SELECT 
-          qr.id, qr.user_id, qr.contact_name, qr.contact_email,
-          qr.status, qr.quoted_amount, qr.event_date, qr.sport_type,
-          qr.admin_notes,
-          NULL as quote_expires_at, 1 as current_quote_version,
-          NULL as event_datetime, NULL as event_time,
-          p.name as package_name, p.description as package_description,
-          NULL as team_name
-         FROM quote_requests qr
-         LEFT JOIN packages p ON qr.package_id = p.id
-         WHERE qr.id = $1`,
-        [orderId]
-      )
-    }
-  }
+  const FULL_QUERY = `
+    SELECT 
+      qr.id, qr.user_id, qr.contact_name, qr.contact_email,
+      qr.status, qr.quoted_amount, qr.event_date, qr.sport_type,
+      qr.quote_expires_at, qr.current_quote_version, qr.admin_notes,
+      qr.event_datetime, qr.event_time,
+      p.name as package_name, p.description as package_description,
+      fs.team_name
+     FROM quote_requests qr
+     LEFT JOIN packages p ON qr.package_id = p.id
+     LEFT JOIN form_submissions fs ON qr.id = fs.quote_id
+     WHERE qr.id = $1`
+
+  const FALLBACK_QUERY = `
+    SELECT 
+      qr.id, qr.user_id, qr.contact_name, qr.contact_email,
+      qr.status, qr.quoted_amount, qr.event_date, qr.sport_type,
+      qr.admin_notes,
+      NULL as quote_expires_at, 1 as current_quote_version,
+      NULL as event_datetime, NULL as event_time,
+      p.name as package_name, p.description as package_description,
+      NULL as team_name
+     FROM quote_requests qr
+     LEFT JOIN packages p ON qr.package_id = p.id
+     WHERE qr.id = $1`
+
+  const result = await queryWithFallback(
+    { sql: FULL_QUERY, params: [orderId] },
+    { sql: FALLBACK_QUERY, params: [orderId] }
+  )
 
   if (result.rows.length === 0) {
     throw new TRPCError({ code: 'NOT_FOUND', message: 'Quote not found' })
@@ -126,18 +108,14 @@ async function fetchQuoteDetails(orderId: number) {
   }
 
   let quoteNotes: string | null = null
-  try {
-    const notesResult = await query(
-      `SELECT notes FROM quote_revisions 
-       WHERE quote_id = $1 
-       ORDER BY version DESC LIMIT 1`,
-      [orderId]
-    )
-    if (notesResult.rows.length > 0) {
-      quoteNotes = notesResult.rows[0].notes
-    }
-  } catch {
-    // quote_revisions table may not exist yet
+  const notesResult = await querySafe(
+    `SELECT notes FROM quote_revisions 
+     WHERE quote_id = $1 
+     ORDER BY version DESC LIMIT 1`,
+    [orderId]
+  )
+  if (notesResult && notesResult.rows.length > 0) {
+    quoteNotes = notesResult.rows[0].notes
   }
 
   return {
