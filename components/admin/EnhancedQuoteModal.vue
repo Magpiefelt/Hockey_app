@@ -258,7 +258,10 @@ async function submitQuote() {
     emit('close')
   } catch (err: any) {
     const { handleTrpcError } = await import('~/composables/useTrpc')
-    error.value = handleTrpcError(err)
+    const raw = handleTrpcError(err)
+    error.value = raw.includes('Cannot submit quote from status') || raw.includes('Cannot submit or revise quotes')
+      ? 'This order status changed while you were editing. Refresh the page and try again.'
+      : raw
     showError(error.value)
   } finally {
     isSubmitting.value = false

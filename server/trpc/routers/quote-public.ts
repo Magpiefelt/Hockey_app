@@ -10,12 +10,52 @@ import { router, publicProcedure, protectedProcedure } from '../trpc'
 import { query, transaction } from '../../db/connection'
 import { logger } from '../../utils/logger'
 import { sendAdminNotificationEmail } from '../../utils/email-enhanced'
+import { rateLimit } from '../middleware/rateLimit'
 import {
   validateQuoteTokenWithStore,
   markQuoteTokenUsed
 } from '../../utils/quote-tokens'
 
 const QUOTE_TOKEN_SCHEMA = z.string().min(20).max(4096)
+const QUOTE_REASON_SCHEMA = z.string().trim().min(1).max(500).optional()
+
+function getClientIp(ctx: any): string {
+  return (
+    ctx?.event?.context?.ip ||
+    ctx?.event?.node?.req?.headers?.['x-forwarded-for']?.split(',')?.[0]?.trim() ||
+    'unknown'
+  )
+}
+
+function getRequestFingerprint(ctx: any): string {
+  const ip = getClientIp(ctx)
+  const ua = String(ctx?.event?.context?.userAgent || '').slice(0, 120)
+  return `${ip}:${ua}`
+}
+
+const quoteTokenReadProcedure = publicProcedure.use(rateLimit({
+  maxRequests: 60,
+  windowMs: 15 * 60 * 1000,
+  identifier: getRequestFingerprint,
+  keyPrefix: 'quote-token-read',
+  message: 'Too many quote link requests'
+}))
+
+const quoteTokenActionProcedure = publicProcedure.use(rateLimit({
+  maxRequests: 20,
+  windowMs: 15 * 60 * 1000,
+  identifier: getRequestFingerprint,
+  keyPrefix: 'quote-token-action',
+  message: 'Too many quote actions'
+}))
+
+const quoteAuthedActionProcedure = protectedProcedure.use(rateLimit({
+  maxRequests: 30,
+  windowMs: 15 * 60 * 1000,
+  identifier: (ctx) => `${ctx?.user?.userId || 'unknown'}:${getClientIp(ctx)}`,
+  keyPrefix: 'quote-auth-action',
+  message: 'Too many quote actions'
+}))
 
 export const quotePublicRouter = router({
   /**
@@ -146,31 +186,13 @@ export const quotePublicRouter = router({
   /**
    * Get quote details using token (for email link access - no auth required)
    */
-  getQuoteWithToken: publicProcedure
+  getQuoteWithToken: quoteTokenReadProcedure
     .input(z.object({
       orderId: z.number(),
       token: QUOTE_TOKEN_SCHEMA
     }))
     .query(async ({ input }) => {
-      // Validate token
-      const tokenValidation = await validateQuoteTokenWithStore(input.token, {
-        requireStoredToken: true
-      })
-      
-      if (!tokenValidation.valid) {
-        throw new TRPCError({
-          code: 'UNAUTHORIZED',
-          message: tokenValidation.error || 'Invalid or expired access token'
-        })
-      }
-      
-      // Verify token matches the requested order
-      if (tokenValidation.orderId !== input.orderId) {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'Token does not match the requested order'
-        })
-      }
+      await validateTokenOrderAccess(input.orderId, input.token)
       
       let result
       try {
@@ -230,14 +252,6 @@ export const quotePublicRouter = router({
       
       const order = result.rows[0]
       
-      // Verify email matches
-      if (order.contact_email.toLowerCase() !== tokenValidation.email?.toLowerCase()) {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'Token does not match the order email'
-        })
-      }
-      
       // Check if quote exists
       if (!order.quoted_amount) {
         throw new TRPCError({
@@ -295,105 +309,59 @@ export const quotePublicRouter = router({
       orderId: z.number()
     }))
     .mutation(async ({ input, ctx }) => {
-      return recordQuoteViewInternal(input.orderId, ctx.event?.context?.ip, ctx.event?.context?.userAgent, ctx.user?.userId)
+      return recordQuoteViewInternal(input.orderId, getClientIp(ctx), ctx.event?.context?.userAgent, ctx.user?.userId)
     }),
 
   /**
    * Record quote view event with token (for email link access)
    */
-  recordQuoteViewWithToken: publicProcedure
+  recordQuoteViewWithToken: quoteTokenReadProcedure
     .input(z.object({
       orderId: z.number(),
       token: QUOTE_TOKEN_SCHEMA
     }))
     .mutation(async ({ input, ctx }) => {
-      // Validate token
-      const tokenValidation = await validateQuoteTokenWithStore(input.token, {
-        requireStoredToken: true
+      const access = await validateTokenOrderAccess(input.orderId, input.token, {
+        throwOnFailure: false
       })
-      
-      if (!tokenValidation.valid || tokenValidation.orderId !== input.orderId || !tokenValidation.email) {
-        return { success: false }
-      }
-
-      // Ensure the token email still matches the order owner email
-      const orderResult = await query(
-        `SELECT contact_email FROM quote_requests WHERE id = $1`,
-        [input.orderId]
-      )
-
-      if (orderResult.rows.length === 0) {
-        return { success: false }
-      }
-
-      if (orderResult.rows[0].contact_email.toLowerCase() !== tokenValidation.email.toLowerCase()) {
+      if (!access) {
         return { success: false }
       }
       
-      return recordQuoteViewInternal(input.orderId, ctx.event?.context?.ip, ctx.event?.context?.userAgent, undefined, 'email_link')
+      return recordQuoteViewInternal(input.orderId, getClientIp(ctx), ctx.event?.context?.userAgent, undefined, 'email_link')
     }),
 
   /**
    * Accept quote (authenticated customer action)
    */
-  acceptQuote: protectedProcedure
+  acceptQuote: quoteAuthedActionProcedure
     .input(z.object({
       orderId: z.number()
     }))
     .mutation(async ({ input, ctx }) => {
-      return acceptQuoteInternal(input.orderId, ctx.user.userId, ctx.event?.context?.ip, true)
+      return acceptQuoteInternal(input.orderId, ctx.user.userId, getClientIp(ctx), true)
     }),
 
   /**
    * Accept quote with token (for email link access)
    */
-  acceptQuoteWithToken: publicProcedure
+  acceptQuoteWithToken: quoteTokenActionProcedure
     .input(z.object({
       orderId: z.number(),
       token: QUOTE_TOKEN_SCHEMA
     }))
     .mutation(async ({ input, ctx }) => {
-      // Validate token
-      const tokenValidation = await validateQuoteTokenWithStore(input.token, {
-        requireStoredToken: true,
+      const access = await validateTokenOrderAccess(input.orderId, input.token, {
         rejectUsedToken: true
       })
-      
-      if (!tokenValidation.valid) {
+      if (!access) {
         throw new TRPCError({
           code: 'UNAUTHORIZED',
-          message: tokenValidation.error || 'Invalid or expired access token'
+          message: 'Invalid or expired access token'
         })
       }
       
-      if (tokenValidation.orderId !== input.orderId) {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'Token does not match the requested order'
-        })
-      }
-      
-      // Verify email matches
-      const orderResult = await query(
-        `SELECT contact_email, user_id FROM quote_requests WHERE id = $1`,
-        [input.orderId]
-      )
-      
-      if (orderResult.rows.length === 0) {
-        throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: 'Order not found'
-        })
-      }
-      
-      if (orderResult.rows[0].contact_email.toLowerCase() !== tokenValidation.email?.toLowerCase()) {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'Token does not match the order email'
-        })
-      }
-      
-      const result = await acceptQuoteInternal(input.orderId, orderResult.rows[0].user_id, ctx.event?.context?.ip, false)
+      const result = await acceptQuoteInternal(input.orderId, access.userId, getClientIp(ctx), false)
       await markQuoteTokenUsed(input.orderId, input.token)
       return result
     }),
@@ -401,66 +369,36 @@ export const quotePublicRouter = router({
   /**
    * Decline quote (authenticated customer action)
    */
-  declineQuote: protectedProcedure
+  declineQuote: quoteAuthedActionProcedure
     .input(z.object({
       orderId: z.number(),
-      reason: z.string().optional()
+      reason: QUOTE_REASON_SCHEMA
     }))
     .mutation(async ({ input, ctx }) => {
-      return declineQuoteInternal(input.orderId, ctx.user.userId, input.reason, ctx.event?.context?.ip, true)
+      return declineQuoteInternal(input.orderId, ctx.user.userId, input.reason, getClientIp(ctx), true)
     }),
 
   /**
    * Decline quote with token (for email link access)
    */
-  declineQuoteWithToken: publicProcedure
+  declineQuoteWithToken: quoteTokenActionProcedure
     .input(z.object({
       orderId: z.number(),
       token: QUOTE_TOKEN_SCHEMA,
-      reason: z.string().optional()
+      reason: QUOTE_REASON_SCHEMA
     }))
     .mutation(async ({ input, ctx }) => {
-      // Validate token
-      const tokenValidation = await validateQuoteTokenWithStore(input.token, {
-        requireStoredToken: true,
+      const access = await validateTokenOrderAccess(input.orderId, input.token, {
         rejectUsedToken: true
       })
-      
-      if (!tokenValidation.valid) {
+      if (!access) {
         throw new TRPCError({
           code: 'UNAUTHORIZED',
-          message: tokenValidation.error || 'Invalid or expired access token'
+          message: 'Invalid or expired access token'
         })
       }
       
-      if (tokenValidation.orderId !== input.orderId) {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'Token does not match the requested order'
-        })
-      }
-      
-      // Verify email matches
-      const orderResult = await query(
-        `SELECT contact_email, user_id FROM quote_requests WHERE id = $1`,
-        [input.orderId]
-      )
-      
-      if (orderResult.rows.length === 0) {
-        throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: 'Order not found'
-        })
-      }
-      
-      if (orderResult.rows[0].contact_email.toLowerCase() !== tokenValidation.email?.toLowerCase()) {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'Token does not match the order email'
-        })
-      }
-      
-      const result = await declineQuoteInternal(input.orderId, orderResult.rows[0].user_id, input.reason, ctx.event?.context?.ip, false)
+      const result = await declineQuoteInternal(input.orderId, access.userId, input.reason, getClientIp(ctx), false)
       await markQuoteTokenUsed(input.orderId, input.token)
       return result
     }),
@@ -521,6 +459,75 @@ export const quotePublicRouter = router({
 
 // Internal helper functions
 
+async function validateTokenOrderAccess(
+  orderId: number,
+  token: string,
+  options: {
+    rejectUsedToken?: boolean
+    throwOnFailure?: boolean
+  } = {}
+): Promise<{ userId: number | null; contactEmail: string; tokenEmail: string } | null> {
+  const { rejectUsedToken = false, throwOnFailure = true } = options
+
+  const fail = (error: TRPCError) => {
+    if (throwOnFailure) {
+      throw error
+    }
+    return null
+  }
+
+  const tokenValidation = await validateQuoteTokenWithStore(token, {
+    requireStoredToken: true,
+    rejectUsedToken
+  })
+
+  if (!tokenValidation.valid || !tokenValidation.email) {
+    logger.warn('Rejected quote token access', {
+      orderId,
+      reason: tokenValidation.error || 'token-validation-failed'
+    })
+    return fail(new TRPCError({
+      code: 'UNAUTHORIZED',
+      message: tokenValidation.error || 'Invalid or expired access token'
+    }))
+  }
+
+  if (tokenValidation.orderId !== orderId) {
+    logger.warn('Rejected quote token access due to order mismatch', { orderId })
+    return fail(new TRPCError({
+      code: 'FORBIDDEN',
+      message: 'Token does not match the requested order'
+    }))
+  }
+
+  const orderResult = await query<{ contact_email: string; user_id: number | null }>(
+    `SELECT contact_email, user_id FROM quote_requests WHERE id = $1`,
+    [orderId]
+  )
+
+  if (orderResult.rows.length === 0) {
+    return fail(new TRPCError({
+      code: 'NOT_FOUND',
+      message: 'Order not found'
+    }))
+  }
+
+  const order = orderResult.rows[0]
+  if (order.contact_email.toLowerCase() !== tokenValidation.email.toLowerCase()) {
+    logger.warn('Rejected quote token access due to email mismatch', { orderId })
+    return fail(new TRPCError({
+      code: 'FORBIDDEN',
+      message: 'Token does not match the order email'
+    }))
+  }
+
+  return {
+    userId: order.user_id ?? null,
+    contactEmail: order.contact_email,
+    tokenEmail: tokenValidation.email
+  }
+}
+
 async function recordQuoteViewInternal(
   orderId: number, 
   ipAddress?: string, 
@@ -528,8 +535,8 @@ async function recordQuoteViewInternal(
   userId?: number,
   source: string = 'authenticated'
 ): Promise<{ success: boolean }> {
-  const ip = ipAddress || 'unknown'
-  const ua = userAgent || ''
+  const ip = String(ipAddress || 'unknown').slice(0, 64)
+  const ua = String(userAgent || '').slice(0, 512)
   
   try {
     await transaction(async (client) => {
@@ -587,7 +594,7 @@ async function recordQuoteViewInternal(
 
 async function acceptQuoteInternal(
   orderId: number, 
-  userId: number, 
+  userId: number | null, 
   ipAddress?: string,
   isAuthenticated: boolean = true
 ): Promise<{ success: boolean; message: string }> {
@@ -676,7 +683,7 @@ async function acceptQuoteInternal(
       await client.query(
         `INSERT INTO quote_events (quote_id, event_type, ip_address, metadata)
          VALUES ($1, 'accepted', $2, $3)`,
-        [orderId, ipAddress || 'unknown', JSON.stringify({ userId, authenticated: isAuthenticated })]
+        [orderId, ipAddress || 'unknown', JSON.stringify({ userId: userId ?? null, authenticated: isAuthenticated })]
       )
     } catch {
       // quote_events table may not exist yet
@@ -686,7 +693,7 @@ async function acceptQuoteInternal(
     await client.query(
       `INSERT INTO order_status_history (quote_id, previous_status, new_status, changed_by, notes)
        VALUES ($1, $2, 'quote_accepted', $3, $4)`,
-      [orderId, order.status, userId, `Customer accepted quote${isAuthenticated ? '' : ' via email link'}`]
+      [orderId, order.status, userId ?? null, `Customer accepted quote${isAuthenticated ? '' : ' via email link'}`]
     )
 
     // Notify admin
@@ -700,7 +707,7 @@ async function acceptQuoteInternal(
       logger.error('Failed to send admin notification', { orderId, error: err })
     }
     
-    logger.info('Quote accepted', { orderId, userId, authenticated: isAuthenticated })
+    logger.info('Quote accepted', { orderId, userId: userId ?? null, authenticated: isAuthenticated })
     
     return {
       success: true,
@@ -711,7 +718,7 @@ async function acceptQuoteInternal(
 
 async function declineQuoteInternal(
   orderId: number, 
-  userId: number, 
+  userId: number | null, 
   reason?: string,
   ipAddress?: string,
   isAuthenticated: boolean = true
@@ -787,7 +794,7 @@ async function declineQuoteInternal(
       await client.query(
         `INSERT INTO quote_events (quote_id, event_type, ip_address, metadata)
          VALUES ($1, 'declined', $2, $3)`,
-        [orderId, ipAddress || 'unknown', JSON.stringify({ userId, reason, authenticated: isAuthenticated })]
+        [orderId, ipAddress || 'unknown', JSON.stringify({ userId: userId ?? null, reason, authenticated: isAuthenticated })]
       )
     } catch {
       // quote_events table may not exist yet
@@ -797,7 +804,7 @@ async function declineQuoteInternal(
     await client.query(
       `INSERT INTO order_status_history (quote_id, previous_status, new_status, changed_by, notes)
        VALUES ($1, $2, 'cancelled', $3, $4)`,
-      [orderId, order.status, userId, `Customer declined${isAuthenticated ? '' : ' via email link'}: ${reason || 'No reason provided'}`]
+      [orderId, order.status, userId ?? null, `Customer declined${isAuthenticated ? '' : ' via email link'}: ${reason || 'No reason provided'}`]
     )
 
     // Notify admin
@@ -811,7 +818,7 @@ async function declineQuoteInternal(
       logger.error('Failed to send admin notification', { orderId, error: err })
     }
     
-    logger.info('Quote declined', { orderId, userId, reason, authenticated: isAuthenticated })
+    logger.info('Quote declined', { orderId, userId: userId ?? null, reason, authenticated: isAuthenticated })
     
     return {
       success: true,

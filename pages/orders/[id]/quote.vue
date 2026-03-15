@@ -166,6 +166,8 @@ async function loadQuote() {
       error.value = 'This quote link has expired. Please contact us for an updated quote.'
     } else if (err.message?.includes('Invalid token')) {
       error.value = 'This quote link is invalid. Please check your email for the correct link or log in to view your orders.'
+    } else if (err.message?.includes('Too many')) {
+      error.value = 'You have made too many attempts in a short period. Please wait a moment and try again.'
     }
 
     if (tokenAccessMode.value) {
@@ -259,7 +261,9 @@ async function acceptQuote() {
       }, 1200)
     }
   } catch (err: any) {
-    error.value = err.message || 'Failed to accept quote'
+    error.value = err.message?.includes('Too many')
+      ? 'Too many attempts. Please wait a moment and try again.'
+      : (err.message || 'Failed to accept quote')
   } finally {
     isAccepting.value = false
   }
@@ -306,7 +310,9 @@ async function declineQuote() {
       }, 1200)
     }
   } catch (err: any) {
-    error.value = err.message || 'Failed to decline quote'
+    error.value = err.message?.includes('Too many')
+      ? 'Too many attempts. Please wait a moment and try again.'
+      : (err.message || 'Failed to decline quote')
   } finally {
     isDeclining.value = false
   }
