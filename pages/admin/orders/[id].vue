@@ -10,7 +10,7 @@
         Orders
       </NuxtLink>
       <Icon name="mdi:chevron-right" class="w-4 h-4 text-slate-600" />
-      <span class="text-white font-medium">Order #{{ orderId }}</span>
+      <span class="text-white font-medium">Order #{{ displayOrderId }}</span>
     </nav>
 
     <!-- Loading State -->
@@ -350,10 +350,12 @@
                 <div class="flex items-center gap-3 flex-1 min-w-0">
                   <div v-if="file.uploading" class="w-5 h-5 border-2 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin"></div>
                   <Icon v-else-if="file.uploaded" name="mdi:check-circle" class="w-5 h-5 text-emerald-400" />
+                  <Icon v-else-if="file.error" name="mdi:alert-circle" class="w-5 h-5 text-red-400" />
                   <Icon v-else name="mdi:file-document" class="w-5 h-5 text-slate-400" />
                   <div class="flex-1 min-w-0">
                     <p class="text-white text-sm truncate">{{ file.file.name }}</p>
                     <p class="text-slate-500 text-xs">{{ formatFileSize(file.file.size) }}</p>
+                    <p v-if="file.error" class="text-red-400 text-xs mt-1 truncate">{{ file.error }}</p>
                   </div>
                 </div>
                 <button
@@ -372,7 +374,7 @@
               @click="uploadDeliverables"
               class="w-full px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-semibold rounded-xl transition-all shadow-lg shadow-cyan-500/20"
             >
-              Upload All Deliverables
+              Upload Remaining Deliverables
             </button>
           </div>
 
@@ -585,6 +587,8 @@ const { uploadFile } = useUpload()
 const { showError, showSuccess } = useNotification()
 
 const orderId = computed(() => parseInt(route.params.id as string))
+const isValidOrderId = computed(() => Number.isInteger(orderId.value) && orderId.value > 0)
+const displayOrderId = computed(() => (isValidOrderId.value ? String(orderId.value) : 'Invalid'))
 
 // Load packages from database via tRPC (consistent with other pages)
 const { data: packagesData } = await useAsyncData('packages', async () => {
@@ -642,6 +646,7 @@ const orderData = ref<any>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
 const resendingEmail = ref(false)
+let activeOrderRequestId = 0
 
 // Modal states
 const showEnhancedQuoteModal = ref(false)
@@ -685,7 +690,12 @@ const saveAdminNotes = async () => {
 
 // File upload
 const deliverableInputRef = ref<HTMLInputElement | null>(null)
-const deliverableQueue = ref<any[]>([])
+const deliverableQueue = ref<Array<{
+  file: File
+  uploading: boolean
+  uploaded: boolean
+  error: string | null
+}>>([])
 
 // Computed
 const uploadedFiles = computed(() => {
@@ -705,14 +715,26 @@ const canSubmitQuote = computed(() => {
 
 // Methods
 const fetchOrder = async () => {
+  if (!isValidOrderId.value) {
+    loading.value = false
+    orderData.value = null
+    error.value = 'Invalid order ID. Please go back to the orders list and try again.'
+    return
+  }
+
+  const requestId = ++activeOrderRequestId
   try {
     loading.value = true
     error.value = null
-    orderData.value = await trpc.admin.orders.get.query({ id: orderId.value })
+    const result = await trpc.admin.orders.get.query({ id: orderId.value })
+    if (requestId !== activeOrderRequestId) return
+    orderData.value = result
   } catch (err: any) {
+    if (requestId !== activeOrderRequestId) return
     const { handleTrpcError } = await import('~/composables/useTrpc')
     error.value = handleTrpcError(err)
   } finally {
+    if (requestId !== activeOrderRequestId) return
     loading.value = false
   }
 }
@@ -760,7 +782,7 @@ const handleManualCompletion = (data: { orderId: number; amount: number; previou
 const canManuallyComplete = computed(() => {
   if (!orderData.value) return false
   const status = orderData.value.order.status
-  const terminalStatuses = ['completed', 'delivered', 'cancelled']
+  const terminalStatuses = ['completed', 'delivered', 'cancelled', 'refunded']
   return !terminalStatuses.includes(status)
 })
 
@@ -795,6 +817,7 @@ const handleDeliverableSelect = (e: Event) => {
     file,
     uploading: false,
     uploaded: false,
+    error: null
   }))
   deliverableQueue.value = [...deliverableQueue.value, ...newFiles]
   
@@ -806,11 +829,21 @@ const removeDeliverable = (index: number) => {
 }
 
 const uploadDeliverables = async () => {
+  if (!isValidOrderId.value) {
+    showError('Invalid order ID. Cannot upload deliverables.')
+    return
+  }
+  if (deliverableQueue.value.some(f => f.uploading)) return
+
+  let successCount = 0
+  const failures: Array<{ filename: string; message: string }> = []
+
   for (let i = 0; i < deliverableQueue.value.length; i++) {
     const fileUpload = deliverableQueue.value[i]
     if (fileUpload.uploaded) continue
 
     deliverableQueue.value[i].uploading = true
+    deliverableQueue.value[i].error = null
     
     try {
       const result = await uploadFile(fileUpload.file, { 
@@ -827,26 +860,45 @@ const uploadDeliverables = async () => {
       
       deliverableQueue.value[i].uploading = false
       deliverableQueue.value[i].uploaded = true
+      successCount++
     } catch (err: any) {
       deliverableQueue.value[i].uploading = false
       const { handleTrpcError } = await import('~/composables/useTrpc')
-      showError(`Failed to upload ${fileUpload.file.name}: ${handleTrpcError(err)}`)
-      return
+      const message = handleTrpcError(err)
+      deliverableQueue.value[i].error = message
+      failures.push({ filename: fileUpload.file.name, message })
     }
   }
 
-  await fetchOrder()
-  deliverableQueue.value = []
-  showSuccess('All deliverables uploaded successfully')
+  if (successCount > 0) {
+    await fetchOrder()
+    showSuccess(`Uploaded ${successCount} deliverable${successCount === 1 ? '' : 's'} successfully`)
+  }
+
+  if (failures.length > 0) {
+    const firstFew = failures
+      .slice(0, 2)
+      .map((f) => `${f.filename}: ${f.message}`)
+      .join(' | ')
+    const more = failures.length > 2 ? ` (+${failures.length - 2} more)` : ''
+    showError(`Failed to upload ${failures.length} file(s) — ${firstFew}${more}`)
+  }
+
+  // Keep only files that need retry and clear successful uploads.
+  deliverableQueue.value = deliverableQueue.value.filter(file => !file.uploaded)
 }
 
-// Fetch order on mount
-onMounted(() => {
-  fetchOrder()
-})
+// Refetch when route changes (e.g. navigating from customer drawer to another order)
+watch(
+  () => orderId.value,
+  () => {
+    fetchOrder()
+  },
+  { immediate: true }
+)
 
 useHead({
-  title: () => `Order #${orderId.value} - Admin - Elite Sports DJ`,
+  title: () => `Order #${displayOrderId.value} - Admin - Elite Sports DJ`,
   meta: [
     { name: 'description', content: 'Manage order details' }
   ]

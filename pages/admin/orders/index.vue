@@ -391,12 +391,23 @@ const selectAll = () => {
 const handleBulkActionComplete = (action: string, results: { success: number[]; failed: { id: number; error: string }[] }) => {
   const successCount = results.success.length
   const failedCount = results.failed.length
+  const actionLabelMap: Record<string, string> = {
+    status_update: 'Status update',
+    email: 'Email send',
+    export: 'Export'
+  }
+  const actionLabel = actionLabelMap[action] || action
   
   if (successCount > 0) {
-    showSuccess(`${action}: ${successCount} order(s) updated successfully`)
+    showSuccess(`${actionLabel}: ${successCount} order(s) succeeded`)
   }
   if (failedCount > 0) {
-    showError(`${action}: ${failedCount} order(s) failed`)
+    const details = results.failed
+      .slice(0, 3)
+      .map((f) => (f.id ? `#${f.id}: ${f.error}` : f.error))
+      .join(' | ')
+    const extra = failedCount > 3 ? ` (+${failedCount - 3} more)` : ''
+    showError(`${actionLabel}: ${failedCount} failed${details ? ` — ${details}${extra}` : ''}`)
   }
   
   // Refresh orders and clear selection

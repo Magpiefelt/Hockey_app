@@ -15,9 +15,57 @@ import {
   sendCustomEmailEnhanced
 } from '../../utils/email-enhanced'
 import { generateQuoteViewUrl, generateQuoteAcceptUrl } from '../../utils/quote-tokens'
-import { isValidOrderStatusTransition } from '../../utils/order-status'
+import { ORDER_STATUS_LABELS, ORDER_STATUS_VALUES, getAllowedOrderTransitions, isValidOrderStatusTransition } from '../../utils/order-status'
 
 export const adminEnhancementsRouter = router({
+  /**
+   * Get bulk status options valid for selected orders.
+   * Returns only transitions that are valid for all currently selected orders.
+   */
+  getBulkStatusOptions: adminProcedure
+    .input(z.object({
+      orderIds: z.array(z.number()).min(1).max(100)
+    }))
+    .query(async ({ input }) => {
+      const result = await query(
+        `SELECT id, status
+         FROM quote_requests
+         WHERE id = ANY($1::int[])`,
+        [input.orderIds]
+      )
+
+      const rows = result.rows as Array<{ id: number; status: string }>
+      const foundIds = new Set(rows.map(r => Number(r.id)))
+      const missingOrderIds = input.orderIds.filter(id => !foundIds.has(id))
+
+      if (rows.length === 0) {
+        return {
+          options: [] as Array<{ status: string; label: string }>,
+          foundCount: 0,
+          missingOrderIds
+        }
+      }
+
+      const transitionSets = rows.map((row) => new Set(getAllowedOrderTransitions(row.status)))
+      const firstSet = transitionSets[0] ?? new Set<string>()
+      const intersection = [...firstSet].filter((status) =>
+        transitionSets.every((set) => set.has(status))
+      )
+
+      const options = ORDER_STATUS_VALUES
+        .filter((status) => intersection.includes(status))
+        .map((status) => ({
+          status,
+          label: ORDER_STATUS_LABELS[status]
+        }))
+
+      return {
+        options,
+        foundCount: rows.length,
+        missingOrderIds
+      }
+    }),
+
   /**
    * Enhanced quote submission with payment link option and event datetime confirmation
    * Updated: Now includes event datetime for calendar booking
@@ -560,8 +608,8 @@ export const adminEnhancementsRouter = router({
     }))
     .mutation(async ({ input }) => {
       const results = {
-        sent: 0,
-        failed: 0
+        success: [] as number[],
+        failed: [] as { id: number; error: string }[]
       }
       
       for (const orderId of input.orderIds) {
@@ -572,7 +620,10 @@ export const adminEnhancementsRouter = router({
             [orderId]
           )
           
-          if (orderResult.rows.length === 0) continue
+          if (orderResult.rows.length === 0) {
+            results.failed.push({ id: orderId, error: 'Order not found' })
+            continue
+          }
           
           const order = orderResult.rows[0]
           
@@ -592,6 +643,21 @@ export const adminEnhancementsRouter = router({
               packageName: 'Service Request',
               daysOld
             })
+            results.success.push(orderId)
+          } else if (input.emailType === 'status_update') {
+            const statusLabel = ORDER_STATUS_LABELS[order.status as keyof typeof ORDER_STATUS_LABELS] || order.status
+            await sendCustomEmailEnhanced({
+              to: order.contact_email,
+              name: order.contact_name,
+              subject: `Order #${orderId} Status Update`,
+              body: `
+                <p>Hi ${order.contact_name},</p>
+                <p>Your order status is now <strong>${statusLabel}</strong>.</p>
+                <p>If you have questions, just reply to this email and our team will help.</p>
+              `,
+              orderId
+            })
+            results.success.push(orderId)
           } else if (input.emailType === 'custom' && input.subject && input.body) {
             const processedBody = input.body
               .replace(/\{\{name\}\}/g, order.contact_name)
@@ -604,11 +670,26 @@ export const adminEnhancementsRouter = router({
               body: processedBody,
               orderId
             })
+            results.success.push(orderId)
+          } else if (input.emailType === 'reminder') {
+            results.failed.push({
+              id: orderId,
+              error: 'Reminder emails can only be sent for quoted orders with a quote amount'
+            })
+          } else if (input.emailType === 'custom') {
+            results.failed.push({
+              id: orderId,
+              error: 'Custom email requires both subject and body'
+            })
+          } else {
+            results.failed.push({
+              id: orderId,
+              error: `Unsupported email type '${input.emailType}'`
+            })
           }
-          
-          results.sent++
         } catch (err) {
-          results.failed++
+          const message = err instanceof Error ? err.message : 'Bulk email send failed'
+          results.failed.push({ id: orderId, error: message })
           logger.error('Bulk email failed', { orderId, error: err })
         }
       }

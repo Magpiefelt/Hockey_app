@@ -132,3 +132,59 @@ describe('EmailDetailModal Component', () => {
     expect(content).toContain('catch {')
   })
 })
+
+describe('BulkActionsToolbar Component', () => {
+  const componentPath = join(process.cwd(), 'components', 'admin', 'BulkActionsToolbar.vue')
+
+  it('should exist', () => {
+    expect(existsSync(componentPath)).toBe(true)
+  })
+
+  it('should load dynamic status options from API', () => {
+    const content = readFileSync(componentPath, 'utf-8')
+    expect(content).toContain('getBulkStatusOptions')
+    expect(content).toContain('loadAvailableStatuses')
+  })
+
+  it('should show loading and empty-state messaging for status options', () => {
+    const content = readFileSync(componentPath, 'utf-8')
+    expect(content).toContain('statusOptionsLoading')
+    expect(content).toContain('No common status transition is valid for all selected orders')
+  })
+
+  it('should return structured email bulk action results', () => {
+    const content = readFileSync(componentPath, 'utf-8')
+    expect(content).toContain("emit('actionComplete', 'email', results)")
+    expect(content).toContain('results.failed.length')
+  })
+})
+
+describe('OrderStatusHistory Component', () => {
+  const componentPath = join(process.cwd(), 'components', 'admin', 'OrderStatusHistory.vue')
+
+  it('should exist', () => {
+    expect(existsSync(componentPath)).toBe(true)
+  })
+
+  it('should react to order id changes and allow retry', () => {
+    const content = readFileSync(componentPath, 'utf-8')
+    expect(content).toContain('watch(')
+    expect(content).toContain('props.orderId')
+    expect(content).toContain('@click="loadHistory"')
+  })
+})
+
+describe('OrderEmailHistory Component', () => {
+  const componentPath = join(process.cwd(), 'components', 'admin', 'OrderEmailHistory.vue')
+
+  it('should exist', () => {
+    expect(existsSync(componentPath)).toBe(true)
+  })
+
+  it('should react to order id changes and show retry action', () => {
+    const content = readFileSync(componentPath, 'utf-8')
+    expect(content).toContain('watch(')
+    expect(content).toContain('props.orderId')
+    expect(content).toContain('@click="loadEmails"')
+  })
+})

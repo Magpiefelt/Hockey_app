@@ -16,6 +16,12 @@
         <Icon name="mdi:alert-circle" class="w-5 h-5" />
         {{ error }}
       </p>
+      <button
+        @click="loadHistory"
+        class="mt-3 px-3 py-1.5 text-xs font-medium rounded-lg bg-red-500/20 text-red-200 hover:bg-red-500/30 transition-colors"
+      >
+        Retry
+      </button>
     </div>
 
     <!-- Timeline -->
@@ -83,7 +89,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, watch } from 'vue'
 
 interface StatusHistoryItem {
   id: number
@@ -105,25 +111,41 @@ const props = defineProps<Props>()
 const history = ref<StatusHistoryItem[]>([])
 const isLoading = ref(true)
 const error = ref('')
-
-onMounted(async () => {
-  await loadHistory()
-})
+let activeRequestId = 0
 
 async function loadHistory() {
+  if (!props.orderId || props.orderId <= 0) {
+    history.value = []
+    error.value = 'Invalid order ID'
+    isLoading.value = false
+    return
+  }
+
+  const requestId = ++activeRequestId
   isLoading.value = true
   error.value = ''
 
   try {
     const trpc = useTrpc()
-    const result = await trpc.admin.getOrderStatusHistory.query({ orderId: props.orderId }) as StatusHistoryItem[]
+    const result = await trpc.admin.getOrderStatusHistory.query({ orderId: props.orderId })
+    if (requestId !== activeRequestId) return
     history.value = result
   } catch (err: any) {
+    if (requestId !== activeRequestId) return
     error.value = err.message || 'Failed to load status history'
   } finally {
+    if (requestId !== activeRequestId) return
     isLoading.value = false
   }
 }
+
+watch(
+  () => props.orderId,
+  () => {
+    loadHistory()
+  },
+  { immediate: true }
+)
 
 const { getStatusLabel: formatStatus, getStatusColors: getStatusColor } = useOrderStatus()
 
