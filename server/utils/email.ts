@@ -1,27 +1,13 @@
 /**
  * Email Utility Module
- * Provides email sending functionality using Mailgun API
- * 
- * Migrated from Nodemailer/SMTP to Mailgun
- * 
- * IMPROVED:
- * - Stores metadata_json in email_logs for reliable email resend
- * - Better error handling and logging
- * - Consistent return types
- * - Input validation
+ * Provides typed email-sending functions for standard transactional emails
+ * (order confirmation, quote, invoice, receipt, password reset, custom).
+ *
+ * Core send/log infrastructure lives in `email-core.ts`.
  */
 
-import { sendEmailWithMailgun } from './mailgun'
-import { logger } from './logger'
-import { executeQuery } from './database'
-import { resolveManagedEmailTemplate } from '../services/emailTemplateService'
-
-interface EmailOptions {
-  to: string
-  subject: string
-  html: string
-  text?: string
-}
+import { sendEmailCore } from './email-core'
+import type { SendEmailConfig } from './email-core'
 
 interface OrderConfirmationData {
   to: string
@@ -60,147 +46,10 @@ interface PasswordResetData {
 }
 
 /**
- * Log email to database with metadata for resend capability
- * 
- * IMPROVED: Now stores metadata_json so emails can be properly reconstructed on resend
+ * Re-export sendEmailCore under the original `sendEmail` name so existing
+ * callers (`admin.ts`, template `sendTest`, etc.) keep working unchanged.
  */
-async function logEmail(
-  quoteRequestId: number | null,
-  toEmail: string,
-  subject: string,
-  template: string,
-  metadata: any,
-  status: 'sent' | 'failed' | 'bounced',
-  errorMessage?: string
-) {
-  try {
-    // Try to store with all new columns first
-    await executeQuery(
-      `INSERT INTO email_logs (quote_id, to_email, subject, template, status, error_message, metadata_json, sent_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
-      [quoteRequestId, toEmail, subject, template, status, errorMessage || null, JSON.stringify(metadata || {})]
-    )
-  } catch (error: any) {
-    // Fallback chain for missing columns
-    if (error.code === '42703') {
-      try {
-        // Try without metadata_json
-        await executeQuery(
-          `INSERT INTO email_logs (quote_id, to_email, subject, template, status, error_message, sent_at)
-           VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
-          [quoteRequestId, toEmail, subject, template, status, errorMessage || null]
-        )
-      } catch (fallback1Error: any) {
-        if (fallback1Error.code === '42703') {
-          try {
-            // Fallback to old column names (recipient_email, email_type)
-            await executeQuery(
-              `INSERT INTO email_logs (quote_id, recipient_email, subject, email_type, status, error_message, sent_at)
-               VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
-              [quoteRequestId, toEmail, subject, template, status, errorMessage || null]
-            )
-          } catch (fallback2Error) {
-            logger.error('Failed to log email (all fallbacks)', { error: fallback2Error, toEmail, subject })
-          }
-        } else {
-          logger.error('Failed to log email (fallback)', { error: fallback1Error, toEmail, subject })
-        }
-      }
-    } else {
-      logger.error('Failed to log email', { error, toEmail, subject })
-    }
-  }
-}
-
-/**
- * Send email with error handling and logging
- * Uses Mailgun API for delivery
- */
-export async function sendEmail(
-  options: EmailOptions,
-  template: string,
-  metadata: any,
-  quoteRequestId?: number | null,
-  config?: { skipTemplateOverride?: boolean }
-): Promise<boolean> {
-  // Validate required fields
-  if (!options.to) {
-    logger.error('Email recipient is required', { template })
-    return false
-  }
-
-  if (!options.subject) {
-    logger.error('Email subject is required', { template, to: options.to })
-    return false
-  }
-
-  try {
-    const resolvedTemplate = config?.skipTemplateOverride
-      ? {
-          subject: options.subject,
-          html: options.html,
-          overrideApplied: false
-        }
-      : await resolveManagedEmailTemplate(template, {
-          subject: options.subject,
-          html: options.html,
-          metadata: {
-            ...(metadata || {}),
-            to: options.to,
-            subject: options.subject
-          }
-        })
-
-    const sent = await sendEmailWithMailgun({
-      to: options.to,
-      subject: resolvedTemplate.subject,
-      html: resolvedTemplate.html,
-      text: options.text
-    })
-    
-    if (sent) {
-      logger.info('Email sent successfully', {
-        to: options.to,
-        subject: resolvedTemplate.subject,
-        template,
-        overrideApplied: resolvedTemplate.overrideApplied
-      })
-      
-      // Log as sent with metadata for resend capability
-      await logEmail(
-        quoteRequestId || null,
-        options.to,
-        resolvedTemplate.subject,
-        template,
-        { ...(metadata || {}), templateOverrideApplied: resolvedTemplate.overrideApplied },
-        'sent'
-      )
-      return true
-    } else {
-      throw new Error('Email sending returned false')
-    }
-  } catch (error: any) {
-    logger.error('Failed to send email', {
-      error: error.message,
-      to: options.to,
-      subject: options.subject,
-      template
-    })
-    
-    // Log as failed with metadata
-    await logEmail(
-      quoteRequestId || null,
-      options.to,
-      options.subject,
-      template,
-      metadata,
-      'failed',
-      error.message
-    )
-    
-    return false
-  }
-}
+export { sendEmailCore as sendEmail }
 
 /**
  * Send order confirmation email
@@ -245,10 +94,7 @@ export async function sendOrderConfirmation(data: OrderConfirmationData): Promis
           </ul>
           
           <p>If you have any questions, feel free to contact us:</p>
-          <p>
-            <!-- TODO: Replace with real business phone number -->
-            Email: info@elitesportsdj.ca
-          </p>
+          <p>Email: info@elitesportsdj.ca</p>
           
           <p>Thank you for choosing Elite Sports DJ!</p>
           
@@ -262,7 +108,7 @@ export async function sendOrderConfirmation(data: OrderConfirmationData): Promis
     </html>
   `
 
-  return sendEmail(
+  return sendEmailCore(
     {
       to: data.to,
       subject: `Order Confirmation - Elite Sports DJ #${data.orderId}`,
@@ -321,10 +167,7 @@ export async function sendQuoteEmail(data: QuoteEmailData): Promise<boolean> {
           
           <p><strong>Next Steps:</strong></p>
           <p>To proceed with this quote, please reply to this email or contact us at:</p>
-          <p>
-            <!-- TODO: Replace with real business phone number -->
-            Email: info@elitesportsdj.ca
-          </p>
+          <p>Email: info@elitesportsdj.ca</p>
           
           <p>This quote is valid for 30 days from the date of this email.</p>
           
@@ -340,7 +183,7 @@ export async function sendQuoteEmail(data: QuoteEmailData): Promise<boolean> {
     </html>
   `
 
-  return sendEmail(
+  return sendEmailCore(
     {
       to: data.to,
       subject: `Your Quote is Ready - Elite Sports DJ #${data.orderId}`,
@@ -404,10 +247,7 @@ export async function sendInvoiceEmail(data: InvoiceEmailData): Promise<boolean>
           <p>Once payment is received, we'll begin working on your order immediately.</p>
           
           <p>Questions? Contact us:</p>
-          <p>
-            <!-- TODO: Replace with real business phone number -->
-            Email: info@elitesportsdj.ca
-          </p>
+          <p>Email: info@elitesportsdj.ca</p>
           
           <p>Thank you for your business!</p>
           
@@ -421,7 +261,7 @@ export async function sendInvoiceEmail(data: InvoiceEmailData): Promise<boolean>
     </html>
   `
 
-  return sendEmail(
+  return sendEmailCore(
     {
       to: data.to,
       subject: `Invoice #${data.orderId} - Elite Sports DJ`,
@@ -484,10 +324,7 @@ export async function sendPaymentReceipt(data: PaymentReceiptData): Promise<bool
           <p>You can track your order status anytime by logging into your account.</p>
           
           <p>Questions? We're here to help:</p>
-          <p>
-            <!-- TODO: Replace with real business phone number -->
-            Email: info@elitesportsdj.ca
-          </p>
+          <p>Email: info@elitesportsdj.ca</p>
           
           <p>Thank you for choosing Elite Sports DJ!</p>
           
@@ -501,7 +338,7 @@ export async function sendPaymentReceipt(data: PaymentReceiptData): Promise<bool
     </html>
   `
 
-  return sendEmail(
+  return sendEmailCore(
     {
       to: data.to,
       subject: `Payment Received - Elite Sports DJ #${data.orderId}`,
@@ -515,15 +352,9 @@ export async function sendPaymentReceipt(data: PaymentReceiptData): Promise<bool
 
 /**
  * Send custom email (for admin use)
- * 
+ *
  * SECURITY NOTE: The htmlContent parameter should be sanitized before passing
  * to this function if it contains any user-provided content.
- * Use escapeHtml() from sanitize.ts for user-provided text.
- * 
- * @param to - Recipient email address
- * @param subject - Email subject (will be escaped)
- * @param htmlContent - HTML content (should be pre-sanitized if contains user input)
- * @param quoteRequestId - Optional order ID for logging
  */
 export async function sendCustomEmail(
   to: string,
@@ -531,15 +362,11 @@ export async function sendCustomEmail(
   htmlContent: string,
   quoteRequestId?: number
 ): Promise<boolean> {
-  // Import escapeHtml for subject sanitization
-  const { escapeHtml } = await import('./sanitize')
-  
-  // Sanitize subject to prevent header injection
   const sanitizedSubject = subject
-    .replace(/[\r\n]/g, '') // Remove newlines to prevent header injection
-    .substring(0, 200) // Limit length
+    .replace(/[\r\n]/g, '')
+    .substring(0, 200)
   
-  return sendEmail(
+  return sendEmailCore(
     {
       to,
       subject: sanitizedSubject,
@@ -635,10 +462,7 @@ export async function sendPasswordResetEmail(data: PasswordResetData): Promise<b
           <p>For security reasons, never share this link with anyone.</p>
           
           <p>Questions? Contact us:</p>
-          <p>
-            <!-- TODO: Replace with real business phone number -->
-            Email: info@elitesportsdj.ca
-          </p>
+          <p>Email: info@elitesportsdj.ca</p>
           
           <p>Best regards,<br>The Elite Sports DJ Team</p>
         </div>
@@ -651,7 +475,7 @@ export async function sendPasswordResetEmail(data: PasswordResetData): Promise<b
     </html>
   `
   
-  return sendEmail(
+  return sendEmailCore(
     {
       to: data.to,
       subject: 'Password Reset Request - Elite Sports DJ',
