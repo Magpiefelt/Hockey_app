@@ -84,7 +84,7 @@
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
         <UiMetricCard
           icon="mdi:cash-minus"
-          color="rose"
+          color="red"
           :value="stats.monthlyExpenses || 0"
           format="currency"
           title="This Month Expenses"
@@ -287,7 +287,7 @@
         <UiDataCard
           title="Expense & Budget Health"
           icon="mdi:wallet-outline"
-          icon-color="rose"
+          icon-color="red"
         >
           <div class="p-5 space-y-4">
             <div class="rounded-lg bg-slate-800/60 border border-slate-700 p-4">
@@ -834,7 +834,7 @@ async function saveExpense() {
 
   savingExpense.value = true
   try {
-    await trpc.financeAutomation.createExpense.mutation({
+    await trpc.financeAutomation.createExpense.mutate({
       description,
       category: expenseForm.value.category,
       amountCents: Math.round(amount * 100),
