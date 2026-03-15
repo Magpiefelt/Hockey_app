@@ -60,6 +60,42 @@ describe('finance export behavior', () => {
     expect(csv).toContain('SUMMARY')
   })
 
+  it('neutralizes spreadsheet formulas in CSV output', () => {
+    const csv = buildTaxReportCsv(
+      [
+        {
+          orderId: 2,
+          customerName: '=HYPERLINK("https://malicious.example","click")',
+          customerEmail: '@attacker.example',
+          orderDate: '2026-03-01',
+          paymentDate: '2026-03-02',
+          province: 'AB',
+          provinceName: 'Alberta',
+          service: '+SUM(1,1)',
+          subtotal: 5000,
+          gst: 250,
+          pst: 0,
+          hst: 0,
+          totalTax: 250,
+          total: 5250
+        }
+      ],
+      {
+        subtotal: 5000,
+        gst: 250,
+        pst: 0,
+        hst: 0,
+        totalTax: 250,
+        total: 5250,
+        orderCount: 1
+      }
+    )
+
+    expect(csv).toContain("'=HYPERLINK")
+    expect(csv).toContain("'@attacker.example")
+    expect(csv).toContain("'+SUM(1,1)")
+  })
+
   it('returns CSV payload when requested', async () => {
     queryMock.mockResolvedValueOnce({
       rows: [

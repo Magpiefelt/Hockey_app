@@ -17,6 +17,31 @@ import {
 import { generateQuoteViewUrl } from '../../utils/quote-tokens'
 import { ORDER_STATUS_LABELS, ORDER_STATUS_VALUES, getAllowedOrderTransitions, isValidOrderStatusTransition, type OrderStatus } from '../../utils/order-status'
 
+const BLOCKED_QUOTE_SUBMISSION_STATUSES = new Set(['paid', 'completed', 'delivered', 'cancelled', 'refunded'])
+const EDITABLE_QUOTE_SUBMISSION_STATUSES = new Set(['submitted', 'in_progress', 'quoted', 'quote_viewed'])
+const REVISABLE_QUOTE_STATUSES = new Set(['quoted', 'quote_viewed'])
+
+export function canSubmitQuoteFromStatus(status: string): boolean {
+  return EDITABLE_QUOTE_SUBMISSION_STATUSES.has(status)
+}
+
+export function canReviseQuoteFromStatus(status: string): boolean {
+  return REVISABLE_QUOTE_STATUSES.has(status)
+}
+
+export function normalizeOptionalTaxAmount(taxAmount?: number): number | null {
+  return typeof taxAmount === 'number' ? taxAmount : null
+}
+
+export function escapeAdminExportCsvCell(value: unknown): string {
+  const raw = String(value ?? '')
+  const neutralized = /^[\t\r\n ]*[=+\-@]/.test(raw) ? `'${raw}` : raw
+  if (/[",\n]/.test(neutralized)) {
+    return `"${neutralized.replace(/"/g, '""')}"`
+  }
+  return neutralized
+}
+
 export const adminEnhancementsRouter = router({
   /**
    * Get bulk status options valid for selected orders.
@@ -78,7 +103,7 @@ export const adminEnhancementsRouter = router({
       includePaymentLink: z.boolean().default(false),
       // New: Event datetime for calendar booking
       eventDateTime: z.string().optional(), // ISO string
-      confirmDateTime: z.boolean().default(false),
+      confirmDateTime: z.boolean().optional(),
       // Tax fields (optional for now)
       taxProvince: z.string().length(2).optional(),
       taxAmount: z.number().min(0).optional()
@@ -124,17 +149,17 @@ export const adminEnhancementsRouter = router({
         const order = orderResult.rows[0]
         const packageName = order.package_name || 'Service Request'
         const normalizedAdminNotes = input.adminNotes?.trim() || undefined
+        const confirmedDateTime = typeof input.confirmDateTime === 'boolean' ? input.confirmDateTime : null
+        const normalizedTaxAmount = normalizeOptionalTaxAmount(input.taxAmount)
 
-        const blockedStatuses = new Set(['paid', 'completed', 'delivered', 'cancelled', 'refunded'])
-        if (blockedStatuses.has(order.status)) {
+        if (BLOCKED_QUOTE_SUBMISSION_STATUSES.has(order.status)) {
           throw new TRPCError({
             code: 'BAD_REQUEST',
             message: `Cannot submit or revise quotes while order is '${order.status}'`
           })
         }
 
-        const quoteEditableStatuses = new Set(['submitted', 'in_progress', 'quoted', 'quote_viewed', 'quote_accepted', 'invoiced'])
-        if (!quoteEditableStatuses.has(order.status)) {
+        if (!canSubmitQuoteFromStatus(order.status)) {
           throw new TRPCError({
             code: 'BAD_REQUEST',
             message: `Cannot submit quote from status '${order.status}'`
@@ -172,7 +197,7 @@ export const adminEnhancementsRouter = router({
                  event_datetime = COALESCE($3, event_datetime),
                  event_date = COALESCE($4::date, event_date),
                  event_time = COALESCE($5::time, event_time),
-                 admin_confirmed_datetime = $6,
+                admin_confirmed_datetime = COALESCE($6, admin_confirmed_datetime, FALSE),
                  tax_province = COALESCE($7, tax_province, 'AB'),
                  tax_amount = COALESCE($8, tax_amount, 0),
                  updated_at = NOW()
@@ -183,9 +208,9 @@ export const adminEnhancementsRouter = router({
               eventDateTime?.toISOString() || null,
               eventDateStr,
               eventTimeStr,
-              input.confirmDateTime,
+              confirmedDateTime,
               input.taxProvince || null,
-              input.taxAmount || 0,
+              normalizedTaxAmount,
               input.orderId
             ]
           )
@@ -334,6 +359,7 @@ export const adminEnhancementsRouter = router({
           currentResult = await client.query(
             `SELECT 
               qr.quoted_amount,
+              qr.status,
               qr.current_quote_version,
               qr.contact_email,
               qr.contact_name,
@@ -347,6 +373,7 @@ export const adminEnhancementsRouter = router({
           currentResult = await client.query(
             `SELECT 
               qr.quoted_amount,
+              qr.status,
               1 as current_quote_version,
               qr.contact_email,
               qr.contact_name,
@@ -366,6 +393,12 @@ export const adminEnhancementsRouter = router({
         }
         
         const current = currentResult.rows[0]
+        if (!canReviseQuoteFromStatus(current.status)) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: `Cannot revise quote while order is '${current.status}'`
+          })
+        }
         const previousAmount = current.quoted_amount
         const newVersion = (current.current_quote_version || 1) + 1
         
@@ -400,8 +433,8 @@ export const adminEnhancementsRouter = router({
         // Log status history
         await client.query(
           `INSERT INTO order_status_history (quote_id, previous_status, new_status, changed_by, notes)
-           VALUES ($1, 'quoted', 'quoted', $2, $3)`,
-          [input.orderId, ctx.user.userId, `Quote revised: ${input.reason}`]
+           VALUES ($1, $2, $3, $4, $5)`,
+          [input.orderId, current.status, current.status, ctx.user.userId, `Quote revised: ${input.reason}`]
         )
         
         // Send notification if requested
@@ -801,13 +834,10 @@ export const adminEnhancementsRouter = router({
           headers.map(h => {
             const val = row[h]
             if (val === null || val === undefined) return ''
-            if (typeof val === 'string' && (val.includes(',') || val.includes('"'))) {
-              return `"${val.replace(/"/g, '""')}"`
-            }
             if (val instanceof Date) {
-              return val.toISOString()
+              return escapeAdminExportCsvCell(val.toISOString())
             }
-            return val
+            return escapeAdminExportCsvCell(val)
           }).join(',')
         )
       ]
@@ -860,7 +890,7 @@ export const adminEnhancementsRouter = router({
   resendEmailByType: adminProcedure
     .input(z.object({
       orderId: z.number(),
-      emailType: z.enum(['quote', 'invoice', 'confirmation', 'reminder'])
+      emailType: z.enum(['quote', 'reminder'])
     }))
     .mutation(async ({ input }) => {
       const orderResult = await query(
@@ -909,7 +939,7 @@ export const adminEnhancementsRouter = router({
           // Generate fresh token-based URL for the resend
           const quoteViewUrl = generateQuoteViewUrl(input.orderId, order.contact_email, appUrl)
           
-          await sendEnhancedQuoteEmail({
+          const quoteResent = await sendEnhancedQuoteEmail({
             to: order.contact_email,
             name: order.contact_name,
             quoteAmount: order.quoted_amount,
@@ -917,6 +947,12 @@ export const adminEnhancementsRouter = router({
             orderId: input.orderId,
             quoteViewUrl
           })
+          if (!quoteResent) {
+            throw new TRPCError({
+              code: 'INTERNAL_SERVER_ERROR',
+              message: 'Failed to resend quote email'
+            })
+          }
           break
         }
           
@@ -928,7 +964,7 @@ export const adminEnhancementsRouter = router({
             })
           }
           const daysOld = Math.floor((Date.now() - new Date(order.created_at).getTime()) / (1000 * 60 * 60 * 24))
-          await sendQuoteReminderEmail({
+          const reminderSent = await sendQuoteReminderEmail({
             to: order.contact_email,
             name: order.contact_name,
             orderId: input.orderId,
@@ -936,6 +972,12 @@ export const adminEnhancementsRouter = router({
             packageName: order.package_name || 'Service Request',
             daysOld
           })
+          if (!reminderSent) {
+            throw new TRPCError({
+              code: 'INTERNAL_SERVER_ERROR',
+              message: 'Failed to resend reminder email'
+            })
+          }
           break
         }
           

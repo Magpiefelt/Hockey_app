@@ -37,10 +37,12 @@ interface TaxReportSummaryRow {
 
 function escapeCsvCell(value: unknown): string {
   const raw = String(value ?? '')
-  if (/[",\n]/.test(raw)) {
-    return `"${raw.replace(/"/g, '""')}"`
+  // Prevent CSV formula injection in spreadsheet tools.
+  const neutralized = /^[\t\r\n ]*[=+\-@]/.test(raw) ? `'${raw}` : raw
+  if (/[",\n]/.test(neutralized)) {
+    return `"${neutralized.replace(/"/g, '""')}"`
   }
-  return raw
+  return neutralized
 }
 
 export function buildTaxReportCsv(orders: TaxReportOrderRow[], summary: TaxReportSummaryRow): string {

@@ -1255,21 +1255,26 @@ export const adminRouter = router({
         // Determine which email function to use based on template
         try {
           // Using static imports from top of file
+          const ensureEmailSent = (sent: boolean, template: string) => {
+            if (!sent) {
+              throw new Error(`Email provider returned unsuccessful result for template '${template}'`)
+            }
+          }
           
           switch (emailLog.template) {
             case 'order_confirmation':
-              await sendOrderConfirmation({
+              ensureEmailSent(await sendOrderConfirmation({
                 to: metadata.to || emailLog.to_email,
                 name: metadata.name || 'Customer',
                 serviceType: metadata.serviceType || 'Service Request',
                 orderId: metadata.orderId || emailLog.quote_id
-              })
+              }), 'order_confirmation')
               break
               
             case 'quote':
             case 'quote_enhanced':
               // Use enhanced quote email with token-based URL
-              await sendEnhancedQuoteEmail({
+              ensureEmailSent(await sendEnhancedQuoteEmail({
                 to: metadata.to || emailLog.to_email,
                 name: metadata.name || 'Customer',
                 quoteAmount: metadata.quoteAmount || 0,
@@ -1279,36 +1284,36 @@ export const adminRouter = router({
                 teamName: metadata.teamName,
                 sportType: metadata.sportType,
                 adminNotes: metadata.adminNotes
-              })
+              }), 'quote_enhanced')
               break
               
             case 'invoice':
-              await sendInvoiceEmail({
+              ensureEmailSent(await sendInvoiceEmail({
                 to: metadata.to || emailLog.to_email,
                 name: metadata.name || 'Customer',
                 amount: metadata.amount || 0,
                 invoiceUrl: metadata.invoiceUrl || '',
                 orderId: metadata.orderId || emailLog.quote_id
-              })
+              }), 'invoice')
               break
               
             case 'payment_receipt':
             case 'receipt':
-              await sendPaymentReceipt({
+              ensureEmailSent(await sendPaymentReceipt({
                 to: metadata.to || emailLog.to_email,
                 name: metadata.name || 'Customer',
                 amount: metadata.amount || 0,
                 orderId: metadata.orderId || emailLog.quote_id
-              })
+              }), 'payment_receipt')
               break
               
             default:
-              await sendCustomEmail(
+              ensureEmailSent(await sendCustomEmail(
                 emailLog.to_email,
                 emailLog.subject,
                 metadata?.body || '<p>This is a resent notification. Please contact us if you need assistance.</p>',
                 emailLog.quote_id
-              )
+              ), 'custom')
           }
           
           logger.info('Email resent successfully', { emailId: input.id, template: emailLog.template })
