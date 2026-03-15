@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { router, adminProcedure } from '../trpc'
 import { query } from '../../db/connection'
 import { getTaxRates, getProvinceName, getSupportedProvinces } from '../../utils/tax'
+import { PAID_STATUS_SQL, PENDING_PAYMENT_SQL } from '../../utils/order-status'
 
 interface TaxReportOrderRow {
   orderId: number
@@ -104,7 +105,7 @@ export const financeRouter = router({
       const totalResult = await query(
         `SELECT COALESCE(SUM(total_amount), 0) as revenue 
          FROM quote_requests 
-         WHERE status IN ('paid', 'completed', 'delivered')`
+         WHERE ${PAID_STATUS_SQL}`
       )
       const totalRevenue = totalResult.rows.length > 0 ? parseFloat(totalResult.rows[0].revenue) || 0 : 0
       
@@ -112,7 +113,7 @@ export const financeRouter = router({
       const ytdResult = await query(
         `SELECT COALESCE(SUM(total_amount), 0) as revenue 
          FROM quote_requests 
-         WHERE status IN ('paid', 'completed', 'delivered')
+         WHERE ${PAID_STATUS_SQL}
          AND EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM CURRENT_DATE)`
       )
       const yearToDateRevenue = ytdResult.rows.length > 0 ? parseFloat(ytdResult.rows[0].revenue) || 0 : 0
@@ -121,7 +122,7 @@ export const financeRouter = router({
       const monthlyResult = await query(
         `SELECT COALESCE(SUM(total_amount), 0) as revenue 
          FROM quote_requests 
-         WHERE status IN ('paid', 'completed', 'delivered')
+         WHERE ${PAID_STATUS_SQL}
          AND DATE_TRUNC('month', created_at) = DATE_TRUNC('month', CURRENT_DATE)`
       )
       const monthlyRevenue = monthlyResult.rows.length > 0 ? parseFloat(monthlyResult.rows[0].revenue) || 0 : 0
@@ -155,7 +156,7 @@ export const financeRouter = router({
       const lastMonthResult = await query(
         `SELECT COALESCE(SUM(total_amount), 0) as revenue 
          FROM quote_requests 
-         WHERE status IN ('paid', 'completed', 'delivered')
+         WHERE ${PAID_STATUS_SQL}
          AND DATE_TRUNC('month', created_at) = DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month')`
       )
       const lastMonthRevenue = lastMonthResult.rows.length > 0 ? parseFloat(lastMonthResult.rows[0].revenue) || 0 : 0
@@ -164,7 +165,7 @@ export const financeRouter = router({
       const pendingResult = await query(
         `SELECT COALESCE(SUM(COALESCE(quoted_amount, total_amount)), 0) as amount 
          FROM quote_requests 
-         WHERE status IN ('quoted', 'invoiced')`
+         WHERE ${PENDING_PAYMENT_SQL}`
       )
       const pendingPayments = pendingResult.rows.length > 0 ? parseFloat(pendingResult.rows[0].amount) || 0 : 0
       
@@ -172,7 +173,7 @@ export const financeRouter = router({
       const orderCountResult = await query(
         `SELECT COUNT(*) as count 
          FROM quote_requests 
-         WHERE status IN ('paid', 'completed', 'delivered')`
+         WHERE ${PAID_STATUS_SQL}`
       )
       const paidOrderCount = orderCountResult.rows.length > 0 ? parseInt(orderCountResult.rows[0].count) || 0 : 0
       
@@ -196,7 +197,7 @@ export const financeRouter = router({
       const avgDaysResult = await query(
         `SELECT AVG(EXTRACT(DAY FROM (updated_at - created_at))) as avg_days
          FROM quote_requests 
-         WHERE status IN ('paid', 'completed', 'delivered')
+         WHERE ${PAID_STATUS_SQL}
          AND updated_at IS NOT NULL`
       )
       const averageDaysToPayment = avgDaysResult.rows.length > 0 ? Math.round(parseFloat(avgDaysResult.rows[0].avg_days) || 0) : 0
@@ -209,7 +210,7 @@ export const financeRouter = router({
             COALESCE(SUM(tax_amount), 0) as collected_tax,
             COALESCE(SUM(CASE WHEN tax_province = 'AB' OR tax_province IS NULL THEN total_amount * 0.05 ELSE 0 END), 0) as estimated_gst
            FROM quote_requests 
-           WHERE status IN ('paid', 'completed', 'delivered')`
+           WHERE ${PAID_STATUS_SQL}`
         )
         const collectedTax = taxResult.rows.length > 0 ? parseFloat(taxResult.rows[0].collected_tax) || 0 : 0
         const estimatedGst = taxResult.rows.length > 0 ? parseFloat(taxResult.rows[0].estimated_gst) || 0 : 0
@@ -219,7 +220,7 @@ export const financeRouter = router({
         const fallbackTax = await query(
           `SELECT COALESCE(SUM(total_amount), 0) * 0.05 as estimated_gst
            FROM quote_requests 
-           WHERE status IN ('paid', 'completed', 'delivered')`
+           WHERE ${PAID_STATUS_SQL}`
         )
         taxCollected = fallbackTax.rows.length > 0 ? Math.round(parseFloat(fallbackTax.rows[0].estimated_gst) || 0) : 0
       }
@@ -232,7 +233,7 @@ export const financeRouter = router({
           COUNT(*) as order_count
         FROM quote_requests qr
         LEFT JOIN packages p ON qr.package_id = p.id
-        WHERE qr.status IN ('paid', 'completed', 'delivered')
+        WHERE qr.${PAID_STATUS_SQL}
         GROUP BY p.name, qr.service_type
         ORDER BY revenue DESC`
       )
@@ -258,7 +259,7 @@ export const financeRouter = router({
           COUNT(*) as count,
           COALESCE(SUM(COALESCE(quoted_amount, total_amount)), 0) as amount
         FROM quote_requests
-        WHERE status IN ('quoted', 'invoiced')
+        WHERE ${PENDING_PAYMENT_SQL}
         GROUP BY age_bucket`
       )
       
@@ -298,7 +299,7 @@ export const financeRouter = router({
           COALESCE(SUM(qr.total_amount), 0) as total_spent
         FROM quote_requests qr
         LEFT JOIN users u ON qr.user_id = u.id
-        WHERE qr.status IN ('paid', 'completed', 'delivered')
+        WHERE qr.${PAID_STATUS_SQL}
         GROUP BY COALESCE(qr.contact_email, u.email)
         ORDER BY total_spent DESC
         LIMIT 5`
@@ -385,7 +386,7 @@ export const financeRouter = router({
           COALESCE(SUM(total_amount), 0) as revenue,
           COUNT(*) as order_count
         FROM quote_requests 
-        WHERE status IN ('paid', 'completed', 'delivered')
+        WHERE ${PAID_STATUS_SQL}
         AND created_at >= DATE_TRUNC('month', CURRENT_DATE) - make_interval(months => $1)
         GROUP BY DATE_TRUNC('month', created_at)
         ORDER BY month`,
@@ -398,7 +399,7 @@ export const financeRouter = router({
           TO_CHAR(DATE_TRUNC('month', created_at) + INTERVAL '1 year', 'YYYY-MM') as month,
           COALESCE(SUM(total_amount), 0) as revenue
         FROM quote_requests 
-        WHERE status IN ('paid', 'completed', 'delivered')
+        WHERE ${PAID_STATUS_SQL}
         AND created_at >= DATE_TRUNC('month', CURRENT_DATE) - make_interval(months => $1)
         AND created_at < DATE_TRUNC('month', CURRENT_DATE) - make_interval(months => $2)
         GROUP BY DATE_TRUNC('month', created_at)
@@ -452,7 +453,7 @@ export const financeRouter = router({
             COALESCE(SUM(tax_amount), 0) as tax_collected,
             COUNT(*) as order_count
           FROM quote_requests 
-          WHERE status IN ('paid', 'completed', 'delivered')
+          WHERE ${PAID_STATUS_SQL}
           AND ${dateFilter}
           GROUP BY COALESCE(tax_province, 'AB')
           ORDER BY revenue DESC`,
@@ -467,7 +468,7 @@ export const financeRouter = router({
             0 as tax_collected,
             COUNT(*) as order_count
           FROM quote_requests 
-          WHERE status IN ('paid', 'completed', 'delivered')
+          WHERE ${PAID_STATUS_SQL}
           AND ${dateFilter}`,
           params
         )
@@ -555,7 +556,7 @@ export const financeRouter = router({
             COALESCE(p.name, qr.service_type) as service
           FROM quote_requests qr
           LEFT JOIN packages p ON qr.package_id = p.id
-          WHERE qr.status IN ('paid', 'completed', 'delivered')
+          WHERE qr.${PAID_STATUS_SQL}
           AND ${exportDateFilter}
           ORDER BY qr.created_at`,
           exportParams
@@ -575,7 +576,7 @@ export const financeRouter = router({
             COALESCE(p.name, qr.service_type) as service
           FROM quote_requests qr
           LEFT JOIN packages p ON qr.package_id = p.id
-          WHERE qr.status IN ('paid', 'completed', 'delivered')
+          WHERE qr.${PAID_STATUS_SQL}
           AND ${exportDateFilter}
           ORDER BY qr.created_at`,
           exportParams
@@ -651,7 +652,7 @@ export const financeRouter = router({
           EXTRACT(DOW FROM event_date) as day_of_week,
           COUNT(*) as count
         FROM quote_requests 
-        WHERE status IN ('paid', 'completed', 'delivered')
+        WHERE ${PAID_STATUS_SQL}
         AND event_date IS NOT NULL
         GROUP BY EXTRACT(DOW FROM event_date)
         ORDER BY count DESC`
@@ -670,7 +671,7 @@ export const financeRouter = router({
           EXTRACT(MONTH FROM event_date) as month,
           COUNT(*) as count
         FROM quote_requests 
-        WHERE status IN ('paid', 'completed', 'delivered')
+        WHERE ${PAID_STATUS_SQL}
         AND event_date IS NOT NULL
         GROUP BY EXTRACT(MONTH FROM event_date)
         ORDER BY count DESC`

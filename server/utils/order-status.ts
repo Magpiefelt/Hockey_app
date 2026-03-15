@@ -69,3 +69,21 @@ export function isValidOrderStatusTransition(currentStatus: string, nextStatus: 
 export function isTerminalOrderStatus(status: string): boolean {
   return getAllowedOrderTransitions(status).length === 0
 }
+
+// ---------------------------------------------------------------------------
+// SQL-safe status group constants
+// Use these in template literals so that adding/renaming a status only
+// requires a change in one place.
+// ---------------------------------------------------------------------------
+
+/** Statuses that count as "revenue-generating" (payment received or later). */
+export const PAID_STATUSES: readonly OrderStatus[] = ['paid', 'completed', 'delivered'] as const
+export const PAID_STATUS_SQL = `status IN ('paid', 'completed', 'delivered')`
+
+/** Statuses where a payment is expected but not yet received. */
+export const PENDING_PAYMENT_STATUSES: readonly OrderStatus[] = ['quoted', 'invoiced'] as const
+export const PENDING_PAYMENT_SQL = `status IN ('quoted', 'invoiced')`
+
+/** Active/open order statuses (not yet paid, not cancelled/refunded). */
+export const ACTIVE_STATUSES: readonly OrderStatus[] = ['submitted', 'quoted', 'in_progress'] as const
+export const ACTIVE_STATUS_SQL = `status IN ('submitted', 'quoted', 'in_progress')`

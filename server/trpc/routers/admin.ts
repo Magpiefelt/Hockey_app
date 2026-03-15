@@ -21,6 +21,8 @@ import {
   ORDER_STATUS_LABELS,
   ORDER_STATUS_VALUES,
   MANUAL_COMPLETION_BLOCKED_STATUSES,
+  PAID_STATUS_SQL,
+  PENDING_PAYMENT_SQL,
   getAllowedOrderTransitions,
   isTerminalOrderStatus,
   isValidOrderStatusTransition
@@ -49,7 +51,7 @@ export const adminRouter = router({
       const revenueResult = await query(
         `SELECT COALESCE(SUM(total_amount), 0) as revenue 
          FROM quote_requests 
-         WHERE status IN ('paid', 'completed', 'delivered')`
+         WHERE ${PAID_STATUS_SQL}`
       )
       const totalRevenue = parseInt(revenueResult.rows[0].revenue)
       
@@ -765,7 +767,7 @@ export const adminRouter = router({
         const totalResult = await query(
           `SELECT COALESCE(SUM(total_amount), 0) as revenue 
            FROM quote_requests 
-           WHERE status IN ('paid', 'completed', 'delivered')`
+           WHERE ${PAID_STATUS_SQL}`
         )
         const totalRevenue = parseInt(totalResult.rows[0].revenue)
         
@@ -773,7 +775,7 @@ export const adminRouter = router({
         const monthlyResult = await query(
           `SELECT COALESCE(SUM(total_amount), 0) as revenue 
            FROM quote_requests 
-           WHERE status IN ('paid', 'completed', 'delivered')
+           WHERE ${PAID_STATUS_SQL}
            AND DATE_TRUNC('month', created_at) = DATE_TRUNC('month', CURRENT_DATE)`
         )
         const monthlyRevenue = parseInt(monthlyResult.rows[0].revenue)
@@ -782,7 +784,7 @@ export const adminRouter = router({
         const pendingResult = await query(
           `SELECT COALESCE(SUM(total_amount), 0) as revenue 
            FROM quote_requests 
-           WHERE status IN ('invoiced', 'quoted')`
+           WHERE ${PENDING_PAYMENT_SQL}`
         )
         const pendingPayments = parseInt(pendingResult.rows[0].revenue)
         
@@ -790,7 +792,7 @@ export const adminRouter = router({
         const orderCountResult = await query(
           `SELECT COUNT(*) as count 
            FROM quote_requests 
-           WHERE status IN ('paid', 'completed', 'delivered')`
+           WHERE ${PAID_STATUS_SQL}`
         )
         const paidOrderCount = parseInt(orderCountResult.rows[0].count)
         
@@ -801,7 +803,7 @@ export const adminRouter = router({
             COALESCE(SUM(qr.total_amount), 0) as revenue
           FROM quote_requests qr
           LEFT JOIN packages p ON qr.package_id = p.id
-          WHERE qr.status IN ('paid', 'completed', 'delivered')
+          WHERE qr.${PAID_STATUS_SQL}
           GROUP BY p.name, qr.service_type
           ORDER BY revenue DESC`
         )
