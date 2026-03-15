@@ -469,7 +469,7 @@
                 @click="insertTemplateVariable(variable)"
                 class="px-2 py-1 rounded-md bg-slate-800 hover:bg-slate-700 cursor-pointer text-slate-300 text-xs font-mono transition-colors"
               >
-                {{ '{{' + variable + '}}' }}
+                {{ formatVariableToken(variable) }}
               </span>
             </div>
           </div>
@@ -483,7 +483,7 @@
                 @click="insertTemplateVariable(variable)"
                 class="px-2 py-1 rounded-md bg-slate-900 border border-slate-700 hover:border-slate-600 cursor-pointer text-slate-400 text-xs font-mono transition-colors"
               >
-                {{ '{{' + variable + '}}' }}
+                {{ formatVariableToken(variable) }}
               </span>
             </div>
           </div>
@@ -865,6 +865,10 @@ function insertTemplateVariable(variable: string) {
   }
 
   queueTemplateAnalysis()
+}
+
+function formatVariableToken(variable: string) {
+  return `{{${variable}}}`
 }
 
 function revertTemplateEdits() {
