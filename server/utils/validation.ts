@@ -3,6 +3,8 @@
  * Common validation functions for input data
  */
 
+import { ORDER_STATUS_VALUES } from './order-status'
+
 /**
  * Validate email format
  */
@@ -126,20 +128,7 @@ export function isStrongPassword(password: string): { valid: boolean; errors: st
  * Validate order status
  */
 export function isValidOrderStatus(status: string): boolean {
-  const validStatuses = [
-    'pending',
-    'submitted',
-    'in_progress',
-    'quoted',
-    'quote_viewed',
-    'quote_accepted',
-    'invoiced',
-    'paid',
-    'completed',
-    'delivered',
-    'cancelled'
-  ]
-  return validStatuses.includes(status)
+  return ORDER_STATUS_VALUES.includes(status as typeof ORDER_STATUS_VALUES[number])
 }
 
 /**

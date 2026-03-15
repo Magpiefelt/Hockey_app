@@ -451,7 +451,13 @@ const filteredOrders = computed(() => {
 
   // Client-side package filter (not sent to server)
   if (filters.value.packageId) {
-    result = result.filter(o => o.packageId === filters.value.packageId)
+    const selectedPackageId = Number(filters.value.packageId)
+    result = result.filter((o) => {
+      if (Number.isNaN(selectedPackageId)) {
+        return String(o.packageId) === String(filters.value.packageId)
+      }
+      return Number(o.packageId) === selectedPackageId
+    })
   }
 
   // Apply sorting

@@ -285,17 +285,34 @@ async function handleChargeRefunded(charge: any) {
       [charge.payment_intent]
     )
 
-    // Update order status
-    await query(
-      `UPDATE quote_requests 
-       SET status = 'cancelled', updated_at = NOW()
-       WHERE id IN (
-         SELECT quote_id FROM invoices i
-         JOIN payments p ON i.id = p.invoice_id
-         WHERE p.stripe_payment_id = $1
-       )`,
-      [charge.payment_intent]
-    )
+    // Prefer explicit refunded status for consistency with admin/customer flows.
+    try {
+      await query(
+        `UPDATE quote_requests 
+         SET status = 'refunded', updated_at = NOW()
+         WHERE id IN (
+           SELECT quote_id FROM invoices i
+           JOIN payments p ON i.id = p.invoice_id
+           WHERE p.stripe_payment_id = $1
+         )`,
+        [charge.payment_intent]
+      )
+    } catch (statusError: any) {
+      logger.warn('Refunded status unavailable, falling back to cancelled', {
+        paymentIntent: charge.payment_intent,
+        error: statusError?.message
+      })
+      await query(
+        `UPDATE quote_requests 
+         SET status = 'cancelled', updated_at = NOW()
+         WHERE id IN (
+           SELECT quote_id FROM invoices i
+           JOIN payments p ON i.id = p.invoice_id
+           WHERE p.stripe_payment_id = $1
+         )`,
+        [charge.payment_intent]
+      )
+    }
   } catch (error: any) {
     logger.error('Failed to process refund', error)
   }

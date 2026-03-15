@@ -179,9 +179,12 @@ describe('isValidOrderStatus', () => {
     expect(isValidOrderStatus('pending')).toBe(true)
     expect(isValidOrderStatus('submitted')).toBe(true)
     expect(isValidOrderStatus('in_progress')).toBe(true)
+    expect(isValidOrderStatus('quote_viewed')).toBe(true)
+    expect(isValidOrderStatus('quote_accepted')).toBe(true)
     expect(isValidOrderStatus('completed')).toBe(true)
     expect(isValidOrderStatus('delivered')).toBe(true)
     expect(isValidOrderStatus('cancelled')).toBe(true)
+    expect(isValidOrderStatus('refunded')).toBe(true)
   })
 
   it('should reject invalid statuses', () => {

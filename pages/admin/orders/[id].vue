@@ -513,7 +513,7 @@
               <Icon name="mdi:history" class="w-5 h-5 text-purple-400" />
               Status History
             </h3>
-            <OrderStatusHistory ref="statusHistoryRef" :order-id="orderData.order.id" />
+            <OrderStatusHistory ref="statusHistoryRef" :order-id="orderId" />
           </div>
         </div>
       </div>

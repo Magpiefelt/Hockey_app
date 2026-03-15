@@ -12,10 +12,10 @@ import {
   sendEnhancedQuoteEmail, 
   sendQuoteRevisionEmail, 
   sendQuoteReminderEmail,
-  sendAdminNotificationEmail,
   sendCustomEmailEnhanced
 } from '../../utils/email-enhanced'
-import { generateQuoteViewUrl, generateQuoteAcceptUrl, storeQuoteToken, generateQuoteToken } from '../../utils/quote-tokens'
+import { generateQuoteViewUrl, generateQuoteAcceptUrl } from '../../utils/quote-tokens'
+import { isValidOrderStatusTransition } from '../../utils/order-status'
 
 export const adminEnhancementsRouter = router({
   /**
@@ -505,18 +505,6 @@ export const adminEnhancementsRouter = router({
         failed: [] as { id: number; error: string }[]
       }
       
-      // Valid status transitions
-      const validTransitions: Record<string, string[]> = {
-        'submitted': ['in_progress', 'quoted', 'cancelled'],
-        'quoted': ['invoiced', 'in_progress', 'cancelled', 'quote_accepted'],
-        'quote_viewed': ['quote_accepted', 'cancelled'],
-        'quote_accepted': ['invoiced', 'paid'],
-        'invoiced': ['paid', 'cancelled'],
-        'paid': ['in_progress', 'completed', 'delivered'],
-        'in_progress': ['completed', 'delivered'],
-        'completed': ['delivered'],
-      }
-      
       for (const orderId of input.orderIds) {
         try {
           await transaction(async (client) => {
@@ -533,8 +521,7 @@ export const adminEnhancementsRouter = router({
             const previousStatus = current.rows[0].status
             
             // Validate transition
-            const allowed = validTransitions[previousStatus] || []
-            if (!allowed.includes(input.status)) {
+            if (!isValidOrderStatusTransition(previousStatus, input.status)) {
               throw new Error(`Invalid transition from ${previousStatus} to ${input.status}`)
             }
             
