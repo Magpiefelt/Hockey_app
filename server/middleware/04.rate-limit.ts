@@ -12,9 +12,17 @@ export default defineEventHandler(async (event) => {
     return
   }
   
-  // Skip rate limiting for certain paths
-  const skipPaths = ['/api/health', '/api/_nuxt', '/_nuxt', '/', '/assets', '.js', '.css', '.png', '.jpg', '.svg', '.ico', '.woff']
-  if (skipPaths.some(path => event.path.startsWith(path) || event.path.includes(path))) {
+  // Skip rate limiting for health checks and static assets.
+  const skipExactPaths = ['/api/health']
+  const skipPathPrefixes = ['/api/_nuxt', '/_nuxt', '/assets']
+  const skipExtensions = ['.js', '.css', '.png', '.jpg', '.jpeg', '.svg', '.ico', '.woff', '.woff2']
+
+  const shouldSkip =
+    skipExactPaths.includes(event.path) ||
+    skipPathPrefixes.some(prefix => event.path.startsWith(prefix)) ||
+    skipExtensions.some(extension => event.path.endsWith(extension))
+
+  if (shouldSkip) {
     return
   }
   
@@ -48,13 +56,13 @@ export default defineEventHandler(async (event) => {
     const result = await checkRateLimit(key, limit.requests, limit.window)
     
     // Set rate limit headers
-    setHeader(event, 'X-RateLimit-Limit', limit.requests.toString())
-    setHeader(event, 'X-RateLimit-Remaining', result.remaining.toString())
-    setHeader(event, 'X-RateLimit-Reset', result.resetIn.toString())
+    setHeader(event, 'X-RateLimit-Limit', limit.requests)
+    setHeader(event, 'X-RateLimit-Remaining', result.remaining)
+    setHeader(event, 'X-RateLimit-Reset', result.resetIn)
     
     // Check if limit exceeded
     if (!result.allowed) {
-      setHeader(event, 'Retry-After', result.resetIn.toString())
+      setHeader(event, 'Retry-After', result.resetIn)
       logger.warn('Rate limit exceeded', { ip, path: event.path, limit: limit.requests })
       throw createError({
         statusCode: 429,

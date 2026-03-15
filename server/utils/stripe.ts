@@ -121,6 +121,11 @@ export async function createCheckoutSession(options: {
       mode: 'payment',
       success_url: options.successUrl,
       cancel_url: options.cancelUrl,
+      payment_intent_data: {
+        metadata: {
+          order_id: options.orderId.toString()
+        }
+      },
       metadata: {
         order_id: options.orderId.toString()
       }

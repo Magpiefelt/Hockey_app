@@ -25,7 +25,7 @@
     "fix:passwords": "tsx scripts/fix-password-hashes.ts",
     "test": "vitest",
     "test:unit": "vitest run tests/unit",
-    "test:integration": "vitest run tests/integration",
+    "test:integration": "vitest run tests/server",
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {

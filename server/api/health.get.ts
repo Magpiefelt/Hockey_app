@@ -40,7 +40,7 @@ export default defineEventHandler(async (event) => {
   
   // Check Redis connection
   try {
-    const redis = getRedisClient()
+    const redis = await getRedisClient()
     if (redis) {
       const redisStart = Date.now()
       await redis.ping()

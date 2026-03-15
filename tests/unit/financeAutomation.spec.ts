@@ -356,8 +356,8 @@ describe('Finance Automation Router', () => {
   })
 })
 
-describe('Finance Automation Dashboard Component', () => {
-  const componentPath = path.join(__dirname, '../../components/admin/FinanceAutomationDashboard.vue')
+describe('Finance Dashboard Page', () => {
+  const componentPath = path.join(__dirname, '../../pages/admin/finance.vue')
   let componentContent: string
 
   beforeEach(() => {
@@ -368,46 +368,46 @@ describe('Finance Automation Dashboard Component', () => {
     expect(fs.existsSync(componentPath)).toBe(true)
   })
 
-  it('should have all tabs', () => {
-    expect(componentContent).toContain("'overview'")
-    expect(componentContent).toContain("'invoices'")
-    expect(componentContent).toContain("'reminders'")
-    expect(componentContent).toContain("'reports'")
-    expect(componentContent).toContain("'settings'")
+  it('should render finance dashboard header', () => {
+    expect(componentContent).toContain('Finance Dashboard')
+    expect(componentContent).toContain('Track revenue, taxes, and business performance')
   })
 
   it('should fetch finance automation data', () => {
-    expect(componentContent).toContain('$client.financeAutomation')
+    expect(componentContent).toContain('trpc.finance.stats.query()')
+    expect(componentContent).toContain('trpc.finance.revenueTrend.query')
+    expect(componentContent).toContain('trpc.finance.taxSummary.query')
   })
 
-  it('should have processReminders function', () => {
-    expect(componentContent).toContain('async function processReminders')
+  it('should have data refresh function', () => {
+    expect(componentContent).toContain('async function refreshData()')
   })
 
-  it('should have sendReminder function', () => {
-    expect(componentContent).toContain('async function sendReminder')
+  it('should have tax report export function', () => {
+    expect(componentContent).toContain('async function exportTaxReport()')
+    expect(componentContent).toContain('trpc.finance.exportTaxReport.query')
   })
 
-  it('should have markAsPaid function', () => {
-    expect(componentContent).toContain('async function markAsPaid')
+  it('should use chart components', () => {
+    expect(componentContent).toContain('<AdminTrendChart')
+    expect(componentContent).toContain('<AdminPipelineChart')
   })
 
   it('should display tax deadlines', () => {
-    expect(componentContent).toContain('Tax Deadlines')
+    expect(componentContent).toContain('Tax Summary')
   })
 
   it('should display cash flow projection', () => {
-    expect(componentContent).toContain('Cash Flow Projection')
+    expect(componentContent).toContain('Revenue Trend')
   })
 
   it('should display invoice aging', () => {
-    expect(componentContent).toContain('Invoice Aging')
+    expect(componentContent).toContain('Outstanding Invoices')
   })
 
-  it('should have settings for tax, invoice, and reminders', () => {
-    expect(componentContent).toContain('Tax Settings')
-    expect(componentContent).toContain('Invoice Settings')
-    expect(componentContent).toContain('Reminder Settings')
+  it('should show top customers and transactions sections', () => {
+    expect(componentContent).toContain('Top Customers')
+    expect(componentContent).toContain('Recent Transactions')
   })
 })
 

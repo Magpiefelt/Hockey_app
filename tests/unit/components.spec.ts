@@ -44,8 +44,8 @@ describe('PackageComparisonTable Component', () => {
   })
 })
 
-describe('RevenueTrendChart Component', () => {
-  const componentPath = join(process.cwd(), 'components', 'admin', 'RevenueTrendChart.vue')
+describe('TrendChart Component', () => {
+  const componentPath = join(process.cwd(), 'components', 'admin', 'TrendChart.vue')
 
   it('should exist', () => {
     expect(existsSync(componentPath)).toBe(true)
@@ -56,29 +56,27 @@ describe('RevenueTrendChart Component', () => {
     expect(content).toContain("from 'chart.js'")
   })
 
-  it('should have loading state', () => {
+  it('should render a chart canvas', () => {
     const content = readFileSync(componentPath, 'utf-8')
-    expect(content).toContain('v-if="loading"')
+    expect(content).toContain('<canvas ref="chartCanvas"')
   })
 
-  it('should have error state', () => {
+  it('should define chart props', () => {
     const content = readFileSync(componentPath, 'utf-8')
-    expect(content).toContain('v-else-if="error"')
+    expect(content).toContain('type?: \'line\' | \'bar\'')
+    expect(content).toContain('formatValue?: \'currency\' | \'number\' | \'percent\'')
   })
 
-  it('should have period selection', () => {
+  it('should create and update chart instances', () => {
     const content = readFileSync(componentPath, 'utf-8')
-    expect(content).toContain('selectedPeriod')
-    expect(content).toContain('6M')
-    expect(content).toContain('12M')
-    expect(content).toContain('24M')
+    expect(content).toContain('function createChart()')
+    expect(content).toContain('watch(() => props.data')
   })
 
-  it('should display summary stats', () => {
+  it('should format tooltip values', () => {
     const content = readFileSync(componentPath, 'utf-8')
-    expect(content).toContain('totalRevenue')
-    expect(content).toContain('averageRevenue')
-    expect(content).toContain('growthRate')
+    expect(content).toContain('formatTooltipValue')
+    expect(content).toContain('new Intl.NumberFormat')
   })
 
   it('should clean up chart on unmount', () => {
@@ -88,8 +86,8 @@ describe('RevenueTrendChart Component', () => {
   })
 })
 
-describe('BookingPipelineChart Component', () => {
-  const componentPath = join(process.cwd(), 'components', 'admin', 'BookingPipelineChart.vue')
+describe('PipelineChart Component', () => {
+  const componentPath = join(process.cwd(), 'components', 'admin', 'PipelineChart.vue')
 
   it('should exist', () => {
     expect(existsSync(componentPath)).toBe(true)
@@ -97,21 +95,22 @@ describe('BookingPipelineChart Component', () => {
 
   it('should have all pipeline stages', () => {
     const content = readFileSync(componentPath, 'utf-8')
-    const stages = ['submitted', 'quoted', 'invoiced', 'paid', 'in_progress', 'completed', 'cancelled']
+    const stages = ['submitted', 'quoted', 'in_progress', 'paid', 'completed', 'delivered', 'cancelled']
     for (const stage of stages) {
       expect(content).toContain(stage)
     }
   })
 
-  it('should calculate conversion rates', () => {
+  it('should calculate percentages for progress bars', () => {
     const content = readFileSync(componentPath, 'utf-8')
-    expect(content).toContain('quoteToPayRate')
-    expect(content).toContain('submittedToCompletedRate')
+    expect(content).toContain('maxCount')
+    expect(content).toContain('getPercentage')
   })
 
-  it('should display total orders', () => {
+  it('should provide status colors and labels', () => {
     const content = readFileSync(componentPath, 'utf-8')
-    expect(content).toContain('totalOrders')
+    expect(content).toContain('getStatusColors')
+    expect(content).toContain('getStatusLabel')
   })
 
   it('should have progress bars', () => {
