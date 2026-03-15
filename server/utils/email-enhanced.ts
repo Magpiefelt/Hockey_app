@@ -15,6 +15,7 @@ import { sendEmailWithMailgun } from './mailgun'
 import { logger } from './logger'
 import { executeQuery } from './database'
 import { generateQuoteViewUrl } from './quote-tokens'
+import { resolveManagedEmailTemplate } from '../services/emailTemplateService'
 
 interface EmailOptions {
   to: string
@@ -90,21 +91,39 @@ async function sendEmail(options: EmailOptions, template: string, metadata: any,
   }
 
   try {
-    const sent = await sendEmailWithMailgun({
-      to: options.to,
+    const resolvedTemplate = await resolveManagedEmailTemplate(template, {
       subject: options.subject,
       html: options.html,
+      metadata: {
+        ...(metadata || {}),
+        to: options.to,
+        subject: options.subject
+      }
+    })
+
+    const sent = await sendEmailWithMailgun({
+      to: options.to,
+      subject: resolvedTemplate.subject,
+      html: resolvedTemplate.html,
       text: options.text
     })
     
     if (sent) {
       logger.info('Email sent successfully', {
         to: options.to,
-        subject: options.subject,
-        template
+        subject: resolvedTemplate.subject,
+        template,
+        overrideApplied: resolvedTemplate.overrideApplied
       })
       
-      await logEmail(quoteRequestId || null, options.to, options.subject, template, metadata, 'sent')
+      await logEmail(
+        quoteRequestId || null,
+        options.to,
+        resolvedTemplate.subject,
+        template,
+        { ...(metadata || {}), templateOverrideApplied: resolvedTemplate.overrideApplied },
+        'sent'
+      )
       return true
     } else {
       throw new Error('Email sending returned false')

@@ -3,7 +3,7 @@
     <!-- Header -->
     <div class="mb-8">
       <h1 class="text-2xl lg:text-3xl font-bold text-white mb-1">Emails</h1>
-      <p class="text-slate-400">Monitor email delivery and manage communications</p>
+      <p class="text-slate-400">Monitor email delivery, resend failures, and manage template overrides</p>
     </div>
 
     <!-- Stats Summary -->
@@ -285,6 +285,169 @@
       </div>
     </div>
 
+    <!-- Template Manager -->
+    <div class="mt-8 bg-slate-900/50 border border-slate-800 rounded-2xl p-5 lg:p-6">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h2 class="text-xl font-semibold text-white">Template Manager</h2>
+          <p class="text-sm text-slate-400 mt-1">
+            Create admin-managed overrides for built-in email templates.
+          </p>
+        </div>
+        <button
+          @click="fetchTemplates"
+          :disabled="templateLoading"
+          class="px-4 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 rounded-lg text-sm transition-colors"
+        >
+          <Icon :name="templateLoading ? 'mdi:loading' : 'mdi:refresh'" :class="{ 'animate-spin': templateLoading }" class="w-4 h-4 inline mr-1" />
+          Refresh
+        </button>
+      </div>
+
+      <div v-if="templateLoading" class="flex items-center justify-center py-10">
+        <div class="w-8 h-8 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin"></div>
+      </div>
+
+      <div v-else-if="templates.length === 0" class="text-center py-10">
+        <p class="text-slate-400">No managed templates available.</p>
+      </div>
+
+      <div v-else class="grid lg:grid-cols-3 gap-6">
+        <div class="space-y-2">
+          <button
+            v-for="template in templates"
+            :key="template.key"
+            @click="selectTemplate(template.key)"
+            class="w-full text-left p-3 rounded-xl border transition-all"
+            :class="selectedTemplateKey === template.key ? 'bg-cyan-500/10 border-cyan-500/40' : 'bg-slate-800/40 border-slate-700 hover:border-slate-600'"
+          >
+            <div class="flex items-center justify-between">
+              <p class="text-sm font-semibold text-white">{{ template.label }}</p>
+              <span
+                class="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full"
+                :class="template.isUsingOverride ? 'bg-cyan-500/20 text-cyan-300' : 'bg-slate-700 text-slate-300'"
+              >
+                {{ template.isUsingOverride ? 'Override' : 'Default' }}
+              </span>
+            </div>
+            <p class="text-xs text-slate-400 mt-1">{{ template.description }}</p>
+          </button>
+        </div>
+
+        <div class="lg:col-span-2 space-y-4" v-if="selectedTemplate">
+          <div class="grid md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-slate-400 mb-2">Template Key</label>
+              <input
+                :value="selectedTemplate.key"
+                readonly
+                class="w-full px-4 py-2.5 bg-slate-800/50 border border-slate-700 rounded-xl text-slate-300"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-400 mb-2">Test Recipient</label>
+              <input
+                v-model="testRecipient"
+                type="email"
+                placeholder="you@example.com"
+                class="w-full px-4 py-2.5 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
+              />
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <input
+              id="template-enabled"
+              v-model="templateForm.enabled"
+              type="checkbox"
+              class="rounded border-slate-600 bg-slate-800 text-cyan-500 focus:ring-cyan-500/30"
+            />
+            <label for="template-enabled" class="text-sm text-slate-300">
+              Enable override for this template
+            </label>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-slate-400 mb-2">Subject Template</label>
+            <input
+              v-model="templateForm.subject"
+              type="text"
+              class="w-full px-4 py-2.5 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
+            />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-slate-400 mb-2">Body Template (HTML supported)</label>
+            <textarea
+              v-model="templateForm.body"
+              rows="12"
+              class="w-full px-4 py-2.5 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all font-mono text-sm"
+            />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-slate-400 mb-2">Preview Context (JSON)</label>
+            <textarea
+              v-model="testContextJson"
+              rows="4"
+              placeholder='{"name":"Alex","orderId":245}'
+              class="w-full px-4 py-2.5 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all font-mono text-xs"
+            />
+          </div>
+
+          <div>
+            <p class="text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wide">Available Variables</p>
+            <div class="flex flex-wrap gap-2">
+              <span
+                v-for="variable in selectedTemplate.variables"
+                :key="variable"
+                class="px-2 py-1 rounded-md bg-slate-800 text-slate-300 text-xs font-mono"
+              >
+                {{ '{{' + variable + '}}' }}
+              </span>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <button
+              @click="previewTemplate"
+              :disabled="templateBusy"
+              class="px-4 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 rounded-lg text-sm transition-colors"
+            >
+              Preview
+            </button>
+            <button
+              @click="saveTemplate"
+              :disabled="templateBusy"
+              class="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 disabled:opacity-50 text-white rounded-lg text-sm font-semibold transition-colors"
+            >
+              Save Override
+            </button>
+            <button
+              @click="resetTemplate"
+              :disabled="templateBusy"
+              class="px-4 py-2 bg-amber-500/20 hover:bg-amber-500/30 disabled:opacity-50 text-amber-300 rounded-lg text-sm transition-colors"
+            >
+              Reset to Default
+            </button>
+            <button
+              @click="sendTestTemplate"
+              :disabled="templateBusy || !testRecipient"
+              class="px-4 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 disabled:opacity-50 text-emerald-300 rounded-lg text-sm transition-colors"
+            >
+              Send Test
+            </button>
+          </div>
+
+          <div v-if="templatePreview" class="border border-slate-700 rounded-xl p-4 bg-slate-950/50">
+            <p class="text-xs uppercase tracking-wide text-slate-500 mb-2">Rendered Preview</p>
+            <p class="text-sm text-slate-300 mb-3"><span class="text-slate-400">Subject:</span> {{ templatePreview.subject }}</p>
+            <div class="bg-white text-slate-800 rounded-lg p-4 max-h-72 overflow-auto text-sm" v-html="templatePreview.html"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Email Detail Modal -->
     <EmailDetailModal
       v-if="selectedEmail"
@@ -334,6 +497,27 @@ const emailToResend = ref<any>(null)
 
 const { showSuccess, showError } = useNotification()
 
+type TemplateOverride = {
+  enabled: boolean
+  subject: string
+  body: string
+  updatedAt: string
+  updatedBy: number | null
+}
+
+type ManagedTemplate = {
+  key: string
+  label: string
+  description: string
+  variables: string[]
+  defaultSubject: string
+  defaultBody: string
+  override: TemplateOverride | null
+  effectiveSubject: string
+  effectiveBody: string
+  isUsingOverride: boolean
+}
+
 // Filters
 const filters = ref({
   status: 'all',
@@ -341,10 +525,27 @@ const filters = ref({
   search: ''
 })
 
+// Template management
+const templateLoading = ref(false)
+const templateBusy = ref(false)
+const templates = ref<ManagedTemplate[]>([])
+const selectedTemplateKey = ref('')
+const testRecipient = ref('')
+const testContextJson = ref('')
+const templatePreview = ref<{ subject: string; html: string } | null>(null)
+const templateForm = ref({
+  enabled: false,
+  subject: '',
+  body: ''
+})
+
 // Computed
 const totalPages = computed(() => Math.ceil(totalEmails.value / pageSize))
 const hasActiveFilters = computed(() => {
   return filters.value.status !== 'all' || filters.value.template !== '' || filters.value.search !== ''
+})
+const selectedTemplate = computed(() => {
+  return templates.value.find(template => template.key === selectedTemplateKey.value) || null
 })
 
 // Fetch emails
@@ -377,6 +578,146 @@ async function fetchStats() {
     stats.value = await trpc.admin.emails.stats.query()
   } catch (err: any) {
     // Error logged: 'Failed to fetch email stats:', err)
+  }
+}
+
+function parseTemplateContext() {
+  const raw = testContextJson.value.trim()
+  if (!raw) return {}
+  const parsed = JSON.parse(raw)
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('Preview context must be a JSON object')
+  }
+  return parsed as Record<string, unknown>
+}
+
+function applyTemplateToForm(template: ManagedTemplate) {
+  templateForm.value = {
+    enabled: template.override?.enabled ?? false,
+    subject: template.override?.subject || template.defaultSubject,
+    body: template.override?.body || template.defaultBody
+  }
+  templatePreview.value = null
+}
+
+function selectTemplate(templateKey: string) {
+  selectedTemplateKey.value = templateKey
+  const template = templates.value.find(item => item.key === templateKey)
+  if (template) {
+    applyTemplateToForm(template)
+  }
+}
+
+async function fetchTemplates() {
+  templateLoading.value = true
+  try {
+    const result = await trpc.admin.emails.templates.list.query()
+    templates.value = result.templates as ManagedTemplate[]
+
+    if (!templates.value.length) {
+      selectedTemplateKey.value = ''
+      return
+    }
+
+    if (!selectedTemplateKey.value || !templates.value.find(t => t.key === selectedTemplateKey.value)) {
+      selectedTemplateKey.value = templates.value[0].key
+    }
+
+    const currentTemplate = templates.value.find(t => t.key === selectedTemplateKey.value)
+    if (currentTemplate) {
+      applyTemplateToForm(currentTemplate)
+    }
+  } catch (err: any) {
+    showError(err.message || 'Failed to load template settings')
+  } finally {
+    templateLoading.value = false
+  }
+}
+
+async function previewTemplate() {
+  if (!selectedTemplate.value) return
+
+  templateBusy.value = true
+  try {
+    const context = parseTemplateContext()
+    templatePreview.value = await trpc.admin.emails.templates.preview.query({
+      templateKey: selectedTemplate.value.key,
+      subject: templateForm.value.subject,
+      body: templateForm.value.body,
+      context
+    })
+  } catch (err: any) {
+    showError(err.message || 'Failed to render template preview')
+  } finally {
+    templateBusy.value = false
+  }
+}
+
+async function saveTemplate() {
+  if (!selectedTemplate.value) return
+
+  templateBusy.value = true
+  try {
+    await trpc.admin.emails.templates.save.mutate({
+      templateKey: selectedTemplate.value.key,
+      enabled: templateForm.value.enabled,
+      subject: templateForm.value.subject,
+      body: templateForm.value.body
+    })
+
+    await fetchTemplates()
+    showSuccess('Template override saved')
+  } catch (err: any) {
+    showError(err.message || 'Failed to save template')
+  } finally {
+    templateBusy.value = false
+  }
+}
+
+async function resetTemplate() {
+  if (!selectedTemplate.value) return
+  if (typeof window !== 'undefined' && !window.confirm('Reset this template override and return to default behavior?')) {
+    return
+  }
+
+  templateBusy.value = true
+  try {
+    await trpc.admin.emails.templates.reset.mutate({
+      templateKey: selectedTemplate.value.key
+    })
+
+    await fetchTemplates()
+    showSuccess('Template reset to default')
+  } catch (err: any) {
+    showError(err.message || 'Failed to reset template')
+  } finally {
+    templateBusy.value = false
+  }
+}
+
+async function sendTestTemplate() {
+  if (!selectedTemplate.value || !testRecipient.value) return
+
+  templateBusy.value = true
+  try {
+    const context = parseTemplateContext()
+    const result = await trpc.admin.emails.templates.sendTest.mutate({
+      templateKey: selectedTemplate.value.key,
+      to: testRecipient.value,
+      subject: templateForm.value.subject,
+      body: templateForm.value.body,
+      context
+    })
+
+    if (result.preview) {
+      templatePreview.value = result.preview
+    }
+
+    showSuccess(`Test email sent to ${testRecipient.value}`)
+  } catch (err: any) {
+    showError(err.message || 'Failed to send test email')
+  } finally {
+    templateBusy.value = false
   }
 }
 
@@ -533,7 +874,7 @@ function formatTemplate(template: string) {
 
 // Lifecycle
 onMounted(() => {
-  Promise.all([fetchEmails(), fetchStats()])
+  Promise.all([fetchEmails(), fetchStats(), fetchTemplates()])
 })
 
 useHead({
