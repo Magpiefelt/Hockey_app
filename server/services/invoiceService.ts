@@ -4,7 +4,8 @@
  */
 
 import { query } from '../db/connection'
-import { calculateTax, getTaxRates, getProvinceName, TaxBreakdown } from '../utils/tax'
+import { calculateTax, getTaxRates, getProvinceName } from '../utils/tax'
+import type { TaxBreakdown } from '../utils/tax'
 import { sendEmail } from '../utils/email'
 import { logger } from '../utils/logger'
 

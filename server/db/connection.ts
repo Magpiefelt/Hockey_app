@@ -1,4 +1,5 @@
-import { Pool, PoolClient, QueryResult } from 'pg'
+import { Pool } from 'pg'
+import type { PoolClient, QueryResult, QueryResultRow } from 'pg'
 import { logger } from '../utils/logger'
 
 let pool: Pool | null = null
@@ -68,7 +69,7 @@ export function getPool(): Pool {
 /**
  * Execute a query with parameters
  */
-export async function query<T = any>(
+export async function query<T extends QueryResultRow = QueryResultRow>(
   text: string,
   params?: any[]
 ): Promise<QueryResult<T>> {

@@ -121,10 +121,6 @@ export default defineNuxtConfig({
       crawlLinks: false,
       routes: []
     },
-    // No proxy needed - frontend calls backend directly
-    devServer: {
-      host: '0.0.0.0'
-    },
     // Compression and minification
     compressPublicAssets: true,
     minify: true
@@ -136,9 +132,7 @@ export default defineNuxtConfig({
     renderJsonPayloads: true,
     typedPages: false, // Disable typed pages for faster builds
     asyncEntry: true,
-    noScripts: false,
     inlineRouteRules: true,
-    componentPreload: true,
     // NEW: Enable view transitions for smoother navigation
     viewTransition: true
   },
@@ -222,17 +216,6 @@ export default defineNuxtConfig({
         'cache-control': 'public, max-age=86400',
         'content-type': 'image/png'
       } 
-    }
-  },
-  
-  // NEW: Performance optimizations
-  optimization: {
-    // Enable tree shaking
-    treeShake: {
-      composables: {
-        client: true,
-        server: true
-      }
     }
   }
 })

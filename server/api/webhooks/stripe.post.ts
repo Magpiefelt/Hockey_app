@@ -8,6 +8,15 @@ import { logger } from '../../utils/logger'
 import { query, transaction } from '../../db/connection'
 import { sendPaymentReceipt } from '../../utils/email'
 
+interface OrderDetailsRow {
+  contact_name: string
+  contact_email: string
+  total_amount: number
+  event_datetime: Date | null
+  event_date: Date | null
+  admin_confirmed_datetime: boolean
+}
+
 export default defineEventHandler(async (event) => {
   const body = await readRawBody(event)
   const signature = getHeader(event, 'stripe-signature')
@@ -77,20 +86,10 @@ async function handleCheckoutCompleted(session: any) {
     amountTotal: session.amount_total 
   })
 
-  // Store order details for email and calendar blocking (fetched inside transaction)
-  let orderDetails: { 
-    contact_name: string
-    contact_email: string
-    total_amount: number
-    event_datetime: Date | null
-    event_date: Date | null
-    admin_confirmed_datetime: boolean
-  } | null = null
-
   try {
     // Use transaction to ensure all database updates succeed or fail together
     // This prevents inconsistent state where payment is recorded but order status isn't updated
-    await transaction(async (client) => {
+    const orderDetails = await transaction(async (client) => {
       // Update invoice status
       await client.query(
         `UPDATE invoices 
@@ -125,7 +124,7 @@ async function handleCheckoutCompleted(session: any) {
       // Get order details for email and calendar blocking (inside transaction to ensure consistency)
       let orderResult
       try {
-        orderResult = await client.query(
+        orderResult = await client.query<OrderDetailsRow>(
           `SELECT contact_name, contact_email, total_amount, event_datetime, event_date, admin_confirmed_datetime
            FROM quote_requests
            WHERE id = $1`,
@@ -133,7 +132,7 @@ async function handleCheckoutCompleted(session: any) {
         )
       } catch {
         // Fallback if new columns don't exist yet
-        orderResult = await client.query(
+        orderResult = await client.query<OrderDetailsRow>(
           `SELECT contact_name, contact_email, total_amount, event_date, NULL as event_datetime, FALSE as admin_confirmed_datetime
            FROM quote_requests
            WHERE id = $1`,
@@ -141,17 +140,19 @@ async function handleCheckoutCompleted(session: any) {
         )
       }
 
+      let currentOrderDetails: OrderDetailsRow | null = null
       if (orderResult.rows.length > 0) {
-        orderDetails = orderResult.rows[0]
+        currentOrderDetails = orderResult.rows[0]
       }
       
       // Auto-block calendar date when payment is successful
       // Only block if admin confirmed the datetime when submitting quote
-      if (orderDetails && (orderDetails.event_datetime || orderDetails.event_date)) {
-        const eventDate = orderDetails.event_datetime || orderDetails.event_date
-        const dateStr = eventDate instanceof Date 
-          ? eventDate.toISOString().split('T')[0] 
-          : new Date(eventDate).toISOString().split('T')[0]
+      if (currentOrderDetails && (currentOrderDetails.event_datetime || currentOrderDetails.event_date)) {
+        const eventDate = currentOrderDetails.event_datetime || currentOrderDetails.event_date
+        if (!eventDate) return currentOrderDetails
+        const dateStr = eventDate instanceof Date
+          ? eventDate.toISOString().split('T')[0]
+          : new Date(String(eventDate)).toISOString().split('T')[0]
         
         // Check if a booking override already exists for this order
         try {
@@ -172,7 +173,7 @@ async function handleCheckoutCompleted(session: any) {
                   dateStr,
                   `Booked: Order #${orderId}`,
                   orderId,
-                  `Auto-blocked after payment for ${orderDetails.contact_name}`
+                  `Auto-blocked after payment for ${currentOrderDetails.contact_name}`
                 ]
               )
             } catch {
@@ -185,7 +186,7 @@ async function handleCheckoutCompleted(session: any) {
                   dateStr,
                   dateStr,
                   `Booked: Order #${orderId}`,
-                  `Auto-blocked after payment for ${orderDetails.contact_name}`
+                  `Auto-blocked after payment for ${currentOrderDetails.contact_name}`
                 ]
               )
             }
@@ -193,7 +194,7 @@ async function handleCheckoutCompleted(session: any) {
             logger.info('Calendar date auto-blocked after payment', { 
               orderId, 
               date: dateStr,
-              customerName: orderDetails.contact_name
+              customerName: currentOrderDetails.contact_name
             })
           }
         } catch {
@@ -206,11 +207,13 @@ async function handleCheckoutCompleted(session: any) {
               dateStr,
               dateStr,
               `Booked: Order #${orderId}`,
-              `Auto-blocked after payment for ${orderDetails.contact_name}`
+              `Auto-blocked after payment for ${currentOrderDetails.contact_name}`
             ]
           )
         }
       }
+
+      return currentOrderDetails
     })
 
     // Send payment receipt email AFTER transaction commits successfully
@@ -254,14 +257,37 @@ async function handlePaymentFailed(paymentIntent: any) {
   })
 
   try {
-    // Update invoice status to failed
-    // Note: stripe_invoice_id stores the checkout session ID
+    // Mark payment failed if a payment record already exists.
     await query(
-      `UPDATE invoices 
-       SET status = 'failed', updated_at = NOW()
-       WHERE stripe_invoice_id = $1`,
+      `UPDATE payments
+       SET status = 'failed'
+       WHERE stripe_payment_id = $1`,
       [paymentIntent.id]
     )
+
+    // Primary path: map payment intent to invoice through payments table.
+    const invoiceResult = await query(
+      `UPDATE invoices i
+       SET status = 'failed', updated_at = NOW()
+       FROM payments p
+       WHERE p.stripe_payment_id = $1
+         AND p.invoice_id = i.id
+       RETURNING i.id, i.quote_id`,
+      [paymentIntent.id]
+    )
+
+    // Fallback: use order_id metadata populated when checkout sessions are created.
+    if (invoiceResult.rows.length === 0) {
+      const metadataOrderId = Number.parseInt(paymentIntent?.metadata?.order_id || '', 10)
+      if (Number.isFinite(metadataOrderId)) {
+        await query(
+          `UPDATE invoices
+           SET status = 'failed', updated_at = NOW()
+           WHERE quote_id = $1 AND status IN ('draft', 'sent')`,
+          [metadataOrderId]
+        )
+      }
+    }
   } catch (error: any) {
     logger.error('Failed to update payment failure', error)
   }

@@ -116,6 +116,9 @@ export function getUserFromEvent(event: H3Event): { userId: number; role: string
  */
 export function setAuthCookie(event: H3Event, token: string) {
   const config = useRuntimeConfig()
+  const cookieDomain = typeof config.public.cookieDomain === 'string'
+    ? config.public.cookieDomain
+    : undefined
   
   setCookie(event, 'auth-token', token, {
     httpOnly: true,
@@ -123,7 +126,7 @@ export function setAuthCookie(event: H3Event, token: string) {
     sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
     maxAge: 60 * 60 * 24 * 7, // 7 days
     path: '/',
-    domain: process.env.NODE_ENV === 'production' ? config.public.cookieDomain : undefined
+    domain: process.env.NODE_ENV === 'production' ? cookieDomain : undefined
   })
   
   logger.debug('Auth cookie set')

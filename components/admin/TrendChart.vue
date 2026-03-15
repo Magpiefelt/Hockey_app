@@ -158,8 +158,7 @@ function createChart() {
       scales: {
         x: {
           grid: {
-            color: '#334155',
-            drawBorder: false
+            color: '#334155'
           },
           ticks: {
             color: '#64748b',
@@ -170,8 +169,7 @@ function createChart() {
         },
         y: {
           grid: {
-            color: '#334155',
-            drawBorder: false
+            color: '#334155'
           },
           ticks: {
             color: '#64748b',

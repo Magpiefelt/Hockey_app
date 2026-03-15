@@ -136,10 +136,6 @@ export default defineNuxtConfig({
       crawlLinks: false,
       routes: []
     },
-    // No proxy needed - frontend calls backend directly
-    devServer: {
-      host: '0.0.0.0'
-    },
     // Compression and minification
     compressPublicAssets: true,
     minify: true
@@ -151,9 +147,7 @@ export default defineNuxtConfig({
     renderJsonPayloads: true,
     typedPages: false, // Disable typed pages for faster builds
     asyncEntry: true,
-    noScripts: false,
-    inlineRouteRules: true,
-    componentPreload: true
+    inlineRouteRules: true
   },
   
   // Vite optimizations

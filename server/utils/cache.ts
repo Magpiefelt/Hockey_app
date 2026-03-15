@@ -21,7 +21,7 @@ export async function getCached<T>(
   key: string,
   options: CacheOptions = {}
 ): Promise<T | null> {
-  const redis = getRedisClient()
+  const redis = await getRedisClient()
   if (!redis) return null
 
   const fullKey = options.prefix ? `${options.prefix}:${key}` : key
@@ -53,7 +53,7 @@ export async function setCached<T>(
   value: T,
   options: CacheOptions = {}
 ): Promise<boolean> {
-  const redis = getRedisClient()
+  const redis = await getRedisClient()
   if (!redis) return false
 
   const fullKey = options.prefix ? `${options.prefix}:${key}` : key
@@ -61,7 +61,7 @@ export async function setCached<T>(
 
   try {
     const serialized = JSON.stringify(value)
-    await redis.set(fullKey, serialized, 'EX', ttl)
+    await redis.set(fullKey, serialized, { EX: ttl })
     logger.debug('Cache set', { key: fullKey, ttl })
     return true
   } catch (error: any) {
@@ -80,7 +80,7 @@ export async function deleteCached(
   key: string,
   options: CacheOptions = {}
 ): Promise<boolean> {
-  const redis = getRedisClient()
+  const redis = await getRedisClient()
   if (!redis) return false
 
   const fullKey = options.prefix ? `${options.prefix}:${key}` : key
@@ -128,7 +128,7 @@ export async function invalidatePattern(
   pattern: string,
   options: CacheOptions = {}
 ): Promise<number> {
-  const redis = getRedisClient()
+  const redis = await getRedisClient()
   if (!redis) return 0
 
   const fullPattern = options.prefix ? `${options.prefix}:${pattern}` : pattern

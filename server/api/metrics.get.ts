@@ -4,6 +4,7 @@
  */
 
 import { query } from '../db/connection'
+import type { H3Event } from 'h3'
 import { requireAdmin } from '../utils/auth'
 import { logger } from '../utils/logger'
 

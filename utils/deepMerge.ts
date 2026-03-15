@@ -8,11 +8,11 @@
  */
 export function deepMerge<T extends Record<string, any>>(target: T, source: Partial<T>): T {
   // Create a copy of the target to avoid mutations
-  const output = { ...target }
+  const output: Record<string, any> = { ...target }
 
   // If source is not an object, return target
   if (!isObject(source)) {
-    return output
+    return output as T
   }
 
   // Iterate through source properties
@@ -35,7 +35,7 @@ export function deepMerge<T extends Record<string, any>>(target: T, source: Part
     }
   })
 
-  return output
+  return output as T
 }
 
 /**

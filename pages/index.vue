@@ -791,7 +791,7 @@ useHead({
   script: [
     {
       type: 'application/ld+json',
-      children: JSON.stringify({
+      textContent: JSON.stringify({
         '@context': 'https://schema.org',
         '@type': 'LocalBusiness',
         '@id': 'https://elitesportsdj.ca/#business',
@@ -854,7 +854,7 @@ useHead({
     },
     {
       type: 'application/ld+json',
-      children: JSON.stringify([
+      textContent: JSON.stringify([
         {
           '@context': 'https://schema.org',
           '@type': 'Service',
@@ -889,7 +889,7 @@ useHead({
     },
     {
       type: 'application/ld+json',
-      children: JSON.stringify({
+      textContent: JSON.stringify({
         '@context': 'https://schema.org',
         '@type': 'WebSite',
         '@id': 'https://elitesportsdj.ca/#website',
@@ -1003,7 +1003,7 @@ useHead(() => ({
     {
       type: 'application/ld+json',
       key: 'faq-schema',
-      children: JSON.stringify({
+      textContent: JSON.stringify({
         '@context': 'https://schema.org',
         '@type': 'FAQPage',
         mainEntity: faqItems.value.map((item: { question: string; answer: string }) => ({

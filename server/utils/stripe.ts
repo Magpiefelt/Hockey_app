@@ -26,7 +26,7 @@ async function initStripe() {
     const Stripe = (await import('stripe')).default
     
     stripeClient = new Stripe(secretKey, {
-      apiVersion: '2024-12-18.acacia',
+      apiVersion: '2025-02-24.acacia',
       typescript: true
     })
 
@@ -121,6 +121,11 @@ export async function createCheckoutSession(options: {
       mode: 'payment',
       success_url: options.successUrl,
       cancel_url: options.cancelUrl,
+      payment_intent_data: {
+        metadata: {
+          order_id: options.orderId.toString()
+        }
+      },
       metadata: {
         order_id: options.orderId.toString()
       }

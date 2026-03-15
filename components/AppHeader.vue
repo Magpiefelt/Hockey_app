@@ -162,7 +162,6 @@ import { onClickOutside } from '@vueuse/core'
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
-const { mockLogout } = useMockAuth()
 const { showSuccess } = useNotification()
 
 // Create session computed from authStore
@@ -200,7 +199,7 @@ const navigateToAdmin = () => {
 }
 
 const handleLogout = async () => {
-  mockLogout()
+  await authStore.logout()
   userMenuOpen.value = false
   showSuccess('Logged out successfully')
   router.push('/')
