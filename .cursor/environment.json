@@ -1,0 +1,8 @@
+{
+  "install": "corepack enable && corepack prepare pnpm@10.24.0 --activate && pnpm install --frozen-lockfile",
+  "start": "corepack enable && corepack prepare pnpm@10.24.0 --activate",
+  "persistedDirectories": [
+    "node_modules",
+    ".pnpm-store"
+  ]
+}
